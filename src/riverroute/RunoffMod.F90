@@ -30,6 +30,7 @@ module RunoffMod
 
      !    - local runtime
      real(r8), pointer :: runoff(:,:)      ! RTM flow (m**3 H2O/s)
+     real(r8), pointer :: runoffall(:,:)   ! RTM flow (m**3 H2O/s)
      real(r8), pointer :: runofflnd(:,:)   ! runoff masked for land (m**3 H2O/s)
      real(r8), pointer :: runoffocn(:,:)   ! runoff masked for ocn  (m**3 H2O/s)
      real(r8), pointer :: dvolrdt(:,:)     ! RTM change in storage (mm/s)
@@ -159,6 +160,7 @@ module RunoffMod
      real(r8), pointer :: qdunne(:,:)  ! Saturation excess runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsur(:,:)    ! Surface runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsub(:,:)    ! Subsurface runoff generated from hillslope, [m/s]
+     real(r8), pointer :: qgwl(:,:)    ! gwl runoff term from glacier, wetlands and lakes, [m/s]
      !! fluxes
      real(r8), pointer :: ehout(:,:)   ! overland flow from hillslope into the sub-channel, [m/s]
      real(r8), pointer :: asat(:,:)    ! saturated area fraction from hillslope, [-]
@@ -199,6 +201,7 @@ module RunoffMod
      real(r8), pointer :: flow(:,:)    ! streamflow from the outlet of the reach, [m3/s]
      real(r8), pointer :: erin1(:,:)   ! inflow from upstream links during previous step, used for Muskingum method, [m3/s]
      real(r8), pointer :: erin2(:,:)   ! inflow from upstream links during current step, used for Muskingum method, [m3/s]
+     real(r8), pointer :: ergwl(:,:)   ! flux item for the adjustment of water balance residual in glacie, wetlands and lakes dynamics [m3/s]
 
      !! for Runge-Kutta algorithm
      real(r8), pointer :: wrtemp(:,:)  ! temporary storage item, for 4th order Runge-Kutta  algorithm;
@@ -239,6 +242,7 @@ contains
     integer :: ier
 
     allocate(rtmCTL%runoff(begr:endr,nt_rtm),     &
+             rtmCTL%runoffall(begr:endr,nt_rtm),  &
              rtmCTL%dvolrdt(begr:endr,nt_rtm),    &
              rtmCTL%runofflnd(begr:endr,nt_rtm),  &
              rtmCTL%dvolrdtlnd(begr:endr,nt_rtm), &
@@ -273,6 +277,7 @@ contains
     end if
 
     rtmCTL%runoff(:,:)     = 0._r8
+    rtmCTL%runoffall(:,:)  = 0._r8
     rtmCTL%runofflnd(:,:)  = spval
     rtmCTL%runoffocn(:,:)  = spval
     rtmCTL%dvolrdt(:,:)    = 0._r8
