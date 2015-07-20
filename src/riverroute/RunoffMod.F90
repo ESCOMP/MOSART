@@ -41,6 +41,10 @@ module RunoffMod
      real(r8), pointer :: fluxout(:,:)     ! RTM cell tracer outlflux (m3/s)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      real(r8), pointer :: flood(:)         ! RTM water (flood) sent back to clm (mm/s)
+     real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
+     real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m**3)
+     real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m**3)
+     real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m**3/s)
 
      !    - global 
      integer , pointer :: mask(:)          ! mask of cell 0=none, 1=lnd, 2=ocn
@@ -270,6 +274,10 @@ contains
              rtmCTL%gindex(begr:endr),            &
              rtmCTL%fthresh(begr:endr),           &
              rtmCTL%flood(begr:endr),             &
+             rtmCTL%wh(begr:endr,nt_rtm),         &
+             rtmCTL%wt(begr:endr,nt_rtm),         &
+             rtmCTL%wr(begr:endr,nt_rtm),         &
+             rtmCTL%erout(begr:endr,nt_rtm),      &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'

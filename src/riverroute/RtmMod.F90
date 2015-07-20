@@ -1104,8 +1104,18 @@ contains
     if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
         (nsrest == nsrContinue) .or. & 
         (nsrest == nsrBranch  )) then
-       call RtmRestFileRead( file=fnamer )
-       fluxout(:,:) = rtmCTL%fluxout(:,:)
+        call RtmRestFileRead( file=fnamer )
+        fluxout(:,:) = rtmCTL%fluxout(:,:)
+        !write(iulog,*) ' MOSART init file is read'
+        TRunoff%wh   = rtmCTL%wh
+        TRunoff%wt   = rtmCTL%wt
+        TRunoff%wr   = rtmCTL%wr
+        TRunoff%erout= rtmCTL%erout
+        do nr = rtmCTL%begr,rtmCTL%endr
+            call UpdateState_hillslope(nr)
+            call UpdateState_subnetwork(nr)
+            call UpdateState_mainchannel(nr)
+        enddo
     end if
 
     call t_stopf('mosarti_restart')
@@ -1491,6 +1501,13 @@ contains
           enddo
        endif
     enddo
+
+    ! record states when subsycling completed
+    rtmCTL%fluxout = fluxout
+    rtmCTL%wh      = TRunoff%wh
+    rtmCTL%wt      = TRunoff%wt
+    rtmCTL%wr      = TRunoff%wr
+    rtmCTL%erout   = TRunoff%erout
 
     call t_stopf('mosartr_subcycling')
 
