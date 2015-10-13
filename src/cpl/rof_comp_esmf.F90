@@ -36,6 +36,7 @@ module rof_comp_esmf
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_x2r_Flrl_rofi, index_x2r_Flrl_rofsur, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
+                                index_x2r_Flrl_rofdto, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
@@ -68,6 +69,7 @@ module rof_comp_esmf
   real(r8), pointer :: surrunin(:,:)   ! surface runoff on rtm grid (mm/s)
   real(r8), pointer :: subrunin(:,:)   ! subsurface runoff on rtm grid (mm/s)
   real(r8), pointer :: gwlrunin(:,:)   ! glacier, wetlands and lakes water balance residual on rtm grid (mm/s)
+  real(r8), pointer :: dtorunin(:,:)   ! direct to ocean runoff on rtm grid (mm/s)
 !
 
 !===============================================================================
@@ -275,6 +277,7 @@ contains
        allocate(surrunin(begr:endr,nt_rtm))
        allocate(subrunin(begr:endr,nt_rtm))
        allocate(gwlrunin(begr:endr,nt_rtm))
+       allocate(dtorunin(begr:endr,nt_rtm))
 
        ! Initialize rof distgrid and domain
 
@@ -453,7 +456,7 @@ contains
     nlend = seq_timemgr_StopAlarmIsOn( EClock )
     rstwr = seq_timemgr_RestartAlarmIsOn( EClock )
     call advance_timestep()
-    call Rtmrun(totrunin,surrunin, subrunin, gwlrunin,rstwr, nlend, rdate)
+    call Rtmrun(totrunin,surrunin, subrunin, gwlrunin, dtorunin, rstwr, nlend, rdate)
 
     ! Map roff data to MCT datatype (input is rtmCTL%runoff, output is r2x_r)
       
@@ -688,7 +691,8 @@ contains
        ni = n - rtmCTL%begr + 1
        totrunin(n,nliq) = fptr(index_x2r_Flrl_rofsur,ni) + &
                           fptr(index_x2r_Flrl_rofgwl,ni) + &
-                          fptr(index_x2r_Flrl_rofsub,ni)
+                          fptr(index_x2r_Flrl_rofsub,ni) + &
+                          fptr(index_x2r_Flrl_rofdto,ni)
        totrunin(n,nfrz) = fptr(index_x2r_Flrl_rofi,ni)
        subrunin(n,nliq) = fptr(index_x2r_Flrl_rofsub,ni)
        subrunin(n,nfrz) = 0.0_r8
@@ -696,6 +700,8 @@ contains
        surrunin(n,nfrz) = fptr(index_x2r_Flrl_rofi,ni)
        gwlrunin(n,nliq) = fptr(index_x2r_Flrl_rofgwl,ni)
        gwlrunin(n,nfrz) = 0.0_r8
+       dtorunin(n,nliq) = fptr(index_x2r_Flrl_rofdto,ni)
+       dtorunin(n,nfrz) = 0.0_r8
     enddo
 
   end subroutine rof_import_esmf

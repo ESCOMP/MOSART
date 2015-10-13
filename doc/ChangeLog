@@ -1,4 +1,43 @@
 ===============================================================
+Tag name:  mosart1_0_03
+Originator(s): andre
+Date: Oct 13, 2015
+One-line Summary: update mosart
+
+Updates to mosart:
+
+* cime compatible infrastructure from Mariana Vertenstein
+
+* Add direct to ocean runoff flux from Sean Swenson.
+
+* PIO2 updates from Jim Edwards
+
+Tested against version of clm4_5_3_r135
+
+  ERS_D_Ld5.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default
+  SMS_D_Ld3.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default
+
+
+Not expected to be bit for bit with previous tag.
+
+M       bld/build-namelist
+D       bld/mosart.buildlib
+D       bld/mosart.buildnml
+D       bld/user_nl_mosart
+A  +    cime_config
+A  +    cime_config/buildlib
+A  +    cime_config/buildnml
+A  +    cime_config/config_component.xml
+A  +    cime_config/user_nl_mosart
+M       src/riverroute/RtmMod.F90
+M       src/riverroute/RtmHistFlds.F90
+M       src/riverroute/RtmIO.F90
+M       src/riverroute/RunoffMod.F90
+M       src/cpl/rof_cpl_indices.F90
+M       src/cpl/rof_comp_mct.F90
+M       src/cpl/rof_comp_esmf.F90
+
+===============================================================
 Tag name:  mosart1_0_00
 Originator(s): tcraig
 Date: May 1, 2015

@@ -177,7 +177,7 @@ contains
 
     if(ierr/= PIO_NOERR) then
        call shr_sys_abort(subname//'ERROR: Failed to open file')
-    else if(pio_subsystem%io_rank==0) then
+    else if(pio_iotask_rank(pio_subsystem)==0) then
        write(iulog,*) 'Opened existing file ', trim(fname), file%fh
     end if
 
@@ -220,7 +220,7 @@ contains
 
     if(ierr/= PIO_NOERR) then
        call shr_sys_abort( subname//' ERROR: Failed to open file to write: '//trim(fname))
-    else if(pio_subsystem%io_rank==0) then
+    else if(pio_iotask_rank(pio_subsystem)==0) then
        write(iulog,*) 'Opened file ', trim(fname),  ' to write', file%fh
     end if
 
@@ -1075,6 +1075,7 @@ contains
     character(len=32) :: vname      ! variable error checking
     type(var_desc_t)  :: vardesc    ! local vardesc pointer
     character(len=*),parameter :: subname='ncd_io_int_var1_nf'
+    integer :: ndims
     !-----------------------------------------------------------------------
 
     if (flag == 'read') then
@@ -1092,14 +1093,16 @@ contains
           count(1) = size(data)
           start(2) = nt
           count(2) = 1
+          ndims = 2
        else
           start(1) = 1
           count(1) = size(data)
           start(2) = 1
           count(2) = 1
+          ndims = 1
        end if
        call ncd_inqvid  (ncid, varname, varid, vardesc)
-       status = pio_put_var(ncid, varid, start, count, data)
+       status = pio_put_var(ncid, varid, start(1:ndims), count(1:ndims), data)
 
     endif   ! flag
 
@@ -1197,6 +1200,7 @@ contains
     character(len=32) :: vname      ! variable error checking
     type(var_desc_t)  :: vardesc    ! local vardesc pointer
     character(len=*),parameter :: subname='ncd_io_real_var1_nf'
+    integer :: ndims
     !-----------------------------------------------------------------------
 
     if (flag == 'read') then
@@ -1214,14 +1218,16 @@ contains
           start(2) = nt
           count(1) = size(data)
           count(2) = 1
+          ndims = 2
        else
           start(1) = 1
           start(2) = 1
           count(1) = size(data)
           count(2) = 1
+          ndims = 1
        end if
        call ncd_inqvid  (ncid, varname, varid, vardesc)
-       status = pio_put_var(ncid, varid, start, count, data)
+       status = pio_put_var(ncid, varid, start(1:ndims), count(1:ndims), data)
 
     endif   ! flag
 
@@ -1313,6 +1319,7 @@ contains
     type(var_desc_t)  :: vardesc    ! local vardesc pointer
     logical :: found                ! if true, found lat/lon dims on file
     character(len=*),parameter :: subname='ncd_io_int_var2_nf'
+    integer :: ndims
     !-----------------------------------------------------------------------
 
     if (flag == 'read') then
@@ -1332,6 +1339,7 @@ contains
           count(1) = size(data, dim=1)
           count(2) = size(data, dim=2)
           count(3) = 1
+          ndims = 3
        else
           start(1) = 1
           start(2) = 1
@@ -1339,9 +1347,10 @@ contains
           count(1) = size(data, dim=1)
           count(2) = size(data, dim=2)
           count(3) = 1
+          ndims = 2
        end if
        call ncd_inqvid(ncid, varname, varid, vardesc)
-       status = pio_put_var(ncid, varid, start, count, data)
+       status = pio_put_var(ncid, varid, start(1:ndims), count(1:ndims), data)
 
     endif   
 
@@ -1563,7 +1572,7 @@ contains
                xtype, iodnum)
           iodesc_plus => iodesc_list(iodnum)
           if (present(nt)) then
-             call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+             call pio_setframe(ncid,vardesc, int(nt,kind=PIO_Offset_kind))
           end if
           call pio_read_darray(ncid, vardesc, iodesc_plus%iodesc, data, status)
        end if
@@ -1588,7 +1597,7 @@ contains
             xtype, iodnum)
        iodesc_plus => iodesc_list(iodnum)
        if (present(nt)) then
-          call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+          call pio_setframe(ncid, vardesc, int(nt,kind=PIO_Offset_kind))
        end if
        call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=0)
 
@@ -1667,7 +1676,7 @@ contains
                xtype, iodnum)
           iodesc_plus => iodesc_list(iodnum)
           if (present(nt)) then
-             call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+             call pio_setframe(ncid,vardesc, int(nt,kind=PIO_Offset_kind))
           end if
           call pio_read_darray(ncid, vardesc, iodesc_plus%iodesc, idata, status)
           data = (idata == 1)
@@ -1697,7 +1706,7 @@ contains
             xtype, iodnum)
        iodesc_plus => iodesc_list(iodnum)
        if (present(nt)) then
-          call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+          call pio_setframe(ncid, vardesc, int(nt,kind=PIO_Offset_kind))
        end if
        allocate( idata(size(data)) ) 
        where( data )
@@ -1781,7 +1790,7 @@ contains
                xtype, iodnum)
           iodesc_plus => iodesc_list(iodnum)
           if (present(nt)) then
-             call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+             call pio_setframe(ncid, vardesc, int(nt,kind=PIO_Offset_kind))
           end if
           call pio_read_darray(ncid, vardesc, iodesc_plus%iodesc, data, status)
        end if
@@ -1806,7 +1815,7 @@ contains
             xtype, iodnum)
        iodesc_plus => iodesc_list(iodnum)
        if (present(nt)) then
-          call pio_setframe(vardesc, int(nt,kind=PIO_Offset))
+          call pio_setframe(ncid,vardesc, int(nt,kind=PIO_Offset_kind))
        end if
        call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=spval)
 

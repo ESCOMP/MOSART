@@ -124,6 +124,10 @@ contains
 !EOP
     real(r8) :: effvel0 = 0.35_r8             ! default velocity
     real(r8) :: effvel(nt_rtm)                ! downstream velocity (m/s)
+    real(r8) :: edgen                         ! North edge of the direction file
+    real(r8) :: edgee                         ! East edge of the direction file
+    real(r8) :: edges                         ! South edge of the direction file
+    real(r8) :: edgew                         ! West edge of the direction file
     integer  :: i,j,k,n,ng,g,n2,nt,nn         ! loop indices
     integer  :: im1,ip1,jm1,jp1,ir,jr,nr      ! neighbor indices
     real(r8) :: deg2rad                       ! pi/180
@@ -466,9 +470,29 @@ contains
     ! Derive gridbox edges
     !-------------------------------------------------------
 
+    ! assuming equispaced grid, calculate edges from rtmlat/rtmlon
+    ! w/o assuming a global grid
+    edgen = maxval(rlatc) + 0.5*abs(rlatc(1) - rlatc(2))
+    edges = minval(rlatc) - 0.5*abs(rlatc(1) - rlatc(2))
+    edgee = maxval(rlonc) + 0.5*abs(rlonc(1) - rlonc(2))
+    edgew = minval(rlonc) - 0.5*abs(rlonc(1) - rlonc(2))
+
+    if ( edgen .ne.  90._r8 )then
+       write(iulog,*) 'Regional grid: edgen = ', edgen
+    end if
+    if ( edges .ne. -90._r8 )then
+       write(iulog,*) 'Regional grid: edges = ', edges
+    end if
+    if ( edgee .ne. 180._r8 )then
+       write(iulog,*) 'Regional grid: edgee = ', edgee
+    end if
+    if ( edgew .ne.-180._r8 )then
+       write(iulog,*) 'Regional grid: edgew = ', edgew
+    end if
+
     ! Set edge latitudes (assumes latitudes are constant for a given longitude)
-    rlats(1) = -90.0_r8
-    rlatn(rtmlat) =  90.0_r8
+    rlats(:) = edges
+    rlatn(:) = edgen
     do j = 2, rtmlat
        if (rlatc(2) > rlatc(1)) then ! South to North grid
           rlats(j)   = (rlatc(j-1) + rlatc(j)) / 2._r8
@@ -485,10 +509,11 @@ contains
 !    endif
 
     ! Set edge longitudes
-    rlonw(1) = (rlonc(1) + rlonc(rtmlon) - 360._r8) / 2._r8
-    rlone(rtmlon) = rlonw(1) + 360.0_r8
+    rlonw(:) = edgew
+    rlone(:) = edgee
+    dx = (edgee - edgew) / rtmlon
     do i = 2, rtmlon
-       rlonw(i)   = (rlonc(i-1) + rlonc(i)) / 2._r8
+       rlonw(i)   = rlonw(i) + (i-1)*dx
        rlone(i-1) = rlonw(i)
     end do
 
@@ -1148,7 +1173,7 @@ contains
 ! !IROUTINE: Rtmrun
 !
 ! !INTERFACE:
-  subroutine Rtmrun(totrunin,surrunin, subrunin, gwlrunin,rstwr, nlend, rdate)
+  subroutine Rtmrun(totrunin,surrunin, subrunin, gwlrunin, rstwr, nlend, rdate)
 !
 ! !DESCRIPTION:
 ! River routing model

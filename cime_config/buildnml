@@ -8,34 +8,31 @@ if ($#ARGV == -1) {
 my ($CASEROOT) = @ARGV;
 chdir "${CASEROOT}";
 
-my @dirs = ("$CASEROOT/Tools");
+my $CIMEROOT			= `./xmlquery  CIMEROOT			-value`;
+my $SRCROOT			= `./xmlquery  SRCROOT			-value`;
+my $DIN_LOC_ROOT		= `./xmlquery  DIN_LOC_ROOT		-value`;
+my $NINST_ROF			= `./xmlquery  NINST_ROF		-value`;
+my $GET_REFCASE			= `./xmlquery  GET_REFCASE		-value`;
+my $ROF_GRID			= `./xmlquery  ROF_GRID			-value`;
+my $MOSART_BLDNML_OPTS		= `./xmlquery  MOSART_BLDNML_OPTS 	-value`;
+my $MOSART_NAMELIST_OPTS	= `./xmlquery  MOSART_NAMELIST_OPTS	-value`;
+my $RUNDIR			= `./xmlquery  RUNDIR			-value`;
+my $RUN_TYPE			= `./xmlquery  RUN_TYPE			-value`;
+my $RUN_STARTDATE		= `./xmlquery  RUN_STARTDATE		-value`;
+my $RUN_REFCASE			= `./xmlquery  RUN_REFCASE		-value`;
+my $RUN_REFDATE			= `./xmlquery  RUN_REFDATE		-value`;
+my $RUN_REFTOD			= `./xmlquery  RUN_REFTOD		-value`;
+
+my @dirs = ("${CIMEROOT}/utils/perl5lib");
 unshift @INC, @dirs;
-require SetupTools;
+require Config::SetupTools;
 my $sysmod; 
 
-my $CASEBUILD		= `./xmlquery  CASEBUILD	 -value`;
-my $CASEROOT		= `./xmlquery  CASEROOT		 -value`;
-my $CCSMROOT		= `./xmlquery  CCSMROOT		 -value`;
-my $DIN_LOC_ROOT	= `./xmlquery  DIN_LOC_ROOT	 -value`;
-my $NINST_ROF		= `./xmlquery  NINST_ROF	 -value`;
-my $GET_REFCASE		= `./xmlquery  GET_REFCASE	 -value`;
-my $ROF_GRID		= `./xmlquery  ROF_GRID     	 -value`;
-my $MOSART_BLDNML_OPTS     = `./xmlquery  MOSART_BLDNML_OPTS 	 -value`;
-my $MOSART_NAMELIST_OPTS   = `./xmlquery  MOSART_NAMELIST_OPTS -value`;
-my $RUNDIR		= `./xmlquery  RUNDIR     	 -value`;
-my $RUN_TYPE		= `./xmlquery  RUN_TYPE		 -value`;
-my $RUN_STARTDATE	= `./xmlquery  RUN_STARTDATE	 -value`;
-my $RUN_REFCASE	        = `./xmlquery  RUN_REFCASE 	 -value`;
-my $RUN_REFDATE	        = `./xmlquery  RUN_REFDATE	 -value`;
-my $RUN_REFTOD	        = `./xmlquery  RUN_REFTOD 	 -value`;
-my $SCRIPTSROOT		= `./xmlquery  SCRIPTSROOT	 -value`;
-my $UTILROOT		= `./xmlquery  UTILROOT		 -value`;
-
-if (! -d "$CASEBUILD/mosartconf" ) {
-    $sysmod = "mkdir $CASEBUILD/mosartconf";
+if (! -d "$CASEROOT/Buildconf/mosartconf" ) {
+    $sysmod = "mkdir $CASEROOT/Buildconf/mosartconf";
     system($sysmod) == 0 or die "ERROR mosart.buildnml: $sysmod failed: $?\n";
 }
-chdir "$CASEBUILD/mosartconf";
+chdir "$CASEROOT/Buildconf/mosartconf";
 
 #--------------------------------------------------------------------
 # Verify rof grid is supported
@@ -54,7 +51,7 @@ if (${check_grid} ne "OK") {
 }
 
 #--------------------------------------------------------------------
-# Invoke mosart build-namelist - output will go in $CASEBUILD/mosartconf
+# Invoke mosart build-namelist - output will go in $CASEROOT/Buildconf/mosartconf
 #--------------------------------------------------------------------
 
 my $inst_string;
@@ -81,8 +78,8 @@ while ($inst_counter <= $NINST_ROF) {
     # create mosartconf/cesm_namelist
     # -----------------------------------------------------
 
-    if (-e "$CASEBUILD/mosart.input_data_list") {
-	$sysmod = "rm $CASEBUILD/mosart.input_data_list";
+    if (-e "$CASEROOT/Buildconf/mosart.input_data_list") {
+	$sysmod = "rm $CASEROOT/Buildconf/mosart.input_data_list";
 	system($sysmod) == 0 or die "ERROR mosart.buildnml: $sysmod failed: $?\n";
     }
     
@@ -125,17 +122,17 @@ while ($inst_counter <= $NINST_ROF) {
 
     SetupTools::create_namelist_infile("$CASEROOT", 
 				       "$CASEROOT/user_nl_mosart${inst_string}", 
-				       "$CASEBUILD/mosartconf/cesm_namelist", 
+				       "$CASEROOT/Buildconf/mosartconf/cesm_namelist", 
 				       "$infile_text");
 
     # -----------------------------------------------------
     # call build-namelist
     # -----------------------------------------------------
     
-    $sysmod = "$CCSMROOT/components/mosart/bld/build-namelist ";
-    $sysmod = "$sysmod -infile $CASEBUILD/mosartconf/cesm_namelist";
+    $sysmod = "$SRCROOT/components/mosart/bld/build-namelist ";
+    $sysmod = "$sysmod -infile $CASEROOT/Buildconf/mosartconf/cesm_namelist";
     $sysmod = "$sysmod -caseroot $CASEROOT";
-    $sysmod = "$sysmod -scriptsroot $SCRIPTSROOT";  
+    $sysmod = "$sysmod -cimeroot $CIMEROOT";  
     $sysmod = "$sysmod -namelist \" \&mosartexp $MOSART_NAMELIST_OPTS \/\" ";
     $sysmod = "$sysmod -inst_string \"$inst_string\" $MOSART_BLDNML_OPTS";
     system($sysmod) == 0 or die "ERROR mosart.buildnml: $sysmod failed: $?\n";
@@ -145,7 +142,7 @@ while ($inst_counter <= $NINST_ROF) {
     # -----------------------------------------------------
     
     if (-d ${RUNDIR}) {
-	$sysmod = "cp $CASEBUILD/mosartconf/mosart_in ${RUNDIR}/mosart_in${inst_string}";
+	$sysmod = "cp $CASEROOT/Buildconf/mosartconf/mosart_in ${RUNDIR}/mosart_in${inst_string}";
 	system($sysmod) == 0 or die "ERROR mosart.buildnml: $sysmod failed: $?\n";
     }
     

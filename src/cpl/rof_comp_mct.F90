@@ -30,6 +30,7 @@ module rof_comp_mct
   use rof_cpl_indices  , only : rof_cpl_indices_set, nt_rtm, rtm_tracers, &
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
+                                index_x2r_Flrl_rofdto, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
@@ -305,7 +306,7 @@ contains
     nlend = seq_timemgr_StopAlarmIsOn( EClock )
     rstwr = seq_timemgr_RestartAlarmIsOn( EClock )
     call advance_timestep()
-    call Rtmrun(totrunin,surrunin, subrunin, gwlrunin,rstwr, nlend, rdate)
+    call Rtmrun(totrunin,surrunin, subrunin, gwlrunin, rstwr, nlend, rdate)
 
     ! Map roff data to MCT datatype (input is rtmCTL%runoff, output is r2x_r)
     call t_startf ('lc_rof_export')
@@ -521,7 +522,7 @@ contains
     character(len=32), parameter :: sub = 'rof_import_mct'
     !---------------------------------------------------------------------------
     
-    ! Note that totrunin and subrunin is a flux
+    ! Note that ***runin are fluxes
 
     nliq = 0
     nfrz = 0
@@ -544,14 +545,23 @@ contains
        n2 = n - begr + 1
        totrunin(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2) + &
                           x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2) + &
-                          x2r_r%rAttr(index_x2r_Flrl_rofsub,n2)
+                          x2r_r%rAttr(index_x2r_Flrl_rofsub,n2) + &
+                          x2r_r%rAttr(index_x2r_Flrl_rofdto,n2)
        totrunin(n,nfrz) = x2r_r%rAttr(index_x2r_Flrl_rofi,n2)
+
        surrunin(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2)
        surrunin(n,nfrz) = x2r_r%rAttr(index_x2r_Flrl_rofi,n2)
+
        subrunin(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsub,n2)
        subrunin(n,nfrz) = 0.0_r8
+
        gwlrunin(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2)
        gwlrunin(n,nfrz) = 0.0_r8
+
+       rtmCTL%qsur(n) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2)
+       rtmCTL%qsub(n) = x2r_r%rAttr(index_x2r_Flrl_rofsub,n2)
+       rtmCTL%qgwl(n) = x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2)
+       rtmCTL%qdto(n) = x2r_r%rAttr(index_x2r_Flrl_rofdto,n2)
     enddo
 
   end subroutine rof_import_mct
@@ -633,6 +643,14 @@ contains
           endif
        end do
     end if
+
+!  Add direct to ocean runoff prior to passing runoff to coupler
+    ni = 0
+    do n = rtmCTL%begr,rtmCTL%endr
+       ni = ni + 1
+       r2x_r%rAttr(index_r2x_Forr_rofl,ni) &
+            = r2x_r%rAttr(index_r2x_Forr_rofl,ni) + rtmCTL%qdto(n)
+    end do
 
     ! Flooding back to land, sign convention is positive in land->rof direction
     ! so if water is sent from rof to land, the flux must be negative.

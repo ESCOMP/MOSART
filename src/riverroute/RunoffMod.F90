@@ -68,6 +68,12 @@ module RunoffMod
      real(r8), pointer :: dvolrdtocn_nt2(:)
      real(r8), pointer :: volr_nt1(:)
      real(r8), pointer :: volr_nt2(:)
+
+     real(r8), pointer :: qsur(:)
+     real(r8), pointer :: qsub(:)
+     real(r8), pointer :: qgwl(:)
+     real(r8), pointer :: qdto(:)
+
   end type runoff_flow
 
   
@@ -164,6 +170,7 @@ module RunoffMod
      real(r8), pointer :: qdunne(:,:)  ! Saturation excess runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsur(:,:)    ! Surface runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsub(:,:)    ! Subsurface runoff generated from hillslope, [m/s]
+     real(r8), pointer :: qdto(:,:)    ! Direct to Ocean runoff, [m/s]
      real(r8), pointer :: qgwl(:,:)    ! gwl runoff term from glacier, wetlands and lakes, [m/s]
      !! fluxes
      real(r8), pointer :: ehout(:,:)   ! overland flow from hillslope into the sub-channel, [m/s]
@@ -278,6 +285,10 @@ contains
              rtmCTL%wt(begr:endr,nt_rtm),         &
              rtmCTL%wr(begr:endr,nt_rtm),         &
              rtmCTL%erout(begr:endr,nt_rtm),      &
+             rtmCTL%qsur(begr:endr),      & 
+             rtmCTL%qsub(begr:endr),      &
+             rtmCTL%qgwl(begr:endr),      &
+             rtmCTL%qdto(begr:endr),      &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -294,6 +305,11 @@ contains
     rtmCTL%volr(:,:)       = 0._r8
     rtmCTL%volrlnd(:,:)    = spval
     rtmCTL%flood(:)        = 0._r8
+
+    rtmCTL%qsur(:)        = 0._r8
+    rtmCTL%qsub(:)        = 0._r8
+    rtmCTL%qgwl(:)        = 0._r8
+    rtmCTL%qdto(:)        = 0._r8
 
   end subroutine RunoffInit
 
