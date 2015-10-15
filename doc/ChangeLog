@@ -1,4 +1,14 @@
 ===============================================================
+Tag name:  mosart1_0_04
+Originator(s): andre
+Date: Oct 135 2015
+One-line Summary: swenson river volume normalization bugfix
+
+Tested by Sean Swenson. Verified to compile and run SMS_D.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default.
+
+Not bit for bit with previous tag.
+
+===============================================================
 Tag name:  mosart1_0_03
 Originator(s): andre
 Date: Oct 13, 2015

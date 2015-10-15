@@ -657,9 +657,9 @@ contains
     ni = 0
     do n = rtmCTL%begr, rtmCTL%endr
        ni = ni + 1
-       r2x_r%rattr(index_r2x_Flrr_flood,ni) = -rtmCTL%flood(n)
-       r2x_r%rattr(index_r2x_Flrr_volr,ni)    = Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)
-       r2x_r%rattr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq)
+       r2x_r%rattr(index_r2x_Flrr_flood,ni)   = -rtmCTL%flood(n)
+       r2x_r%rattr(index_r2x_Flrr_volr,ni)    = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
+       r2x_r%rattr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
     end do
 
   end subroutine rof_export_mct
