@@ -1,7 +1,21 @@
 ===============================================================
+Tag name:  mosart1_0_05
+Originator(s): andre
+Date: Oct 15 2015
+One-line Summary: swenson bugfix for mosart direction file
+
+The old mosart direction file, rof/mosart/MOSART_Global_half_20130604a.nc,
+has antarctica shifted by 180 degrees.
+
+Tested with pre-clm4_5_3_r140:
+  ERS_D_Ld5.f10_f10.IMCRUCLM50BGC.yellowstone_intel - runs to completion
+
+Not bit for bit with previous tag.
+
+===============================================================
 Tag name:  mosart1_0_04
 Originator(s): andre
-Date: Oct 135 2015
+Date: Oct 15 2015
 One-line Summary: swenson river volume normalization bugfix
 
 Tested by Sean Swenson. Verified to compile and run SMS_D.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default.
