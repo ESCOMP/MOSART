@@ -16,9 +16,10 @@ for the CLM data in the CESM distribution
 
 <!-- Default mosart namelist -->
 
-<ice_runoff                  >.true.</ice_runoff>
-
-<decomp_option>'basin'</decomp_option> 
+<ice_runoff>.true.</ice_runoff>
+<delt_mosart>3600</delt_mosart> 
+<decomp_option>'roundrobin'</decomp_option> 
+<smat_option>'Xonly'</smat_option>
 <rtmhist_mfilt>30</rtmhist_mfilt> 
 <rtmhist_nhtfrq>0</rtmhist_nhtfrq> 
 <rtmhist_ndens>2</rtmhist_ndens>
