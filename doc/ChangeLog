@@ -1,4 +1,27 @@
 ===============================================================
+Tag name:  mosart1_0_07
+Originator(s): tcraig
+Date: Nov 22 2015
+One-line Summary: update rtmini and rtmrun routine and add budget
+- code cleanup of rtmini and rtmrun
+- works with mosart input files with scrambled IDs
+- moved dto term into rtmrun
+- added direct-to-outlet tranfer capability
+- removed a bunch of old rtm code
+- fixed esmf interfaces and tested in DEBUG mode
+- added budget calculation (still being validated)
+- has a known exact restart error that introduces a roundoff
+  difference at the first timestep at a handful of gridcells.
+  This is probably not going to impact science, will be fixed
+  next.
+
+M       src/riverroute/RtmMod.F90
+M       src/riverroute/MOSART_physics_mod.F90
+M       src/riverroute/RunoffMod.F90
+M       src/riverroute/RtmRestFile.F90
+M       src/cpl/rof_comp_mct.F90
+M       src/cpl/rof_comp_esmf.F90
+===============================================================
 Tag name:  mosart1_0_06
 Originator(s): tcraig
 Date: Nov 19 2015

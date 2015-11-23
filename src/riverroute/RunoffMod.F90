@@ -24,6 +24,10 @@ module RunoffMod
   type(mct_avect),public :: avsrc_dnstrm  ! src avect for SM mult downstream advection
   type(mct_avect),public :: avdst_dnstrm  ! dst avect for SM mult downstream advection
 
+  type(mct_sMatP),public :: sMatP_direct  ! sparse matrix plus for direct to outlet flow
+  type(mct_avect),public :: avsrc_direct  ! src avect for SM mult direct to outlet flow
+  type(mct_avect),public :: avdst_direct  ! dst avect for SM mult direct to outlet flow
+
   type(mct_sMatP),public :: sMatP_eroutUp ! sparse matrix plus for eroutUp calc
   type(mct_avect),public :: avsrc_eroutUp ! src avect for SM mult eroutUp calc
   type(mct_avect),public :: avdst_eroutUp ! dst avect for SM mult eroutUp calc
@@ -34,30 +38,30 @@ module RunoffMod
      real(r8), pointer :: lonc(:)          ! lon of cell
      real(r8), pointer :: latc(:)          ! lat of cell
      real(r8), pointer :: area(:)          ! area of cell
-     integer , pointer :: gindex(:)        ! global index
-     integer , pointer :: dsil(:)          ! downstream index, local index (gdc)
+     integer , pointer :: gindex(:)        ! global index consistent with map file
      integer , pointer :: dsig(:)          ! downstream index, global index
+     integer , pointer :: outletg(:)       ! outlet index, global index
 
      !    - local runtime
-     real(r8), pointer :: runoff(:,:)      ! RTM flow (m**3 H2O/s)
-     real(r8), pointer :: runoffall(:,:)   ! RTM flow (m**3 H2O/s)
-     real(r8), pointer :: runofflnd(:,:)   ! runoff masked for land (m**3 H2O/s)
-     real(r8), pointer :: runoffocn(:,:)   ! runoff masked for ocn  (m**3 H2O/s)
+     real(r8), pointer :: runoff(:,:)      ! RTM flow (m3 H2O/s)
+     real(r8), pointer :: runoffall(:,:)   ! RTM flow (m3 H2O/s)
+     real(r8), pointer :: runofflnd(:,:)   ! runoff masked for land (m3 H2O/s)
+     real(r8), pointer :: runoffocn(:,:)   ! runoff masked for ocn  (m3 H2O/s)
      real(r8), pointer :: dvolrdt(:,:)     ! RTM change in storage (mm/s)
      real(r8), pointer :: dvolrdtlnd(:,:)  ! dvolrdt masked for land (mm/s)
      real(r8), pointer :: dvolrdtocn(:,:)  ! dvolrdt masked for ocn  (mm/s)
-     real(r8), pointer :: volr(:,:)        ! RTM storage (m**3)
-     real(r8), pointer :: volrlnd(:,:)     ! RTM storage masked for land (m**3)
+     real(r8), pointer :: volr(:,:)        ! RTM storage (m3)
+     real(r8), pointer :: volrlnd(:,:)     ! RTM storage masked for land (m3)
      real(r8), pointer :: fluxout(:,:)     ! RTM cell tracer outlflux (m3/s)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      real(r8), pointer :: flood(:)         ! RTM water (flood) sent back to clm (mm/s)
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
-     real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m**3)
-     real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m**3)
-     real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m**3/s)
+     real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m3)
+     real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m3)
+     real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m3/s)
 
      !    - global 
-     integer , pointer :: mask(:)          ! mask of cell 0=none, 1=lnd, 2=ocn
+     integer , pointer :: mask(:)          ! general mask of cell 1=land, 2=ocean, 3=outlet
      real(r8), pointer :: rlon(:)          ! rtm longitude list, 1d
      real(r8), pointer :: rlat(:)          ! rtm latitude list, 1d
      real(r8)          :: totarea          ! global area
@@ -125,7 +129,7 @@ module RunoffMod
   public :: Tspatialunit
   type Tspatialunit
      ! grid properties
-     integer , pointer :: mask(:)      ! mask of a cell, 1=land, 2=ocean, 0=excluded cell
+     integer , pointer :: mask(:)      ! mosart mask of mosart cell, 0=null, 1=land with dnID, 2=outlet
      integer , pointer :: ID0(:)         
      real(r8), pointer :: lat(:)       ! latitude of the centroid of the cell
      real(r8), pointer :: lon(:)       ! longitude of the centroid of the cell
@@ -149,7 +153,6 @@ module RunoffMod
      real(r8), pointer :: nt(:)        ! manning's roughness of the subnetwork at hillslope  
 
      ! main channel properties
-     integer , pointer :: fdir(:)      ! flow direction, currently considering single direction only;
      real(r8), pointer :: rlen(:)      ! length of main river reach, [m]
      real(r8), pointer :: rslp(:)      ! slope of main river reach, [-]
      real(r8), pointer :: rslpsqrt(:)  ! sqrt of slope of main river reach, [-] 
@@ -279,8 +282,8 @@ contains
              rtmCTL%fluxout(begr:endr,nt_rtm),    &
              rtmCTL%lonc(begr:endr),              &
              rtmCTL%latc(begr:endr),              &
-             rtmCTL%dsil(begr:endr),              &
              rtmCTL%dsig(begr:endr),              &
+             rtmCTL%outletg(begr:endr),           &
              rtmCTL%runofflnd_nt1(begr:endr),     &
              rtmCTL%runofflnd_nt2(begr:endr),     &
              rtmCTL%runoffocn_nt1(begr:endr),     &
