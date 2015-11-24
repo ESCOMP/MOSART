@@ -1,4 +1,12 @@
 ===============================================================
+Tag name:  mosart1_0_08
+Originator(s): tcraig
+Date: Nov 24 2015
+One-line Summary: Fix exact restart in atan slope calc
+
+M       src/riverroute/MOSART_physics_mod.F90
+
+===============================================================
 Tag name:  mosart1_0_07
 Originator(s): tcraig
 Date: Nov 22 2015

@@ -49,12 +49,6 @@ MODULE MOSART_physics_mod
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
     real(r8) :: temp_erout, localDeltaT
     real(r8) :: negchan
-    logical, save :: first_call = .true.
-
-    if (first_call) then
-       sinatanSLOPE1defr = 1.0_r8/(sin(atan(SLOPE1def)))
-    endif
-    first_call = .false.
 
     !------------------
     ! hillslope
@@ -615,8 +609,13 @@ MODULE MOSART_physics_mod
     
     real(r8) :: SLOPE1  ! slope of flood plain, TO DO
     real(r8) :: deltahr_
+    logical, save :: first_call = .true.
 
     SLOPE1 = SLOPE1def
+    if (first_call) then
+       sinatanSLOPE1defr = 1.0_r8/(sin(atan(SLOPE1def)))
+    endif
+    first_call = .false.
 
     if(hr_ < TINYVALUE) then
        pr_ = 0._r8
