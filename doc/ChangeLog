@@ -1,4 +1,17 @@
 ===============================================================
+Tag name:  mosart1_0_11
+Originator(s): katec
+Date: Dec 7 2015
+One-line Summary: Changes to get Mosart to build with Nag on Hobart
+
+- Shortened a few lines of code that were too long
+- Added '.' for some literals that Nag thought were integers
+- Removed call to 'system' and used open status='replace' instead
+
+M       src/riverroute/MOSART_physics_mod.F90
+M       src/riverroute/RtmMod.F90
+
+===============================================================
 Tag name:  mosart1_0_10
 Originator(s): tcraig
 Date: Dec 2 2015

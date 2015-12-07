@@ -2433,15 +2433,16 @@ contains
       
         if(TUnit%rlen(iunit) > 0._r8) then
            TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
-           if(TUnit%hlen(iunit) > 50000_r8) then
-              TUnit%hlen(iunit) = 50000_r8   ! allievate the outlier in drainage density estimation. TO DO
+           if(TUnit%hlen(iunit) > 50000._r8) then
+              TUnit%hlen(iunit) = 50000._r8   ! allievate the outlier in drainage density estimation. TO DO
            end if
            TUnit%tlen(iunit) = TUnit%area(iunit) / TUnit%rlen(iunit) / 2._r8 - TUnit%hlen(iunit)
            if(TUnit%twidth(iunit) < 0._r8) then
               TUnit%twidth(iunit) = 0._r8
            end if
            if(TUnit%tlen(iunit) > 0._r8 .and. (TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit) > 1._r8) then
-              TUnit%twidth(iunit) = TPara%c_twid(iunit)*TUnit%twidth(iunit)*((TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit))
+              TUnit%twidth(iunit) = TPara%c_twid(iunit) * TUnit%twidth(iunit) * &
+                                    ((TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit))
            end if
           
            if(TUnit%tlen(iunit) > 0._r8 .and. TUnit%twidth(iunit) <= 0._r8) then
