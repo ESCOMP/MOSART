@@ -73,7 +73,6 @@ module RunoffMod
      real(r8), pointer :: qsur(:,:)        ! coupler surface forcing [m3/s]
      real(r8), pointer :: qsub(:,:)        ! coupler subsurface forcing [m3/s]
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
-     real(r8), pointer :: qdto(:,:)        ! coupler diret-to-ocean forcing [m3/s]
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -101,8 +100,6 @@ module RunoffMod
      real(r8), pointer :: qsub_nt2(:)
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
-     real(r8), pointer :: qdto_nt1(:)
-     real(r8), pointer :: qdto_nt2(:)
 
   end type runoff_flow
 
@@ -157,6 +154,7 @@ module RunoffMod
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      logical , pointer :: euler_calc(:) ! flag for calculating tracers in euler
 
+
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded) 
      real(r8), pointer :: hslp(:)      ! slope of hillslope, [-]
@@ -204,7 +202,6 @@ module RunoffMod
      real(r8), pointer :: qdunne(:,:)  ! Saturation excess runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsur(:,:)    ! Surface runoff generated from hillslope, [m/s]
      real(r8), pointer :: qsub(:,:)    ! Subsurface runoff generated from hillslope, [m/s]
-     real(r8), pointer :: qdto(:,:)    ! Direct to Ocean runoff, [m/s]
      real(r8), pointer :: qgwl(:,:)    ! gwl runoff term from glacier, wetlands and lakes, [m/s]
      !! fluxes
      real(r8), pointer :: ehout(:,:)   ! overland flow from hillslope into the sub-channel, [m/s]
@@ -323,8 +320,6 @@ contains
              rtmCTL%qsub_nt2(begr:endr),          &
              rtmCTL%qgwl_nt1(begr:endr),          &
              rtmCTL%qgwl_nt2(begr:endr),          &
-             rtmCTL%qdto_nt1(begr:endr),          &
-             rtmCTL%qdto_nt2(begr:endr),          &
              rtmCTL%mask(begr:endr),              &
              rtmCTL%gindex(begr:endr),            &
              rtmCTL%fthresh(begr:endr),           &
@@ -337,7 +332,6 @@ contains
              rtmCTL%qsur(begr:endr,nt_rtm),       & 
              rtmCTL%qsub(begr:endr,nt_rtm),       &
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
-             rtmCTL%qdto(begr:endr,nt_rtm),       &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -358,7 +352,6 @@ contains
     rtmCTL%qsur(:,:)        = 0._r8
     rtmCTL%qsub(:,:)        = 0._r8
     rtmCTL%qgwl(:,:)        = 0._r8
-    rtmCTL%qdto(:,:)        = 0._r8
 
   end subroutine RunoffInit
 

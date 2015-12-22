@@ -36,7 +36,6 @@ module rof_comp_esmf
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_x2r_Flrl_rofi, index_x2r_Flrl_rofsur, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
-                                index_x2r_Flrl_rofdto, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
@@ -686,16 +685,9 @@ contains
        rtmCTL%qsur(n,nliq) = fptr(index_x2r_Flrl_rofsur,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsub(n,nliq) = fptr(index_x2r_Flrl_rofsub,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qgwl(n,nliq) = fptr(index_x2r_Flrl_rofgwl,n2) * (rtmCTL%area(n)*0.001_r8)
-       if (index_x2r_Flrl_rofdto > 0) then
-          rtmCTL%qdto(n,nliq) = fptr(index_x2r_Flrl_rofdto,n2) * (rtmCTL%area(n)*0.001_r8)
-       else
-          rtmCTL%qdto(n,nliq) = 0.0_r8
-       endif
-
        rtmCTL%qsur(n,nfrz) = fptr(index_x2r_Flrl_rofi,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsub(n,nfrz) = 0.0_r8
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
-       rtmCTL%qdto(n,nfrz) = 0.0_r8
 
     enddo
 

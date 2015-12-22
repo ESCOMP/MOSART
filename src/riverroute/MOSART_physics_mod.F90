@@ -82,7 +82,7 @@ MODULE MOSART_physics_mod
        do iunit=rtmCTL%begr,rtmCTL%endr
           TRunoff%erout_prev(iunit,nt) = TRunoff%erout_prev(iunit,nt) + TRunoff%erout(iunit,nt)
        end do
-       endif
+       end if
        end do
 
        !------------------
@@ -318,28 +318,18 @@ MODULE MOSART_physics_mod
        end if
     end if
 
-    temp_dwr = TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)
     temp_gwl = TRunoff%qgwl(iunit,nt) * TUnit%area(iunit) * TUnit%frac(iunit)
-    temp_gwl0 = temp_gwl
-    if(abs(temp_gwl) <= TINYVALUE) then
-!       write(iulog,*) 'mosart: ERROR dropping temp_gwl too small'
-!       call shr_sys_abort('mosart: ERROR temp_gwl too small')
-       temp_gwl = 0._r8
-    end if 
-    if(temp_gwl < -TINYVALUE) then 
-       write(iulog,*) 'mosart: ERROR temp_gwl negative',iunit,nt,TRunoff%qgwl(iunit,nt)
-       call shr_sys_abort('mosart: ERROR temp_gwl negative ')
-       if(TRunoff%wr(iunit,nt) < TINYVALUE) then
-          temp_gwl = 0._r8
-       else 
-          if(TRunoff%wr(iunit,nt)/theDeltaT + temp_dwr + temp_gwl < -TINYVALUE) then
-          !write(iulog,*) 'adjust! ', temp_gwl, -(temp_dwr+TRunoff%wr(iunit,nt)/theDeltaT)
-             temp_gwl = -(temp_dwr + TRunoff%wr(iunit,nt) / theDeltaT)
-          end if
-       end if
-    end if
            
     TRunoff%dwr(iunit,nt) = TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt) + temp_gwl
+
+    if((TRunoff%wr(iunit,nt)/theDeltaT &
+         + TRunoff%dwr(iunit,nt)) < -TINYVALUE) then
+       write(iulog,*) 'mosart: ERROR main channel going negative: ', iunit, nt 
+       write(iulog,*) theDeltaT, TRunoff%wr(iunit,nt), &
+            TRunoff%wr(iunit,nt)/theDeltaT, TRunoff%dwr(iunit,nt), temp_gwl
+       write(iulog,*) ' '
+       !       call shr_sys_abort('mosart: ERROR main channel going negative')
+    endif
 
 ! check for stability
 !    if(TRunoff%vr(iunit,nt) < -TINYVALUE .or. TRunoff%vr(iunit,nt) > 30) then

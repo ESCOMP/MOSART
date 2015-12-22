@@ -48,11 +48,11 @@ contains
 
     call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%runoffocn_nt1, default='active')
+         ptr_rof=rtmCTL%runoffocn_nt1, default='inactive')
 
     call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%runoffocn_nt2, default='active')
+         ptr_rof=rtmCTL%runoffocn_nt2, default='inactive')
 
     call RtmHistAddfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s', &
          avgflag='A', long_name='MOSART total discharge into ocean: '//trim(rtm_tracers(1)), &
@@ -72,11 +72,11 @@ contains
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%volr_nt1, default='active')
+         ptr_rof=rtmCTL%volr_nt1, default='inactive')
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(2)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%volr_nt2, default='active')
+         ptr_rof=rtmCTL%volr_nt2, default='inactive')
 
     call RtmHistAddfld (fname='DVOLRDT_LND'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART land change in storage: '//trim(rtm_tracers(1)), &
@@ -96,35 +96,27 @@ contains
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsur_nt1, default='active')
+         ptr_rof=rtmCTL%qsur_nt1, default='inactive')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qsur_nt2, default='active')
+         ptr_rof=rtmCTL%qsur_nt2, default='inactive')
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsub_nt1, default='active')
+         ptr_rof=rtmCTL%qsub_nt1, default='inactive')
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qsub_nt2, default='active')
+         ptr_rof=rtmCTL%qsub_nt2, default='inactive')
 
     call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qgwl_nt1, default='active')
+         ptr_rof=rtmCTL%qgwl_nt1, default='inactive')
 
     call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qgwl_nt2, default='active')
-
-    call RtmHistAddfld (fname='QDTO'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input direct to ocean runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qdto_nt1, default='active')
-
-    call RtmHistAddfld (fname='QDTO'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input direct to ocean runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qdto_nt2, default='active')
+         ptr_rof=rtmCTL%qgwl_nt2, default='inactive')
 
     ! Print masterlist of history fields
 
@@ -174,9 +166,6 @@ contains
 
     rtmCTL%qgwl_nt1(:)       = rtmCTL%qgwl(:,1)
     rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
-
-    rtmCTL%qdto_nt1(:)       = rtmCTL%qdto(:,1)
-    rtmCTL%qdto_nt2(:)       = rtmCTL%qdto(:,2)
 
   end subroutine RtmHistFldsSet
 

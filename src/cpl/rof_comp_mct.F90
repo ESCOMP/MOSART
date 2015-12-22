@@ -30,7 +30,6 @@ module rof_comp_mct
   use rof_cpl_indices  , only : rof_cpl_indices_set, nt_rtm, rtm_tracers, &
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
-                                index_x2r_Flrl_rofdto, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
@@ -218,7 +217,7 @@ contains
 
     ! Fill in infodata
     call seq_infodata_PutData( infodata, rof_present=rof_prognostic, rof_nx = rtmlon, rof_ny = rtmlat, &
-         rof_prognostic=rof_prognostic)
+         rof_prognostic=rof_prognostic, rofice_present=.false.)
     call seq_infodata_PutData( infodata, flood_present=flood_present)
 
     ! Reset shr logging to original values
@@ -540,16 +539,10 @@ contains
        rtmCTL%qsur(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsur,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsub(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofsub,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qgwl(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofgwl,n2) * (rtmCTL%area(n)*0.001_r8)
-       if (index_x2r_Flrl_rofdto > 0) then
-          rtmCTL%qdto(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_rofdto,n2) * (rtmCTL%area(n)*0.001_r8)
-       else
-          rtmCTL%qdto(n,nliq) = 0.0_r8
-       endif
 
        rtmCTL%qsur(n,nfrz) = x2r_r%rAttr(index_x2r_Flrl_rofi,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsub(n,nfrz) = 0.0_r8
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
-       rtmCTL%qdto(n,nfrz) = 0.0_r8
 
     enddo
 

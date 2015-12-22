@@ -19,7 +19,9 @@ module RtmMod
                                frivinp_rtm, finidat_rtm, nrevsn_rtm, &
                                nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                inst_index, inst_suffix, inst_name, &
-                               smat_option, decomp_option, barrier_timers
+                               smat_option, decomp_option, &
+                               bypass_routing_option, qgwl_runoff_option, &
+                               barrier_timers
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date
   use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet 
@@ -202,6 +204,7 @@ contains
          rtmhist_fincl1,  rtmhist_fincl2, rtmhist_fincl3, &
          rtmhist_fexcl1,  rtmhist_fexcl2, rtmhist_fexcl3, &
          rtmhist_avgflag_pertape, decomp_option, &
+         bypass_routing_option, qgwl_runoff_option, &
          smat_option, delt_mosart
 
     ! Preset values
@@ -213,6 +216,8 @@ contains
     coupling_period   = -1
     delt_mosart = 3600
     decomp_option = 'basin'
+    bypass_routing_option = 'direct_in_place'
+    qgwl_runoff_option = 'threshold'
     smat_option = 'opt'
 
     nlfilename_rof = "mosart_in" // trim(inst_suffix)
@@ -244,7 +249,8 @@ contains
     call mpi_bcast (nrevsn_rtm   , len(nrevsn_rtm)   , MPI_CHARACTER, 0, mpicom_rof, ier)
     call mpi_bcast (decomp_option, len(decomp_option), MPI_CHARACTER, 0, mpicom_rof, ier)
     call mpi_bcast (smat_option  , len(smat_option)  , MPI_CHARACTER, 0, mpicom_rof, ier)
-
+    call mpi_bcast (bypass_routing_option, len(bypass_routing_option), MPI_CHARACTER, 0, mpicom_rof, ier)
+    call mpi_bcast (qgwl_runoff_option, len(qgwl_runoff_option), MPI_CHARACTER, 0, mpicom_rof, ier)
     call mpi_bcast (do_rtm,      1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (do_rtmflood, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (ice_runoff,  1, MPI_LOGICAL, 0, mpicom_rof, ier)
@@ -276,6 +282,8 @@ contains
        write(iulog,*) '   coupling_period       = ',coupling_period
        write(iulog,*) '   delt_mosart           = ',delt_mosart
        write(iulog,*) '   decomp option         = ',trim(decomp_option)
+       write(iulog,*) '   bypass_routing option = ',trim(bypass_routing_option)
+       write(iulog,*) '   qgwl runoff option    = ',trim(qgwl_runoff_option)
        write(iulog,*) '   smat option           = ',trim(smat_option)
        if (nsrest == nsrStartup .and. finidat_rtm /= ' ') then
           write(iulog,*) '   MOSART initial data   = ',trim(finidat_rtm)
@@ -1170,7 +1178,7 @@ contains
              sMat%data%rAttr(iwgt ,cnt) = 1.0_r8
              sMat%data%iAttr(igrow,cnt) = rtmCTL%outletg(nr)
              sMat%data%iAttr(igcol,cnt) = rtmCTL%gindex(nr)
-          else
+           else
              cnt = cnt + 1
              sMat%data%rAttr(iwgt ,cnt) = 1.0_r8
              sMat%data%iAttr(igrow,cnt) = rtmCTL%gindex(nr)
@@ -1480,9 +1488,9 @@ contains
           budget_terms(13,nt) = budget_terms(13,nt) + rtmCTL%qsur(nr,nt)
           budget_terms(14,nt) = budget_terms(14,nt) + rtmCTL%qsub(nr,nt)
           budget_terms(15,nt) = budget_terms(15,nt) + rtmCTL%qgwl(nr,nt)
-          budget_terms(16,nt) = budget_terms(16,nt) + rtmCTL%qdto(nr,nt)
-          budget_terms(17,nt) = budget_terms(17,nt) + rtmCTL%qsur(nr,nt) + rtmCTL%qsub(nr,nt) + &
-                               rtmCTL%qgwl(nr,nt) + rtmCTL%qdto(nr,nt)
+          budget_terms(16,nt) = budget_terms(16,nt) + rtmCTL%qsur(nr,nt) &
+               + rtmCTL%qsub(nr,nt) &
+               + rtmCTL%qgwl(nr,nt)
        enddo
        enddo
        call t_stopf('mosartr_budget')
@@ -1531,112 +1539,201 @@ contains
     enddo
     call t_stopf('mosartr_flood')
 
-    !-----------------------------------
+    !-----------------------------------------------------
     ! DIRECT sMAT transfer to outlet point using sMat
-    ! Remember to subract water from TRunoff forcing
-    !-----------------------------------
+    ! Remember to subtract water from TRunoff forcing
+    !-----------------------------------------------------
 
     if (barrier_timers) then
        call t_startf('mosartr_SMdirect_barrier')
        call mpi_barrier(mpicom_rof,ier)
        call t_stopf ('mosartr_SMdirect_barrier')
     endif
-
+    
     call t_startf('mosartr_SMdirect')
-
     !--- copy direct transfer fields to AV
     !--- convert kg/m2s to m3/s
     call mct_avect_zero(avsrc_direct)
+
+    !-----------------------------------------------------
+    !--- all frozen runoff passed direct to outlet
+    !-----------------------------------------------------
+    nt = 2
+    ! set euler_calc = false for frozen runoff
+    TUnit%euler_calc(nt) = .false.
+
     cnt = 0
     do nr = rtmCTL%begr,rtmCTL%endr
        cnt = cnt + 1
-       do nt = 1,nt_rtm
-
-          !-------------------------------
-          ! This water is routed directly to the outlet and passed out
-          ! Turn on and off terms as desired via commenting them out
-          !-------------------------------
-
-          !---- all dto water, none was going to TRunoff ---
-          !---- *** DO NOT TURN THIS ONE OFF, conservation will fail *** ---
-          avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + rtmCTL%qdto(nr,nt)
-
-          !---- negative gwl water less than channel volume, remove from TRunoff ---
-          !---- scs
-          qgwl_volume = TRunoff%qgwl(nr,nt) * delt_mosart
-          river_volume_minimum = river_depth_minimum * rtmCTL%area(nr)
-          !---- if qgwl is negative, and adding it to the main channel would bring 
-          !---- main channel storage below a threshold, send qgwl directly to ocean
-          if (((qgwl_volume + TRunoff%wr(nr,nt)) < river_volume_minimum) &
-             .and. (TRunoff%qgwl(nr,nt) < 0._r8)) then
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + TRunoff%qgwl(nr,nt)
-             TRunoff%qgwl(nr,nt) = 0._r8
-          endif
-          !---- scs
-
-          !---- negative qgwl water, remove from TRunoff ---
-          if (TRunoff%qgwl(nr,nt) < 0._r8) then
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + TRunoff%qgwl(nr,nt)
-             TRunoff%qgwl(nr,nt) = 0._r8
-          endif
-
-          !---- all gwl water, remove from TRunoff ---
-          avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + TRunoff%qgwl(nr,nt)
-          TRunoff%qgwl(nr,nt) = 0._r8
-
-          !---- negative qsub water, remove from TRunoff ---
-          if (TRunoff%qsub(nr,nt) < 0._r8) then
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + TRunoff%qsub(nr,nt)
-             TRunoff%qsub(nr,nt) = 0._r8
-          endif
-
-          !---- negative qsur water, remove from TRunoff ---
-          if (TRunoff%qsur(nr,nt) < 0._r8) then
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + TRunoff%qsur(nr,nt)
-             TRunoff%qsur(nr,nt) = 0._r8
-          endif
-
-          !---- water outside the basin ---
-          !---- *** DO NOT TURN THIS ONE OFF, conservation will fail *** ---
-          if (TUnit%mask(nr) > 0) then
-             ! mosart euler
-          else
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + &
-                TRunoff%qsub(nr,nt) + &
-                TRunoff%qsur(nr,nt) + &
-                TRunoff%qgwl(nr,nt)
-             TRunoff%qsub(nr,nt) = 0._r8
-             TRunoff%qsur(nr,nt) = 0._r8
-             TRunoff%qgwl(nr,nt) = 0._r8
-          endif
-
-          !---- all nt=2 water ---
-          !---- can turn off euler_calc for this tracer ----
-          if (nt == 2) then
-             TUnit%euler_calc(nt) = .false.
-             avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + &
-                TRunoff%qsub(nr,nt) + &
-                TRunoff%qsur(nr,nt) + &
-                TRunoff%qgwl(nr,nt)
-             TRunoff%qsub(nr,nt) = 0._r8
-             TRunoff%qsur(nr,nt) = 0._r8
-             TRunoff%qgwl(nr,nt) = 0._r8
-          endif
-
-       enddo
+       avsrc_direct%rAttr(nt,cnt) = TRunoff%qsur(nr,nt)&
+            +TRunoff%qsub(nr,nt)+TRunoff%qgwl(nr,nt)
+       TRunoff%qsur(nr,nt) = 0._r8
+       TRunoff%qsub(nr,nt) = 0._r8
+       TRunoff%qgwl(nr,nt) = 0._r8
     enddo
+
     call mct_avect_zero(avdst_direct)
-
+       
     call mct_sMat_avMult(avsrc_direct, sMatP_direct, avdst_direct)
-
+       
     !--- copy direct transfer water from AV to output field ---
     cnt = 0
     do nr = rtmCTL%begr,rtmCTL%endr
        cnt = cnt + 1
-       do nt = 1,nt_rtm
+       rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + avdst_direct%rAttr(nt,cnt)
+    enddo
+
+    !-----------------------------------------------------
+    !--- direct to outlet qgwl
+    !-----------------------------------------------------
+    !-- liquid runoff components
+    if (trim(bypass_routing_option) == 'direct_to_outlet') then
+       nt = 1
+          
+       !--- copy direct transfer fields to AV
+       !--- convert kg/m2s to m3/s
+       call mct_avect_zero(avsrc_direct)
+       cnt = 0
+       do nr = rtmCTL%begr,rtmCTL%endr
+          cnt = cnt + 1
+          if (trim(qgwl_runoff_option) == 'all') then
+             avsrc_direct%rAttr(nt,cnt) = TRunoff%qgwl(nr,nt)
+             TRunoff%qgwl(nr,nt) = 0._r8
+          else if (trim(qgwl_runoff_option) == 'negative') then
+             if(TRunoff%qgwl(nr,nt) < 0._r8) then 
+                avsrc_direct%rAttr(nt,cnt) = TRunoff%qgwl(nr,nt)
+                TRunoff%qgwl(nr,nt) = 0._r8
+             endif
+          endif
+       enddo
+       call mct_avect_zero(avdst_direct)
+       
+       call mct_sMat_avMult(avsrc_direct, sMatP_direct, avdst_direct)
+       
+       !--- copy direct transfer water from AV to output field ---
+       cnt = 0
+       do nr = rtmCTL%begr,rtmCTL%endr
+          cnt = cnt + 1
           rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
        enddo
-    enddo
+    endif
+
+    !-----------------------------------------------------
+    !--- direct in place qgwl
+    !-----------------------------------------------------
+       
+    if (trim(bypass_routing_option) == 'direct_in_place') then
+       nt = 1
+       do nr = rtmCTL%begr,rtmCTL%endr
+          
+          if (trim(qgwl_runoff_option) == 'all') then
+             rtmCTL%direct(nr,nt) = TRunoff%qgwl(nr,nt)
+             TRunoff%qgwl(nr,nt) = 0._r8
+          else if (trim(qgwl_runoff_option) == 'negative') then
+             if(TRunoff%qgwl(nr,nt) < 0._r8) then 
+                rtmCTL%direct(nr,nt) = TRunoff%qgwl(nr,nt)
+                TRunoff%qgwl(nr,nt) = 0._r8
+             endif
+          else if (trim(qgwl_runoff_option) == 'threshold') then
+             ! --- calculate volume of qgwl flux during timestep
+             qgwl_volume = TRunoff%qgwl(nr,nt) * delt_mosart
+             river_volume_minimum = river_depth_minimum * rtmCTL%area(nr)
+             ! if qgwl is negative, and adding it to the main channel 
+             ! would bring main channel storage below a threshold, 
+             ! send qgwl directly to ocean
+             if (((qgwl_volume + TRunoff%wr(nr,nt)) < river_volume_minimum) &
+                  .and. (TRunoff%qgwl(nr,nt) < 0._r8)) then
+                rtmCTL%direct(nr,nt) = TRunoff%qgwl(nr,nt)
+                TRunoff%qgwl(nr,nt) = 0._r8
+             endif
+          endif
+       enddo
+    endif
+
+    !-------------------------------------------------------
+    !--- add other direct terms, e.g. inputs outside of 
+    !--- mosart mask, negative qsur
+    !-------------------------------------------------------
+       
+    if (trim(bypass_routing_option) == 'direct_in_place') then
+       do nt = 1,nt_rtm
+          do nr = rtmCTL%begr,rtmCTL%endr
+             
+!  allow negative qsub for irrigation
+!!$       if (TRunoff%qsub(nr,nt) < 0._r8) then
+!!$          rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + TRunoff%qsub(nr,nt)
+!!$          TRunoff%qsub(nr,nt) = 0._r8
+!!$       endif
+
+             if (TRunoff%qsur(nr,nt) < 0._r8) then
+                rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + TRunoff%qsur(nr,nt)
+                TRunoff%qsur(nr,nt) = 0._r8
+             endif
+             
+             if (TUnit%mask(nr) > 0) then
+                ! mosart euler
+             else
+                rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + &
+                     TRunoff%qsub(nr,nt) + &
+                     TRunoff%qsur(nr,nt) + &
+                     TRunoff%qgwl(nr,nt)
+                TRunoff%qsub(nr,nt) = 0._r8
+                TRunoff%qsur(nr,nt) = 0._r8
+                TRunoff%qgwl(nr,nt) = 0._r8
+             endif
+          enddo
+       enddo
+    endif
+
+    if (trim(bypass_routing_option) == 'direct_to_outlet') then
+       call mct_avect_zero(avsrc_direct)
+       cnt = 0
+       do nr = rtmCTL%begr,rtmCTL%endr
+          cnt = cnt + 1
+          do nt = 1,nt_rtm
+          !---- negative qsub water, remove from TRunoff ---
+             !  allow negative qsub for irrigation
+!!$             if (TRunoff%qsub(nr,nt) < 0._r8) then
+!!$                avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) &
+!!$                     + TRunoff%qsub(nr,nt)
+!!$                TRunoff%qsub(nr,nt) = 0._r8
+!!$             endif
+             
+             !---- negative qsur water, remove from TRunoff ---
+             if (TRunoff%qsur(nr,nt) < 0._r8) then
+                avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) &
+                     + TRunoff%qsur(nr,nt)
+                TRunoff%qsur(nr,nt) = 0._r8
+             endif
+
+          !---- water outside the basin ---
+             !---- *** DO NOT TURN THIS ONE OFF, conservation will fail *** ---
+             if (TUnit%mask(nr) > 0) then
+                ! mosart euler
+             else
+                avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + &
+                     TRunoff%qsub(nr,nt) + &
+                     TRunoff%qsur(nr,nt) + &
+                     TRunoff%qgwl(nr,nt)
+                TRunoff%qsub(nr,nt) = 0._r8
+                TRunoff%qsur(nr,nt) = 0._r8
+                TRunoff%qgwl(nr,nt) = 0._r8
+             endif
+          enddo
+       enddo
+       call mct_avect_zero(avdst_direct)
+       
+       call mct_sMat_avMult(avsrc_direct, sMatP_direct, avdst_direct)
+       
+       !--- copy direct transfer water from AV to output field ---
+       cnt = 0
+       do nr = rtmCTL%begr,rtmCTL%endr
+          cnt = cnt + 1
+          do nt = 1,nt_rtm
+             rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
+          enddo
+       enddo
+    endif
     call t_stopf('mosartr_SMdirect')
 
     !-----------------------------------
@@ -1877,8 +1974,7 @@ contains
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input surface = ',nt,budget_global(13,nt)
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input subsurf = ',nt,budget_global(14,nt)
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input gwl     = ',nt,budget_global(15,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input dto     = ',nt,budget_global(16,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input total   = ',nt,budget_global(17,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input total   = ',nt,budget_global(16,nt)
            !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input check   = ',nt,budget_input - budget_global(17,nt)
            !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input euler   = ',nt,budget_global(20,nt)
            !write(iulog,'(2a)') trim(subname),'----------------'
@@ -2417,6 +2513,13 @@ contains
    ! control parameters and some other derived parameters
    ! estimate derived input variables
 
+!add minimum value to rlen (length of main channel)
+     do iunit=rtmCTL%begr,rtmCTL%endr
+        if(TUnit%rlen(iunit) < 4.e4_r8) then
+           TUnit%rlen(iunit) = 4.e4_r8
+        end if
+     end do     
+!
      do iunit=rtmCTL%begr,rtmCTL%endr
         if(TUnit%Gxr(iunit) > 0._r8) then
            TUnit%rlenTotal(iunit) = TUnit%area(iunit)*TUnit%Gxr(iunit)

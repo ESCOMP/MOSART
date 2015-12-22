@@ -80,6 +80,24 @@ Decomposition Option for mosart
 Default: 'roundrobin'
 </entry>
 
+<entry id="bypass_routing_option" 
+       type="char*32" 
+       category="mosart"
+       group="mosart_inparm" 
+       valid_values="direct_in_place,direct_to_outlet,none" >
+Method for bypassing routing model.
+Default: direct_in_place
+</entry>
+
+<entry id="qgwl_runoff_option" 
+       type="char*32" 
+       category="mosart"
+       group="mosart_inparm" 
+       valid_values="all,negative,threshold" >
+Method for handling of qgwl runoff inputs.
+Default: threshold
+</entry>
+
 <entry id="finidat_rtm" 
        type="char*256" 
        category="mosart"

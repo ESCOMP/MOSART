@@ -29,6 +29,8 @@ module RtmVar
                                                        ! by default this is not allowed
   logical, public :: noland = .false.                  ! true => no valid land points -- do NOT run
   character(len=32) , public :: decomp_option          ! decomp option
+  character(len=32) , public :: bypass_routing_option  ! bypass routing model method
+  character(len=32) , public :: qgwl_runoff_option     ! method for handling qgwl runoff
   character(len=32) , public :: smat_option            ! smatrix multiply option (opt, Xonly, Yonly)
                                                        ! opt   = XandY in MCT
                                                        ! Xonly = Xonly in MCT, should be bfb on different pe counts

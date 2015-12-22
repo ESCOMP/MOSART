@@ -1,4 +1,44 @@
 ===============================================================
+Tag name:  mosart1_0_12
+Originator(s): swenson, andre
+Date: Dec 7 2015
+One-line Summary: negative river runoff changes
+
+- Update default routing file.
+- Add new namelist options bypass_routing_option,
+  qgwl_runoff_option
+- New method of handeling runoff terms to avoid negative runoff.
+- Error checking on max length of history filenames.
+- Add testdefs dir, testmods and testlist for integration to cime
+  test system.
+- remove rofdto from coupler interface fields.
+
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_mosart.xml
+M       bld/namelist_files/namelist_definition_mosart.xml
+A  +    cime_config/testdefs
+A  +    cime_config/testdefs/testlist_mosart.xml
+A  +    cime_config/testdefs/testmods_dirs
+A  +    cime_config/testdefs/testmods_dirs/mosart
+A  +    cime_config/testdefs/testmods_dirs/mosart/mosartOff
+A  +    cime_config/testdefs/testmods_dirs/mosart/mosartOff/include_user_mods
+A  +    cime_config/testdefs/testmods_dirs/mosart/mosartOff/user_nl_mosart
+A  +    cime_config/testdefs/testmods_dirs/mosart/default
+A  +    cime_config/testdefs/testmods_dirs/mosart/default/user_nl_mosart
+A  +    cime_config/testdefs/testmods_dirs/mosart/iceOff
+A  +    cime_config/testdefs/testmods_dirs/mosart/iceOff/include_user_mods
+A  +    cime_config/testdefs/testmods_dirs/mosart/iceOff/user_nl_mosart
+M       doc/ChangeLog
+M       src/riverroute/RtmMod.F90
+M       src/riverroute/RtmHistFlds.F90
+M       src/riverroute/MOSART_physics_mod.F90
+M       src/riverroute/RtmHistFile.F90
+M       src/riverroute/RtmVar.F90
+M       src/riverroute/RunoffMod.F90
+M       src/cpl/rof_comp_mct.F90
+M       src/cpl/rof_comp_esmf.F90
+
+===============================================================
 Tag name:  mosart1_0_11
 Originator(s): katec
 Date: Dec 7 2015
