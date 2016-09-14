@@ -1,4 +1,13 @@
 ===============================================================
+Tag name:  mosart1_0_18
+Originator(s): erik
+Date: Sep 13 2016
+One-line Summary: Add output frequency to history files
+
+
+M   src/riverroute/RtmHistFile.Fi90 -- add output history frequency "time_period_freq"
+
+===============================================================
 Tag name:  mosart1_0_17
 Originator(s): erik
 Date: Apr 14 2016
