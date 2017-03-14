@@ -1,4 +1,37 @@
 ===============================================================
+Tag name:  mosart1_0_21
+Originator(s): mvertens, andre
+Date: March 14, 2017
+One-line Summary: cime5 python namelist generation
+
+Changes from Mariana Vertenstein to convert namelist generation to use
+the cime5 python namelist infrastructure.
+
+Testing:
+
+  aux_clm45 vs clm4_5_14_r227 - passed except for expected failures.
+
+  mosart vs clm4_5_14_r227 generated baselines - pass
+
+  mvertens
+    ERI_Ld9.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default
+    ERS_Ld7.f19_g16.B1850.yellowstone_intel.allactive-defaultio -
+        was bfb with cesm2_0_alpha06f
+
+Deleted files: perl based namelist generation and xml files.
+   bld
+   bld/build-namelist
+   bld/namelist_files
+   bld/namelist_files/namelist_defaults_mosart.xml
+   bld/namelist_files/namelist_definition_mosart.xml
+
+Added files: python based namelist generation and xml files
+   cime_config/buildlib
+   cime_config/buildnml
+   cime_config/config_component.xml
+   cime_config/namelist_definition_mosart.xml
+
+===============================================================
 Tag name:  mosart1_0_20
 Originator(s): erik
 Date: Feb 21 2017
