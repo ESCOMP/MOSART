@@ -1,4 +1,31 @@
 ===============================================================
+Tag name:  mosart1_0_22
+Originator(s): andre
+Date: March 17, 2017
+One-line Summary: histfile pointer bugfix bugz-2184
+
+Bugfix from bugzilla issue 2184. The histfile infrastructure mosart
+inherited from clm via rtm needs to use pointers to refer to
+pio/netcdf file handles. Bug 2184 has never occured in mosart, but the
+same problem existed.
+
+Testing:
+
+    NOTE: testing done with a franken-branch of clm4_5_14_r229 and
+    mosart1_0_21.
+
+    mosart - pass - yellowstone gnu, intel, pgi. baseline mosart1_0_21_clm4_5_14_r229.
+
+    aux_clm4{0,5}: ok vs clm4_5_14_r229 baselines yellowstone gnu, intel, pgi
+        Only clm expected fails
+
+
+Modified files: fix for bugzilla #2184
+
+    components/mosart/src/riverroute/RtmHistFile.F90
+
+
+===============================================================
 Tag name:  mosart1_0_21
 Originator(s): mvertens, andre
 Date: March 14, 2017
