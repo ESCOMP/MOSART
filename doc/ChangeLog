@@ -1,4 +1,35 @@
 ===============================================================
+Tag name:  mosart1_0_23
+Originator(s): andre
+Date: March 17, 2017
+One-line Summary: answer changing improvements and bugfix
+
+Answer changing improvements to channel storage from HongYi Li for
+faster spinup. Bugfix from Tony Craig to use correct delta time for
+qgwl flux.
+
+Changes reviewed by Sean Swenson.
+
+Testing:
+
+    Test suite: mosart - yellowstone gnu, intel, pgi
+    Test baseline mosart1_0_22_clm4_5_14_r229
+    Test status: pass, answer changing as expected when mosart on
+
+    Test suite: aux_clm4{0,5} - yellowstone gnu, intel, pgi
+    Test baseline: clm4_5_14_r229
+    Test status: ok - only expected failures. Bit for bit except for
+                 tests with mosart as expected.
+
+    Dave Lawrence and Sean Swenson ran branch in a long cesm2 coupled
+    simulation and verified the results were ok.
+
+Modified files: 
+
+    components/mosart/src/riverroute/RtmMod.F90
+
+
+===============================================================
 Tag name:  mosart1_0_22
 Originator(s): andre
 Date: March 17, 2017
