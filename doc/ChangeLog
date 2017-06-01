@@ -1,4 +1,19 @@
 ===============================================================
+Tag name:  mosart1_0_24
+Originator(s): erik
+Date: Jun 01, 2017
+One-line Summary: Update routing file with metadata and in NetCDF3 format
+
+Update routing file with extra metadata and in NetCDF3 format rather than
+NetCDF4.
+
+Testing:
+
+Modified files: 
+
+M       cime_config/namelist_definition_mosart.xml
+
+===============================================================
 Tag name:  mosart1_0_23
 Originator(s): andre
 Date: March 17, 2017
