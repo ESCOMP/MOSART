@@ -1,4 +1,22 @@
 ===============================================================
+Tag name:  mosart1_0_25
+Originator(s): andre
+Date: July 05, 2017
+One-line Summary: bugfix and update testlist
+
+Update the testlist to use clm5 compset alias naming conventions.
+
+Bugfix for bugzilla 2481 from Erik Kluzek.
+
+Testing: clm test list run on branch before merge.
+
+Modified files:
+
+M    cime_config/testdefs/testlist_mosart.xml
+M    src/riverroute/RtmTimeManager.F90
+
+
+===============================================================
 Tag name:  mosart1_0_24
 Originator(s): erik
 Date: Jun 01, 2017

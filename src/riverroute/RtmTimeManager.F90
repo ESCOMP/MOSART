@@ -61,7 +61,7 @@ module RtmTimeManager
       stop_tod      = 0,           &! stopping time of day for run in seconds
       ref_ymd       = uninit_int,  &! reference date for time coordinate in yearmmdd format
       ref_tod       = 0             ! reference time of day for time coordinate in seconds
-   type(ESMF_Calendar), save  :: &
+   type(ESMF_Calendar), target, save  :: &
         tm_cal       ! calendar
    type(ESMF_Clock), save :: &
         tm_clock     ! model clock   
