@@ -165,7 +165,7 @@
     <input_pathname>abs</input_pathname>
     <group>mosart_inparm</group> 
     <values>
-      <value rof_grid="r05">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170526.nc</value>
+      <value rof_grid="r05">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170601.nc</value>
     </values>
     <desc>
       Full pathname of input datafile for RTM.

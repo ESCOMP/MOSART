@@ -1,4 +1,23 @@
 ===============================================================
+Tag name:  mosart1_0_26
+Originator(s): erik
+Date: July 07, 2017
+One-line Summary: Update areas on routing file and add some comments
+
+Testing: aux_clm testlist with clm4_5_16_r250 on yellowstone
+
+Point to a new routing file that has area's updated by Hongyi. Sean
+Swenson showed that they are within single precision roundoff to what he 
+expects them to be. The dataset also updates lon to be -180-180
+rather than 0-360. Straighten out formatting of lines about hlen
+hillslope length in RtmMod and add some comments to it.
+
+M       cime_config/namelist_definition_mosart.xml -- new frivinp_rtm
+            converted to NetCDF3 format
+M       src/riverroute/RtmMod.F90 -- straighten out formatting, remove
+            tabs, add comments about hlen
+
+===============================================================
 Tag name:  mosart1_0_25
 Originator(s): andre
 Date: July 05, 2017

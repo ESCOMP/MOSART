@@ -2567,17 +2567,26 @@ contains
       
         if(TUnit%rlen(iunit) > 0._r8) then
            TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
-		   hlen_max = max(1000.0_r8, sqrt(TUnit%area(iunit))) ! constrain the hillslope length
+
+           ! constrain hlen (hillslope length) values based on cell area
+           hlen_max = max(1000.0, sqrt(TUnit%area(iunit)))
            if(TUnit%hlen(iunit) > hlen_max) then
-              TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainage density estimation. TO DO
+              TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainag\e density estimation. TO DO
            end if
-		   rlen_min = sqrt(TUnit%area(iunit))
-		   if(TUnit%rlen(iunit) < rlen_min) then
-               TUnit%tlen(iunit) = TUnit%area(iunit) / rlen_min / 2._r8 - TUnit%hlen(iunit)
-		   else
-               TUnit%tlen(iunit) = TUnit%area(iunit) / TUnit%rlen(iunit) / 2._r8 - TUnit%hlen(iunit)
-		   end if
-		   
+
+           ! rlen values can be too small, leading to tlen values that are 
+           ! too large; calculate tlen using rlen_min when necessary
+           ! an alternate fix (commented out above) would be to directly
+           ! adjust rlen, then all subsequent calculations based on rlen
+           ! would be consistent.  With this change, other calculations 
+           ! use the original rlen, e.g. twidth
+           rlen_min = sqrt(TUnit%area(iunit))                           
+           if(TUnit%rlen(iunit) < rlen_min) then                        
+              TUnit%tlen(iunit) = TUnit%area(iunit) / rlen_min / 2._r8 - TUnit%hlen(iunit)
+           else
+              TUnit%tlen(iunit) = TUnit%area(iunit) / TUnit%rlen(iunit) / 2._r8 - TUnit%hlen(iunit)
+           end if
+
            if(TUnit%twidth(iunit) < 0._r8) then
               TUnit%twidth(iunit) = 0._r8
            end if
