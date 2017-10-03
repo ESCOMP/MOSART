@@ -1,6 +1,18 @@
 <?xml version="1.0"?>
 
-<definitions_variables>
+<entry_id version="3.0">
+
+  <!-- modifier_mode allowed values are
+       '*' 0 or more modifiers (default)
+       '1' exactly 1 modifier
+       '?' 0 or 1 modifiers
+       '+' 1 or more modifiers
+       This file may have lnd desc entries.
+  -->
+  <description modifier_mode="*">
+    <desc rof="MOSART[%FLOOD]">MOSART: MOdel for Scale Adaptive River Transport</desc>
+    <desc option="FLOOD">MOSART model with flood:</desc>
+  </description>
 
   <entry id="COMP_ROF"> 
      <type>char</type>
@@ -35,7 +47,7 @@
     <desc>mode for mosart flood feature, NULL means mosart flood is turned off</desc>
   </entry>
 
-  <entry id="MOSART_SIMYR"> 
+  <entry id="MOSART_SIMYR">
     <type>char</type>
     <valid_values></valid_values>
     <default_value>-simyr 2000</default_value>
@@ -49,16 +61,10 @@
     <file>env_run.xml</file>
     <desc>MOSART build-namelist options</desc>
   </entry>
-
-  <description>
-    <desc compset="_MOSART">MOSART:</desc>
-    <desc compset="_MOSART%FLOOD">MOSART model with flood:</desc>
-  </description>
-
   <help>
     =========================================
     MOSART naming conventions
     =========================================
   </help>
 
-</definitions_variables>
+</entry_id>

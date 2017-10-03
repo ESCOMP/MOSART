@@ -1,4 +1,2 @@
-&rtm_inparm
   do_rtm = .false.
   ice_runoff  = .false. 
-/

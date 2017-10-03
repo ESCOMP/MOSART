@@ -1,4 +1,28 @@
 ===============================================================
+Tag name:  mosart1_0_27
+Originator(s): erik
+Date: Oct 03, 2017
+One-line Summary: Upgrade config_component to version 3, allow output file format
+                  to change, fix a couple bugs
+
+Bugs fixed: 2477, 2494
+
+Testing: aux_clm testlist with cfgcompsetv3_n01_clm4_5_16_r251 on yellowstone/cheyenne/hobart
+
+M    src/riverroute/RtmIO.F90 - Changes from Jim Edwards to change format of output NetCDF
+           files, and remove public attribute from io_type
+
+           Remove unneeded setting of namelist group name in test namelists (bug 2494)
+M    cime_config/testdefs/testmods_dirs/mosart/default/user_nl_mosart
+M    cime_config/testdefs/testmods_dirs/mosart/iceOff/user_nl_mosart
+M    cime_config/testdefs/testmods_dirs/mosart/mosartOff/user_nl_mosart
+
+M    cime_config/buildnml ------------- Fix bug 2477 for MOSART so that
+        if NINST_RTM > 1, will check if REFCASE has instance name
+        in it and then use it, but if not use it without instance name
+M    cime_config/config_component.xml - Upgrade to version 3 format
+
+===============================================================
 Tag name:  mosart1_0_26
 Originator(s): erik
 Date: July 07, 2017

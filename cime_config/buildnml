@@ -79,10 +79,11 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen):
         run_refcase = case.get_value("RUN_REFCASE")
         run_refdate = case.get_value("RUN_REFDATE")
         run_tod     = case.get_value("RUN_REFTOD")
-        if inst_string:
-            filename = "%s.mosart%s.r.%s-%s.nc" %(run_refcase, inst_string, run_refdate, run_tod)
-        else:
+        rundir      = case.get_value("RUNDIR")
+        filename = "%s.mosart%s.r.%s-%s.nc" %(run_refcase, inst_string, run_refdate, run_tod)
+        if not os.path.exists(os.path.join(rundir, filename ) ):
             filename = "%s.mosart.r.%s-%s.nc" %(run_refcase, run_refdate, run_tod)
+
         if run_type == "hybrid":
             nmlgen.add_default("finidat_rtm", value=filename, ignore_abs_path=True)
         else:
