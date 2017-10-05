@@ -1,4 +1,25 @@
 ===============================================================
+Tag name:  mosart1_0_28
+Originator(s): erik
+Date: Oct 05, 2017
+One-line Summary:  Explicitly truncate the river length to a mininum value, rather than
+                   just change the calculation of tlen for rlen_min.
+
+Testing: Sean and Keith both ran long simulations with this change (in a branch off of 1_0_26)
+
+Previous simulations showed that short rivers would accumulate water in them slowly over 
+time. This doesn't happen in longer rivers. But it affects the total water balance of the
+system. Simulations by Sean Swenson and Keith Oleson show that this no longer happens
+with this change.
+
+Changes from Sean Swenson to add minimum value to rlen (length of main channel); rlen values 
+can be too small, leading to tlen values that are too large
+
+M    src/riverroute/RtmIO.F90 - Explicitly set rlen to rlen_min early and remove code that was
+        calculating tlen based on rlen_min when rlen<rlen_min. Since rlen is changed this affects code
+        that is based on rlen, and can change the if statements that are triggered.
+
+===============================================================
 Tag name:  mosart1_0_27
 Originator(s): erik
 Date: Oct 03, 2017
