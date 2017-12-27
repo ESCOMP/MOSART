@@ -25,6 +25,7 @@ CMakeFiles/
 core.*
 *.gz
 *.log
+cime_config/buildnmlc
 
 # test and case directories
 tests/
