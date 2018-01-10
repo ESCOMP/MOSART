@@ -28,7 +28,7 @@
       </options>
     </machines>
   </test>
-  <test name="SMS_D_Ld5" grid="f10_f10_musgs" compset="I1850Clm50BgcCru" testmods="mosart/default">
+  <test name="SMS_D_Ld5" grid="f10_f10_musgs" compset="I1850Clm50Bgc" testmods="mosart/default">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
