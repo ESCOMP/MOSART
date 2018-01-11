@@ -5,6 +5,8 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+      <machine name="cheyenne" compiler="intel" category="aux_clm"></machine>
+      <machine name="cheyenne" compiler="gnu" category="aux_clm"></machine>
       <machine name="hobart" compiler="nag" category="mosart"></machine>
       <options>
         <option name="wallclock">0:20</option>
@@ -15,6 +17,7 @@
   <test name="ERS_Ld5" grid="f10_f10_musgs" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="cheyenne" compiler="intel" category="aux_clm"></machine>
       <options>
         <option name="wallclock">0:20</option>
       </options>
@@ -23,6 +26,7 @@
   <test name="ERS_Ld5" grid="f10_f10_musgs" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="cheyenne" compiler="intel" category="aux_clm"></machine>
       <options>
         <option name="wallclock">0:20</option>
       </options>
@@ -33,6 +37,8 @@
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
       <machine name="hobart" compiler="nag" category="mosart"></machine>
+      <machine name="cheyenne" compiler="intel" category="aux_clm"></machine>
+      <machine name="cheyenne" compiler="gnu" category="aux_clm"></machine>
       <options>
         <option name="wallclock">0:20</option>
         <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
