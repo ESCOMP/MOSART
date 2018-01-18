@@ -45,4 +45,21 @@
       </options>
     </machines>
   </test>
+  <test name="SMS_D" grid="f10_f10_musgs" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <options>
+        <option name="wallclock">0:20</option>
+        <option name="comment"  >decompOpts are not bit for bit on PE layout change</option>
+      </options>
+    </machines>
+  </test>
+  <test name="ERP_D" grid="f10_f10_musgs" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <options>
+        <option name="wallclock">0:20</option>
+      </options>
+    </machines>
+  </test>
 </testlist>
