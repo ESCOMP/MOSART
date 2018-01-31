@@ -1607,7 +1607,7 @@ contains
        if (present(nt)) then
           call pio_setframe(ncid, vardesc, int(nt,kind=PIO_Offset_kind))
        end if
-       call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=0)
+       call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=ispval)
 
     else
 
