@@ -11,26 +11,26 @@ module RtmRestFile
 ! !USES:
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmSpmd       , only : masterproc 
+  use RtmSpmd       , only : masterproc
   use RtmVar        , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
                              caseid, nsrest, brnch_retain_casename, &
-                             finidat_rtm, nrevsn_rtm, &
+                             finidat_rtm, nrevsn_rtm, spval, &
                              nsrContinue, nsrBranch, nsrStartup, &
                              ctitle, version, username, hostname, conventions, source
   use RtmHistFile   , only : RtmHistRestart
   use RtmFileUtils  , only : relavu, getavu, opnfil, getfil
   use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
   use RunoffMod     , only : rtmCTL
-  use RtmIO       
+  use RtmIO
   use RtmDateTime
-  use rof_cpl_indices , only : nt_rtm, rtm_tracers 
+  use rof_cpl_indices , only : nt_rtm, rtm_tracers
 !
 ! !PUBLIC TYPES:
   implicit none
   save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: RtmRestFileName  
+  public :: RtmRestFileName
   public :: RtmRestFileRead
   public :: RtmRestFileWrite
   public :: RtmRestGetfile
@@ -38,7 +38,7 @@ module RtmRestFile
   public :: RtmRestart
 !
 ! !PRIVATE MEMBER FUNCTIONS:
-  private :: restFile_read_pfile     
+  private :: restFile_read_pfile
   private :: restFile_write_pfile    ! Writes restart pointer file
   private :: restFile_dimset
 !
@@ -73,7 +73,7 @@ contains
 
     ! Define dimensions and variables
 
-    if (masterproc) then	
+    if (masterproc) then
        write(iulog,*)
        write(iulog,*)'restFile_open: writing RTM restart dataset '
        write(iulog,*)
@@ -99,14 +99,14 @@ contains
 
     ! Write restart pointer file
     call restFile_write_pfile( file )
-    
+
     ! Write out diagnostic info
 
     if (masterproc) then
        write(iulog,*) 'Successfully wrote out restart data at nstep = ',get_nstep()
        write(iulog,'(72a1)') ("-",i=1,60)
     end if
-    
+
   end subroutine RtmRestFileWrite
 
 !-----------------------------------------------------------------------
@@ -187,29 +187,29 @@ contains
 
     ! LOCAL VARIABLES:
     integer :: status                      ! return status
-    integer :: length                      ! temporary          
+    integer :: length                      ! temporary
     character(len=256) :: ftest,ctest      ! temporaries
     !---------------------------------------------------
 
     ! Continue run:
-    ! Restart file pathname is read restart pointer file 
+    ! Restart file pathname is read restart pointer file
     if (nsrest==nsrContinue) then
        call restFile_read_pfile( path )
        call getfil( path, file, 0 )
     end if
-       
-    ! Branch run: 
+
+    ! Branch run:
     ! Restart file pathname is obtained from namelist "nrevsn_rtm"
     if (nsrest==nsrBranch) then
        length = len_trim(nrevsn_rtm)
        if (nrevsn_rtm(length-2:length) == '.nc') then
-          path = trim(nrevsn_rtm) 
+          path = trim(nrevsn_rtm)
        else
           path = trim(nrevsn_rtm) // '.nc'
        end if
        call getfil( path, file, 0 )
-       
-       ! Check case name consistency (case name must be different 
+
+       ! Check case name consistency (case name must be different
        ! for branch run, unless brnch_retain_casename is set)
        ctest = 'xx.'//trim(caseid)//'.mosart'
        ftest = 'xx.'//trim(file)
@@ -224,11 +224,11 @@ contains
        end if
     end if
 
-    ! Initial run 
+    ! Initial run
     if (nsrest==nsrStartup) then
        call getfil( finidat_rtm, file, 0 )
     end if
-    
+
   end subroutine RtmRestGetfile
 
 !-----------------------------------------------------------------------
@@ -249,12 +249,12 @@ contains
     character(len=256) :: locfn   ! Restart pointer file name
     !--------------------------------------------------------
 
-    ! Obtain the restart file from the restart pointer file. 
-    ! For restart runs, the restart pointer file contains the full pathname 
-    ! of the restart file. For branch runs, the namelist variable 
-    ! [nrevsn_rtm] contains the full pathname of the restart file. 
+    ! Obtain the restart file from the restart pointer file.
+    ! For restart runs, the restart pointer file contains the full pathname
+    ! of the restart file. For branch runs, the namelist variable
+    ! [nrevsn_rtm] contains the full pathname of the restart file.
     ! New history files are always created for branch runs.
-       
+
     if (masterproc) then
        write(iulog,*) 'Reading restart pointer file....'
     endif
@@ -292,7 +292,7 @@ contains
        nio = getavu()
        filename= './'// trim(rpntfil)//trim(inst_suffix)
        call opnfil( filename, nio, 'f' )
-       
+
        write(nio,'(a)') fnamer
        call relavu( nio )
        write(iulog,*)'Successfully wrote local restart pointer file'
@@ -306,13 +306,13 @@ contains
   character(len=256) function RtmRestFileName( rdate )
 
     implicit none
-    character(len=*), intent(in) :: rdate   ! input date for restart file name 
+    character(len=*), intent(in) :: rdate   ! input date for restart file name
 
     RtmRestFileName = "./"//trim(caseid)//".mosart"//trim(inst_suffix)//".r."//trim(rdate)//".nc"
     if (masterproc) then
        write(iulog,*)'writing restart file ',trim(RtmRestFileName),' for model date = ',rdate
     end if
- 
+
   end function RtmRestFileName
 
 !------------------------------------------------------------------------
@@ -337,13 +337,13 @@ contains
     !----------------------------------------------------------------
 
     ! Define dimensions
-    
+
     call ncd_defdim(ncid, 'rtmlon'  , rtmlon         , dimid)
     call ncd_defdim(ncid, 'rtmlat'  , rtmlat         , dimid)
     call ncd_defdim(ncid, 'string_length', 64        , dimid)
-       
+
     ! Define global attributes
-    
+
     call ncd_putatt(ncid, NCD_GLOBAL, 'Conventions', trim(conventions))
     call getdatetime(curdate, curtime)
     str = 'created on ' // curdate // ' ' // curtime
@@ -360,7 +360,7 @@ contains
           'RTM Restart information, required to continue a simulation' )
 
   end subroutine restFile_dimset
-  
+
 !-----------------------------------------------------------------------
 
   subroutine RtmRestart(ncid, flag)
@@ -427,7 +427,7 @@ contains
        if (flag == 'define') then
           call ncd_defvar(ncid=ncid, varname=trim(vname), &
                xtype=ncd_double,  dim1name='rtmlon', dim2name='rtmlat', &
-               long_name=trim(lname), units=trim(uname))
+               long_name=trim(lname), units=trim(uname), fill_value=spval)
        else if (flag == 'read' .or. flag == 'write') then
           call ncd_io(varname=trim(vname), data=dfld, dim1name='allrof', &
                ncid=ncid, flag=flag, readvar=readvar)
@@ -471,6 +471,3 @@ contains
   end subroutine RtmRestart
 
 end module RtmRestFile
-
-
-
