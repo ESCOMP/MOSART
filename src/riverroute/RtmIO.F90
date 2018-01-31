@@ -1859,7 +1859,6 @@ contains
     integer          , intent(out)   :: iodnum     ! iodesc num in list
     ! !LOCAL VARIABLES:
     integer :: k,m,n,cnt                     ! indices
-    integer :: basetype                      ! pio basetype
     integer :: lsize                         ! local size
     integer :: gsize                         ! global size
     integer :: status                        ! error status
@@ -1932,14 +1931,6 @@ contains
 
     ! Initialize the decomposition for PIO
 
-    if (xtype == pio_double ) then
-       basetype = PIO_DOUBLE
-    else if (xtype == pio_real) then
-       basetype  = PIO_DOUBLE
-    else if (xtype == pio_int) then
-       basetype = PIO_INT
-    end if
-
     gsize = rtmCTL%numr
     lsize = rtmCTL%lnumr
     allocate(compDOF(lsize))
@@ -1958,7 +1949,7 @@ contains
           call mpi_barrier(mpicom_rof,status)
        enddo
     endif
-    call pio_initdecomp(pio_subsystem, baseTYPE, dims(1:ndims), compDOF, iodesc_list(iodnum)%iodesc)
+    call pio_initdecomp(pio_subsystem, xTYPE, dims(1:ndims), compDOF, iodesc_list(iodnum)%iodesc)
     deallocate(compDOF)
 
     iodesc_list(iodnum)%type  = xtype
