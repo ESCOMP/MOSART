@@ -107,6 +107,7 @@ contains
     character(len=SHR_KIND_CL) :: hostname           ! hostname of machine running on
     character(len=SHR_KIND_CL) :: version            ! Model version
     character(len=SHR_KIND_CL) :: username           ! user running the model
+    character(len=SHR_KIND_CL) :: model_doi_url      ! Web address for model Digital Object Identifier (DOI)
     character(len=32), parameter :: sub = 'rof_init_mct'
     character(len=*),  parameter :: format = "('("//trim(sub)//") :',A)"
     !---------------------------------------------------------------------------
@@ -167,6 +168,7 @@ contains
                               case_desc=ctitle, start_type=starttype,      &
                               brnch_retain_casename=brnch_retain_casename, &
                               model_version=version,                       &
+                              model_doi_url=model_doi_url,                 &
                               hostname=hostname, username=username)
 
     call timemgr_setup(calendar_in=calendar,                           &
@@ -187,6 +189,7 @@ contains
     call RtmVarSet(caseid_in=caseid, ctitle_in=ctitle,             &
                    brnch_retain_casename_in=brnch_retain_casename, &
                    nsrest_in=nsrest, version_in=version,           &
+                   model_doi_url_in=model_doi_url,                 &
                    hostname_in=hostname, username_in=username)
 
     ! Read namelist, grid and surface data

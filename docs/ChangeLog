@@ -1,4 +1,31 @@
 ===============================================================
+Tag name:  mosart1_0_30
+Originator(s): erik
+Date: Jan 24, 2018
+One-line Summary:  Fix testlist so options are under test not machines
+
+Fix testlist so options are under <test> rather than <machines>.
+Also remove aux_clm category (any of those tests should be in CLM's testlist).
+
+ M cime_config/testdefs/testlist_mosart.xml
+
+===============================================================
+Tag name:  mosart1_0_29
+Originator(s): erik
+Date: Jan 17, 2018
+One-line Summary:  Update testlist to version 2 format, remove ys tests
+
+ Add buildnmlc to .gitignore
+
+Convert the test list to version 2 format, add comments and wallclock to it.
+Remove ys tests. Remove aux_clm tests (put those in CLM itself).  Add
+two more test mods for currently untested options.
+
+ M cime_config/testdefs/testlist_mosart.xml
+ A cime_config/testdefs/testmods_dirs/mosart/decompOpts/user_nl_mosart
+ A cime_config/testdefs/testmods_dirs/mosart/qgrwlOpts/user_nl_mosart
+
+===============================================================
 Tag name:  mosart1_0_28
 Originator(s): erik
 Date: Oct 05, 2017
