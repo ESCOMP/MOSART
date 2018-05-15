@@ -6,7 +6,7 @@ module RtmRestFile
 ! !MODULE: restFileMod
 !
 ! !DESCRIPTION:
-! Reads from or writes to/ the RTM restart file.
+! Reads from or writes to/ the MOSART restart file.
 !
 ! !USES:
   use shr_kind_mod  , only : r8 => shr_kind_r8
@@ -58,7 +58,7 @@ contains
 
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
-    ! Read/write RTM restart file.
+    ! Read/write MOSART restart file.
 
     ! !ARGUMENTS:
     implicit none
@@ -75,7 +75,7 @@ contains
 
     if (masterproc) then	
        write(iulog,*)
-       write(iulog,*)'restFile_open: writing RTM restart dataset '
+       write(iulog,*)'restFile_open: writing MOSART restart dataset '
        write(iulog,*)
     end if
     call ncd_pio_createfile(ncid, trim(file))
@@ -114,7 +114,7 @@ contains
   subroutine RtmRestFileRead( file )
 
     ! !DESCRIPTION:
-    ! Read a RTM restart file.
+    ! Read a MOSART restart file.
     !
     ! !ARGUMENTS:
     implicit none
@@ -146,7 +146,7 @@ contains
   subroutine RtmRestTimeManager( file )
 
     ! !DESCRIPTION:
-    ! Read a RTM restart file.
+    ! Read a MOSART restart file.
     !
     ! !ARGUMENTS:
     implicit none
@@ -352,12 +352,10 @@ contains
     call ncd_putatt(ncid, NCD_GLOBAL, 'host'    , trim(hostname))
     call ncd_putatt(ncid, NCD_GLOBAL, 'version' , trim(version))
     call ncd_putatt(ncid, NCD_GLOBAL, 'source'  , trim(source))
-    str = '$Id: restFileMod.F90 35676 2012-03-22 21:48:04Z tcraig $'
-    call ncd_putatt(ncid, NCD_GLOBAL, 'revision_id'    , trim(str))
     call ncd_putatt(ncid, NCD_GLOBAL, 'case_title'     , trim(ctitle))
     call ncd_putatt(ncid, NCD_GLOBAL, 'case_id'        , trim(caseid))
     call ncd_putatt(ncid, NCD_GLOBAL, 'title', &
-          'RTM Restart information, required to continue a simulation' )
+          'MOSART Restart information, required to continue a simulation' )
 
   end subroutine restFile_dimset
   
@@ -367,7 +365,7 @@ contains
 
     !-----------------------------------------------------------------------
     ! DESCRIPTION:
-    ! Read/write RTM restart data.
+    ! Read/write MOSART restart data.
     !
     ! ARGUMENTS:
     implicit none
