@@ -28,12 +28,15 @@ def _build_mosart():
         # create Filepath file
         objroot = case.get_value("OBJROOT")
         filepath_file = os.path.join(objroot,"rof","obj","Filepath")
+        driver = case.get_value("COMP_INTERFACE").lower()
+
         if not os.path.isfile(filepath_file):
             srcroot = case.get_value("SRCROOT")
             caseroot = case.get_value("CASEROOT")
             paths = [ os.path.join(caseroot,"SourceMods","src.mosart"), 
                       os.path.join(srcroot,"components","mosart","src","riverroute"),
-                      os.path.join(srcroot,"components","mosart","src","cpl")]
+                      os.path.join(srcroot,"components","mosart","src","cpl"),
+                      os.path.join(srcroot,"components","mosart","src","cpl",driver)]
 
             with open(filepath_file, "w") as filepath:
                 filepath.write("\n".join(paths))

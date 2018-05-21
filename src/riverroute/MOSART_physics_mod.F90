@@ -17,7 +17,7 @@ MODULE MOSART_physics_mod
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL, &
                              SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
   use RtmSpmd       , only : masterproc, mpicom_rof
-  use rof_cpl_indices, only : nt_rtm, rtm_tracers
+  use mosart_cpl_indices, only : nt_rtm, rtm_tracers
   use perf_mod, only: t_startf, t_stopf
   use mct_mod
 

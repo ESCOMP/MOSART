@@ -23,7 +23,7 @@ module RtmRestFile
   use RunoffMod     , only : rtmCTL
   use RtmIO       
   use RtmDateTime
-  use rof_cpl_indices , only : nt_rtm, rtm_tracers 
+  use mosart_cpl_indices , only : nt_rtm, rtm_tracers 
 !
 ! !PUBLIC TYPES:
   implicit none
