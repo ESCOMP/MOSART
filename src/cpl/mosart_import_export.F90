@@ -34,10 +34,10 @@ contains
     ! Obtain the runoff input from the coupler
     ! convert from kg/m2s to m3/s
     !
-    ! ARGUMENTS:
+    ! Arguments:
     real(r8), intent(in) :: x2r(:,:)     ! driver import state to mosart
     !
-    ! LOCAL VARIABLES
+    ! Local variables
     integer :: n2, n, nt, begr, endr, nliq, nfrz
     character(len=32), parameter :: sub = 'mosart_import'
     !---------------------------------------------------------------------------
@@ -75,7 +75,11 @@ contains
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
     enddo
 
-    if (debug > 0) then
+    if (debug > 0 .and. masterproc) then
+       write(6,*)'DEBUG: index_x2r_Flrl_rofsur= ',index_x2r_Flrl_rofsur
+       write(6,*)'DEBUG: index_x2r_Flrl_rofsub= ',index_x2r_Flrl_rofsub
+       write(6,*)'DEBUG: index_x2r_Flrl_rofgwl= ',index_x2r_Flrl_rofgwl
+
        do n = begr,endr
           n2 = n - begr + 1
           if (x2r(index_x2r_Flrl_rofsur,n2) /= 0.0) then
@@ -106,10 +110,10 @@ contains
     ! Send the runoff model export state to the coupler
     ! convert from m3/s to kg/m2s
     !
-    ! ARGUMENTS:
+    ! Arguments:
     real(r8), intent(out) :: r2x(:,:)     ! mosart export state to driver
     !
-    ! LOCAL VARIABLES
+    ! Local variables
     integer :: ni, n, nt, nliq, nfrz
     logical,save :: first_time = .true.
     character(len=32), parameter :: sub = 'mosart_export'
@@ -189,7 +193,7 @@ contains
        r2x(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
     end do
 
-    if (debug > 0) then
+    if (debug > 0 .and. masterproc) then
        ni = 0
        do n = rtmCTL%begr, rtmCTL%endr
           ni = ni + 1

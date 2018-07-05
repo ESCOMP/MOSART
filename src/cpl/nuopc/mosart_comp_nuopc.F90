@@ -1,11 +1,10 @@
 module mosart_comp_nuopc
-
   !----------------------------------------------------------------------------
   ! This is the NUOPC cap for MOSART
   !----------------------------------------------------------------------------
 
   use shr_kind_mod          , only : R8=>SHR_KIND_R8, IN=>SHR_KIND_IN
-  use shr_kind_mod          , only : CS=>SHR_KIND_CS, CL=>SHR_KIND_CL
+  use shr_kind_mod          , only : CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, CXX => shr_kind_CXX
   use shr_sys_mod           , only : shr_sys_abort
   use shr_log_mod           , only : shr_log_Unit
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
@@ -16,7 +15,6 @@ module mosart_comp_nuopc
   use esmFlds               , only : fldListFr, fldListTo, comprof, compname
   use esmFlds               , only : flds_scalar_name, flds_scalar_num
   use esmFlds               , only : flds_scalar_index_nx, flds_scalar_index_ny
-  use esmFlds               , only : flds_scalar_index_dead_comps
   use esmFlds               , only : flds_scalar_index_rofice_present
   use esmFlds               , only : flds_scalar_index_flood_present
   use shr_nuopc_fldList_mod , only : shr_nuopc_fldList_Realize
@@ -50,7 +48,7 @@ module mosart_comp_nuopc
   use RtmVar               , only : rtmlon, rtmlat, ice_runoff, iulog
   use RtmVar               , only : nsrStartup, nsrContinue, nsrBranch
   use RtmVar               , only : inst_index, inst_suffix, inst_name, RtmVarSet
-  use RtmSpmd              , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam
+  use RtmSpmd              , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
   use RtmMod               , only : Rtmini, Rtmrun
   use RtmTimeManager       , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod             , only : t_startf, t_stopf, t_barrierf
@@ -158,29 +156,35 @@ module mosart_comp_nuopc
     integer, intent(out) :: rc
 
     ! local variables
-    type(ESMF_VM) :: vm
-    integer(IN)   :: mpicom
-    character(CL) :: cvalue
-    logical       :: exists
-    integer(IN)   :: lsize                 ! local array size
-    integer(IN)   :: ierr                  ! error code
-    integer(IN)   :: shrlogunit            ! original log unit
-    integer(IN)   :: shrloglev             ! original log level
-    integer       :: nsrest                ! restart type
-    integer       :: ref_ymd               ! reference date (YYYYMMDD)
-    integer       :: ref_tod               ! reference time of day (sec)
-    integer       :: start_ymd             ! start date (YYYYMMDD)
-    integer       :: start_tod             ! start time of day (sec)
-    integer       :: stop_ymd              ! stop date (YYYYMMDD)
-    integer       :: stop_tod              ! stop time of day (sec)
-    character(CL) :: calendar              ! calendar type name
-    character(CL) :: username              ! user name
-    character(CL) :: caseid                ! case identifier name
-    character(CL) :: ctitle                ! case description title
-    character(CL) :: hostname              ! hostname of machine running on
-    character(CL) :: model_version         ! Model version
-    character(CL) :: starttype             ! start-type (startup, continue, branch, hybrid)
-    logical       :: brnch_retain_casename ! flag if should retain the case name on a branch start type
+    type(ESMF_VM)      :: vm
+    integer(IN)        :: mpicom
+    character(CL)      :: cvalue
+    logical            :: exists
+    integer(IN)        :: lsize                 ! local array size
+    integer(IN)        :: ierr                  ! error code
+    integer(IN)        :: shrlogunit            ! original log unit
+    integer(IN)        :: shrloglev             ! original log level
+    integer            :: nsrest                ! restart type
+    integer            :: ref_ymd               ! reference date (YYYYMMDD)
+    integer            :: ref_tod               ! reference time of day (sec)
+    integer            :: start_ymd             ! start date (YYYYMMDD)
+    integer            :: start_tod             ! start time of day (sec)
+    integer            :: stop_ymd              ! stop date (YYYYMMDD)
+    integer            :: stop_tod              ! stop time of day (sec)
+    character(CL)      :: calendar              ! calendar type name
+    character(CL)      :: username              ! user name
+    character(CL)      :: caseid                ! case identifier name
+    character(CL)      :: ctitle                ! case description title
+    character(CL)      :: hostname              ! hostname of machine running on
+    character(CL)      :: model_version         ! Model version
+    character(CL)      :: starttype             ! start-type (startup, continue, branch, hybrid)
+    logical            :: brnch_retain_casename ! flag if should retain the case name on a branch start type
+    integer            :: n
+    logical            :: isPresent
+    character(len=512) :: diro
+    character(len=512) :: logfile
+    logical            :: activefld
+    character(CS)      :: stdname, shortname
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     !-------------------------------------------------------------------------------
@@ -250,7 +254,10 @@ module mosart_comp_nuopc
 
     if (masterproc) then
        write(iulog,format) "MOSART river model initialization"
-    end if
+       write(iulog,*) ' mosart npes = ',npes
+       write(iulog,*) ' mosart iam  = ',iam
+       write(iulog,*) ' inst_name = ',trim(inst_name)
+    endif
 
     !----------------------
     ! Obtain attribute values
@@ -259,13 +266,7 @@ module mosart_comp_nuopc
     call NUOPC_CompAttributeGet(gcomp, name='case_name', value=cvalue, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     read(cvalue,*) caseid
-
-    !TODO: case_desc does not appear in the esm_AddAttributes in esm.F90
-    ! just hard-wire from now - is this even needed?
-    ! call NUOPC_CompAttributeGet(gcomp, name='case_desc', value=cvalue, rc=rc)
-    ! if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-    ! read(cvalue,*) ctitle
-    ctitle='UNSET'
+    ctitle=trim(caseid)
 
     call NUOPC_CompAttributeGet(gcomp, name='brnch_retain_casename', value=cvalue, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
@@ -319,10 +320,14 @@ module mosart_comp_nuopc
        call shr_sys_abort( subname//' ERROR: unknown starttype' )
     end if
 
-    call RtmVarSet(caseid_in=caseid, ctitle_in=ctitle,   &
+    call RtmVarSet(&
+         caseid_in=caseid, &
+         ctitle_in=ctitle,   &
          brnch_retain_casename_in=brnch_retain_casename, &
-         nsrest_in=nsrest, version_in=model_version,     &
-         hostname_in=hostname, username_in=username)
+         nsrest_in=nsrest, &
+         version_in=model_version,     &
+         hostname_in=hostname, &
+         username_in=username)
 
     !----------------------
     ! Read namelist, grid and surface data
@@ -332,25 +337,22 @@ module mosart_comp_nuopc
     ! This is a limitatin of the current mosart initialization
 
     call Rtmini(rtm_active=rof_prognostic, flood_active=flood_present)
-
-    !----------------------
-    ! Determine field indices of import/export arrays
-    !----------------------
-
-    call mosart_cpl_indices_set(flds_x2r, flds_r2x)
+    write(6,*)'DEBUG: rof_prognostic = ',rof_prognostic
+    write(6,*)'DEBUG: flood_present = ',flood_present
 
     !--------------------------------
-    ! create import and export field list 
+    ! create import and export field list and determine field indices of import/export arrays
     !--------------------------------
 
     call shr_nuopc_fldList_Concat(fldListFr(comprof), fldListTo(comprof), flds_r2x, flds_x2r, flds_scalar_name)
+
+    call mosart_cpl_indices_set(flds_x2r, flds_r2x)
 
     !--------------------------------
     ! advertise import and export fields
     !--------------------------------
 
-    nflds = shr_nuopc_fldList_Getnumflds(fldListFr(comprof))
-    do n = 1,nflds
+    do n = 1,shr_nuopc_fldList_Getnumflds(fldListFr(comprof))
        call shr_nuopc_fldList_Getfldinfo(fldListFr(comprof), n, activefld, stdname, shortname)
        if (activefld) then
           call NUOPC_Advertise(exportState, standardName=stdname, shortname=shortname, name=shortname, &
@@ -360,8 +362,7 @@ module mosart_comp_nuopc
        call ESMF_LogWrite(subname//':Fr_'//trim(compname(comprof))//': '//trim(shortname), ESMF_LOGMSG_INFO)
     end do
 
-    nflds = shr_nuopc_fldList_Getnumflds(fldListTo(comprof))
-    do n = 1,nflds
+    do n = 1,shr_nuopc_fldList_Getnumflds(fldListTo(comprof))
        call shr_nuopc_fldList_Getfldinfo(fldListTo(comprof), n, activefld, stdname, shortname)
        if (activefld) then
           call NUOPC_Advertise(importState, standardName=stdname, shortname=shortname, name=shortname, &
@@ -524,24 +525,26 @@ module mosart_comp_nuopc
     call shr_nuopc_grid_ArrayToState(r2x, flds_r2x, exportState, grid_option, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
 
-    call shr_nuopc_methods_State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, mpicom_rof, rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    call shr_nuopc_methods_State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, mpicom_rof, &
+         flds_scalar_name, flds_scalar_num, rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_nuopc_methods_State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, mpicom_rof, rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-
-    call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_dead_comps, exportState, mpicom_rof, rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    call shr_nuopc_methods_State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, mpicom_rof, &
+         flds_scalar_name, flds_scalar_num, rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (flood_present) then
-       call shr_nuopc_methods_State_SetScalar(1.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, rc)
+       call shr_nuopc_methods_State_SetScalar(1.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
+            flds_scalar_name, flds_scalar_num, rc)
     else
-       call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, rc)
+       call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
+            flds_scalar_name, flds_scalar_num, rc)
     end if
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
 
     ! For now hard-wire rofice_present to be false
-    call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_rofice_present, exportState, mpicom_rof, rc)
+    call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_rofice_present, exportState, mpicom_rof, &
+         flds_scalar_name, flds_scalar_num, rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
 
     call shr_file_setLogLevel(shrloglev)
