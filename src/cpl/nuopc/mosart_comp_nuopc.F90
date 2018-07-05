@@ -3,14 +3,14 @@ module mosart_comp_nuopc
   ! This is the NUOPC cap for MOSART
   !----------------------------------------------------------------------------
 
-  use shr_kind_mod          , only : R8=>SHR_KIND_R8, IN=>SHR_KIND_IN
-  use shr_kind_mod          , only : CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, CXX => shr_kind_CXX
+  use shr_kind_mod          , only : R8=>SHR_KIND_R8
+  use shr_kind_mod          , only : CL=>SHR_KIND_CL, CXX => shr_kind_CXX
   use shr_sys_mod           , only : shr_sys_abort
-  use shr_log_mod           , only : shr_log_Unit
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_file_mod          , only : shr_file_getloglevel, shr_file_setloglevel
   use shr_file_mod          , only : shr_file_setIO, shr_file_getUnit
   use shr_string_mod        , only : shr_string_listGetNum
+  use shr_cal_mod           , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
   use esmFlds               , only : fldListFr, fldListTo, comprof, compname
   use esmFlds               , only : flds_scalar_name, flds_scalar_num
   use esmFlds               , only : flds_scalar_index_nx, flds_scalar_index_ny
@@ -172,13 +172,13 @@ module mosart_comp_nuopc
     integer                 :: curr_ymd              ! Start date (YYYYMMDD)
     integer                 :: curr_tod              ! Start time of day (sec)
     type(ESMF_VM)           :: vm
-    integer(IN)             :: mpicom
+    integer                 :: mpicom
     character(CL)           :: cvalue
     logical                 :: exists
-    integer(IN)             :: lsize                 ! local array size
-    integer(IN)             :: ierr                  ! error code
-    integer(IN)             :: shrlogunit            ! original log unit
-    integer(IN)             :: shrloglev             ! original log level
+    integer                 :: lsize                 ! local array size
+    integer                 :: ierr                  ! error code
+    integer                 :: shrlogunit            ! original log unit
+    integer                 :: shrloglev             ! original log level
     integer                 :: nsrest                ! restart type
     character(CL)           :: calendar              ! calendar type name
     character(CL)           :: username              ! user name
@@ -193,7 +193,7 @@ module mosart_comp_nuopc
     character(len=512)      :: diro
     character(len=512)      :: logfile
     logical                 :: activefld
-    character(CS)           :: stdname, shortname
+    character(CL)           :: stdname, shortname
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     !-------------------------------------------------------------------------------
@@ -439,8 +439,8 @@ module mosart_comp_nuopc
     character(CL)          :: cvalue
     character(ESMF_MAXSTR) :: convCIM, purpComp
     type(ESMF_Mesh)        :: Emesh
-    integer(IN)            :: shrlogunit            ! original log unit
-    integer(IN)            :: shrloglev             ! original log level
+    integer                :: shrlogunit            ! original log unit
+    integer                :: shrloglev             ! original log level
     type(ESMF_VM)          :: vm
     logical                :: connected             ! is field connected?
     integer                :: lsize                 ! local size ofarrays
@@ -644,8 +644,8 @@ module mosart_comp_nuopc
     type(ESMF_State)  :: importState
     type(ESMF_State)  :: exportState
     character(CL)     :: cvalue
-    integer(IN)       :: shrlogunit    ! original log unit
-    integer(IN)       :: shrloglev     ! original log level
+    integer           :: shrlogunit    ! original log unit
+    integer           :: shrloglev     ! original log level
     integer           :: dtime         ! time step size
     integer           :: ymd_sync, ymd ! current date (YYYYMMDD)
     integer           :: yr_sync, yr   ! current year
