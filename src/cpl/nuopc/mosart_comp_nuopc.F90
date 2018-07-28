@@ -1,4 +1,4 @@
-module mosart_comp_nuopc
+module rof_comp_nuopc
   !----------------------------------------------------------------------------
   ! This is the NUOPC cap for MOSART
   !----------------------------------------------------------------------------
@@ -939,4 +939,4 @@ module mosart_comp_nuopc
 
   !===============================================================================
 
-end module mosart_comp_nuopc
+end module rof_comp_nuopc
