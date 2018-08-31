@@ -149,6 +149,7 @@ module rof_comp_nuopc
   !===============================================================================
 
   subroutine InitializeAdvertise(gcomp, importState, exportState, clock, rc)
+    use shr_nuopc_utils_mod    , only : shr_nuopc_set_component_logging, shr_nuopc_get_component_instance
     type(ESMF_GridComp)  :: gcomp
     type(ESMF_State)     :: importState, exportState
     type(ESMF_Clock)     :: clock
@@ -160,11 +161,11 @@ module rof_comp_nuopc
     type(ESMF_Time)         :: stopTime              ! Stop time
     type(ESMF_Time)         :: refTime               ! Ref time
     type(ESMF_TimeInterval) :: timeStep              ! Model timestep
-    type(ESMF_Calendar)     :: esmf_calendar         ! esmf calendar     
+    type(ESMF_Calendar)     :: esmf_calendar         ! esmf calendar
     type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
     integer                 :: ref_ymd               ! reference date (YYYYMMDD)
     integer                 :: ref_tod               ! reference time of day (sec)
-    integer                 :: yy,mm,dd              ! Temporaries for time query 
+    integer                 :: yy,mm,dd              ! Temporaries for time query
     integer                 :: start_ymd             ! start date (YYYYMMDD)
     integer                 :: start_tod             ! start time of day (sec)
     integer                 :: stop_ymd              ! stop date (YYYYMMDD)
@@ -225,41 +226,9 @@ module rof_comp_nuopc
     ! determine instance information
     !----------------------------------------------------------------------------
 
-    call NUOPC_CompAttributeGet(gcomp, name="inst_name", value=inst_name, rc=rc)
-    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call NUOPC_CompAttributeGet(gcomp, name="inst_index", value=cvalue, rc=rc)
-    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    read(cvalue,*) inst_index 
-
-    call ESMF_AttributeGet(gcomp, name="inst_suffix", isPresent=isPresent, rc=rc)
-    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent) then
-       call NUOPC_CompAttributeGet(gcomp, name="inst_suffix", value=inst_suffix, rc=rc)
-       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    else
-       inst_suffix = ''
-    end if
-
-    !----------------------------------------------------------------------------
-    ! reset shr logging to my log file
-    !----------------------------------------------------------------------------
-
-    if (masterproc) then
-       call NUOPC_CompAttributeGet(gcomp, name="diro", value=diro, rc=rc)
-       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-       call NUOPC_CompAttributeGet(gcomp, name="logfile", value=logfile, rc=rc)
-       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-       if (len_trim(logfile) > 0) then
-          iulog = shr_file_getUnit()
-          open(iulog,file=trim(diro)//"/"//trim(logfile))
-       else
-          iulog = shrlogunit
-       endif
-    endif
-
-    call shr_file_getLogLevel(shrloglev)
-    call shr_file_setLogUnit (iulog)
+    call shr_nuopc_get_component_instance(gcomp, inst_suffix, inst_index)
+    inst_name = "ROF"//trim(inst_suffix)
+    call shr_nuopc_set_component_logging(gcomp, masterproc, iulog, shrlogunit, shrloglev)
 
     if (masterproc) then
        write(iulog,format) "MOSART river model initialization"
@@ -859,9 +828,9 @@ module rof_comp_nuopc
       return
     endif
 
-    !--------------------------------                                                                                 
-    ! force model clock currtime and timestep to match driver and set stoptime                                        
-    !--------------------------------                                                                                 
+    !--------------------------------
+    ! force model clock currtime and timestep to match driver and set stoptime
+    !--------------------------------
 
     mstoptime = mcurrtime + dtimestep
 
@@ -894,9 +863,9 @@ module rof_comp_nuopc
       deallocate(alarmList)
     endif
 
-    !--------------------------------                                                                                 
-    ! Advance model clock to trigger alarms then reset model clock back to currtime                                   
-    !--------------------------------                                                                                 
+    !--------------------------------
+    ! Advance model clock to trigger alarms then reset model clock back to currtime
+    !--------------------------------
 
     call ESMF_ClockAdvance(mclock,rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
