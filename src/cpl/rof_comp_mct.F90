@@ -19,7 +19,7 @@ module rof_comp_mct
                                 seq_infodata_start_type_start, seq_infodata_start_type_cont,   &
                                 seq_infodata_start_type_brnch
   use seq_comm_mct     , only : seq_comm_suffix, seq_comm_inst, seq_comm_name
-  use RunoffMod        , only : rtmCTL, TRunoff
+  use RunoffMod        , only : rtmCTL, TRunoff, Tunit
   use RtmVar           , only : rtmlon, rtmlat, ice_runoff, iulog, &
                                 nsrStartup, nsrContinue, nsrBranch, & 
                                 inst_index, inst_suffix, inst_name, RtmVarSet
@@ -33,7 +33,9 @@ module rof_comp_mct
                                 index_x2r_Flrl_irrig,&
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
-                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
+                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
+                                index_r2x_Sr_tdepth,index_r2x_Sr_tdepth_max
+
   use mct_mod
   use ESMF
 !
@@ -648,7 +650,10 @@ contains
 
        r2x_r%rattr(index_r2x_Flrr_volr,ni)    = rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
        r2x_r%rattr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
-    end do
+       r2x_r%rattr(index_r2x_Sr_tdepth,ni)    = Trunoff%yt(n,nliq)
+       ! assume height to width ratio is the same for tributaries and main channel
+       r2x_r%rattr(index_r2x_Sr_tdepth_max,ni)= max(Tunit%twidth0(n),0._r8)*(Tunit%rdepth(n)/Tunit%rwidth(n))
+     end do
 
   end subroutine rof_export_mct
 

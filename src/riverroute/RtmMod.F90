@@ -2374,6 +2374,9 @@ contains
      call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%twidth, ier)
      if (masterproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
      call shr_sys_flush(iulog)
+     ! save twidth before adjusted below
+     allocate(TUnit%twidth0(begr:endr))  
+     TUnit%twidth0(begr:endr)=TUnit%twidth(begr:endr)
 
      allocate(TUnit%nt(begr:endr))  
      ier = pio_inq_varid(ncid, name='nt', vardesc=vardesc)

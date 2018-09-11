@@ -170,6 +170,7 @@ module RunoffMod
      real(r8), pointer :: tslpsqrt(:)  ! sqrt of average slope of tributaries, [-] 
      real(r8), pointer :: tlen(:)      ! length of all sub-network reach within the cell, [m] 
      real(r8), pointer :: twidth(:)    ! bankfull width of the sub-reach, [m]
+     real(r8), pointer :: twidth0(:)   ! unadjusted twidth
      real(r8), pointer :: nt(:)        ! manning's roughness of the subnetwork at hillslope  
 
      ! main channel properties
