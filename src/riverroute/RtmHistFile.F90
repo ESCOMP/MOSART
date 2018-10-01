@@ -3,16 +3,17 @@ module RtmHistFile
 ! !MODULE: RtmHistFileMod
 !
 ! !DESCRIPTION:
-! Module containing methods to for RTM history file handling.
+! Module containing methods to for MOSART history file handling.
 !
 ! !USES:
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
   use shr_log_mod   , only : errMsg => shr_log_errMsg
   use RunoffMod     , only : rtmCTL, Tunit
-  use RtmVar        , only : rtmlon, rtmlat, spval, ispval, secspday, frivinp_rtm, &
-                             iulog, nsrest, caseid, inst_suffix, nsrStartup, nsrBranch, &
-                             ctitle, version, hostname, username, conventions, source
+  use RtmVar        , only : rtmlon, rtmlat, spval, ispval, secspday, frivinp_rtm, &   
+                             iulog, nsrest, caseid, inst_suffix, nsrStartup, nsrBranch, & 
+                             ctitle, version, hostname, username, conventions, source, &
+                             model_doi_url
   use RtmFileUtils  , only : get_filename, getfil
   use RtmTimeManager, only : get_nstep, get_curr_date, get_curr_time, get_ref_date, &
                              get_prev_time, get_prev_date, is_last_step, get_step_size
@@ -227,7 +228,7 @@ contains
     !----------------------------------------------------------
 
     if (masterproc) then
-       write(iulog,*)  trim(subname),' Initializing RTM history files'
+       write(iulog,*)  trim(subname),' Initializing MOSART history files'
        write(iulog,'(72a1)') ("-",i=1,60)
        call shr_sys_flush(iulog)
     endif
@@ -293,7 +294,7 @@ contains
     end do
 
     if (masterproc) then
-       write(iulog,*)  trim(subname),' Successfully initialized RTM history files'
+       write(iulog,*)  trim(subname),' Successfully initialized MOSART history files'
        write(iulog,'(72a1)') ("-",i=1,60)
        call shr_sys_flush(iulog)
     endif
@@ -449,16 +450,16 @@ contains
     end if
 
     if (masterproc) then
-       write(iulog,*) 'There will be a total of ',ntapes,'RTM  history tapes'
+       write(iulog,*) 'There will be a total of ',ntapes,'MOSART  history tapes'
        do t=1,ntapes
           write(iulog,*)
           if (rtmhist_nhtfrq(t) == 0) then
-             write(iulog,*)'RTM History tape ',t,' write frequency is MONTHLY'
+             write(iulog,*)'MOSART History tape ',t,' write frequency is MONTHLY'
           else
-             write(iulog,*)'RTM History tape ',t,' write frequency = ',rtmhist_nhtfrq(t)
+             write(iulog,*)'MOSART History tape ',t,' write frequency = ',rtmhist_nhtfrq(t)
           endif
-          write(iulog,*)'Number of time samples on RTM history tape ',t,' is ',rtmhist_mfilt(t)
-          write(iulog,*)'Output precision on RTM history tape ',t,'=',rtmhist_ndens(t)
+          write(iulog,*)'Number of time samples on MOSART history tape ',t,' is ',rtmhist_mfilt(t)
+          write(iulog,*)'Output precision on MOSART history tape ',t,'=',rtmhist_ndens(t)
           write(iulog,*)
        end do
        call shr_sys_flush(iulog)
@@ -674,7 +675,7 @@ contains
           call shr_sys_flush(iulog)
        end if
        call ncd_pio_createfile(lnfid, trim(locfnh(t)))
-       call ncd_putatt(lnfid, ncd_global, 'title', 'RTM History file information' )
+       call ncd_putatt(lnfid, ncd_global, 'title', 'MOSART History file information' )
        call ncd_putatt(lnfid, ncd_global, 'comment', &
           "NOTE: None of the variables are weighted by land fraction!" )
     else
@@ -685,7 +686,7 @@ contains
        end if
        call ncd_pio_createfile(lnfid, trim(locfnhr(t)))
        call ncd_putatt(lnfid, ncd_global, 'title', &
-            'RTM Restart History information, required to continue a simulation' )
+            'MOSART Restart History information, required to continue a simulation' )
        call ncd_putatt(lnfid, ncd_global, 'comment', &
             "This entire file NOT needed for startup or branch simulations")
     end if
@@ -697,15 +698,13 @@ contains
     call ncd_putatt(lnfid, ncd_global, 'Conventions', trim(conventions))
     call getdatetime(curdate, curtime)
     str = 'created on ' // curdate // ' ' // curtime
-    call ncd_putatt(lnfid, ncd_global, 'history' , trim(str))
-    call ncd_putatt(lnfid, ncd_global, 'source'  , trim(source))
-    call ncd_putatt(lnfid, ncd_global, 'hostname', trim(hostname))
-    call ncd_putatt(lnfid, ncd_global, 'username', trim(username))
-    call ncd_putatt(lnfid, ncd_global, 'version' , trim(version))
+    call ncd_putatt(lnfid, ncd_global, 'history'      , trim(str))
+    call ncd_putatt(lnfid, ncd_global, 'source'       , trim(source))
+    call ncd_putatt(lnfid, ncd_global, 'hostname'     , trim(hostname))
+    call ncd_putatt(lnfid, ncd_global, 'username'     , trim(username))
+    call ncd_putatt(lnfid, ncd_global, 'version'      , trim(version))
+    call ncd_putatt(lnfid, ncd_global, 'model_doi_url', trim(model_doi_url))
 
-    str = &
-    '$Id: histFileMod.F90 36692 2012-04-27 18:39:55Z tcraig $'
-    call ncd_putatt(lnfid, ncd_global, 'revision_id', trim(str))
     call ncd_putatt(lnfid, ncd_global, 'case_title', trim(ctitle))
     call ncd_putatt(lnfid, ncd_global, 'case_id', trim(caseid))
 
