@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-
-import os, shutil, sys, glob
+"""
+Build the mosart component library
+"""
+#pylint: disable=unused-wildcard-import, wildcard-import, multiple-imports
+#pylint: disable=wrong-import-position, invalid-name, too-many-locals
+import os, sys
 
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
@@ -22,25 +26,25 @@ def _build_mosart():
 
     with Case(caseroot) as case:
         casetools = case.get_value("CASETOOLS")
-        gmake_j   = case.get_value("GMAKE_J")
-        gmake     = case.get_value("GMAKE")
+        gmake_j = case.get_value("GMAKE_J")
+        gmake = case.get_value("GMAKE")
 
         # create Filepath file
         objroot = case.get_value("OBJROOT")
-        filepath_file = os.path.join(objroot,"rof","obj","Filepath")
+        filepath_file = os.path.join(objroot, "rof", "obj", "Filepath")
         if not os.path.isfile(filepath_file):
             srcroot = case.get_value("SRCROOT")
             caseroot = case.get_value("CASEROOT")
-            paths = [ os.path.join(caseroot,"SourceMods","src.mosart"), 
-                      os.path.join(srcroot,"components","mosart","src","riverroute"),
-                      os.path.join(srcroot,"components","mosart","src","cpl")]
+            paths = [os.path.join(caseroot, "SourceMods", "src.mosart"),
+                     os.path.join(srcroot, "components", "mosart", "src", "riverroute"),
+                     os.path.join(srcroot, "components", "mosart", "src", "cpl")]
 
             with open(filepath_file, "w") as filepath:
                 filepath.write("\n".join(paths))
                 filepath.write("\n")
 
         # build the library
-        complib = os.path.join(libroot,"librof.a")
+        complib = os.path.join(libroot, "librof.a")
         makefile = os.path.join(casetools, "Makefile")
 
         cmd = "%s complib -j %d MODEL=mosart COMPLIB=%s -f %s" \
@@ -49,12 +53,9 @@ def _build_mosart():
         rc, out, err = run_cmd(cmd, from_dir=bldroot)
         expect(rc == 0, "Command %s failed rc=%d\nout=%s\nerr=%s" % (cmd, rc, out, err))
 
-        logger.info("Command %s completed with output %s\nerr %s" ,cmd, out, err)
+        logger.info("Command %s completed with output %s\nerr %s", cmd, out, err)
 
 ###############################################################################
 
 if __name__ == "__main__":
     _build_mosart()
-
-
-

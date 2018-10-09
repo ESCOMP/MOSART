@@ -1,4 +1,93 @@
 ===============================================================
+Tag name:  release-cesm2.0.01
+Originator(s): erik/jedwards4b
+Date: Oct 09, 2018
+One-line Summary:  New r8th routing file, pylint and py3 checking, fill value needed for pio2
+
+Add in 8th degree routine file. Run pylint and check for py3 compatability.
+There's explict setting of fill type. And also explicit use of shr_kind_r4 for 
+kind rather than real(4), which is a better mechanism. Also ncd_getiodesc 
+will read in PIO_DOUBLE for input xtype= PIO_DOUBLE or PIO_REAL. Most of this
+is direct from jedwards4b (other than r8th addition).
+
+MOSART Master Tag This Corresponds To: Identical to mosart1_0_31
+
+Science  changes since: release-cesm2.0.00
+   Added in 8th degree routing file (r8th)
+Software changes since: release-cesm2.0.00
+   Run pylint on python buildlib and buildnml scripts, check for py3 compatibility.
+   Corrects the integer fill value. Needed for pio2.
+
+Pull Requests that document the changes (include PR ids):
+
+  #15 -- Bring in changes for xlf compiler, pio, and python3 update 
+         (#13 and #6 moved to release-cesm2.0)
+  #14 -- fix type issue with xlf
+
+Testing:
+    mosart testlist on hobart and cheyenne (PASS)
+
+===============================================================
+Tag name:  release-cesm2.0.00
+Originator(s): erik
+Date: May 21, 2018
+One-line Summary: First CESM2.0 release tag, identical to mosart1_0_31
+
+MOSART Master Tag This Corresponds To: Identical to mosart1_0_31
+
+Science changes since: mosart1_0_00
+
+  * Changes from Sean Swenson to add minimum value to rlen
+  * Update areas on routing file
+  * Answer changing improvements to channel storage from HongYi Li for faster spinup.
+  * Bugfix from Tony Craig to use correct delta time for qgwl flux.
+  * Treat irrigation as a seperate flux
+  * bugfix for budget diagnostic output
+  * bugfix: calculation of qgwl_volume must be multiplied by ar
+  * Update default routing file.
+  * New method of handeling runoff terms to avoid negative runoff.
+  * switch to input dataset MOSART_Global_half_20151130a.nc
+  * update direct sparse matrix to include non basin points in order
+  * to pass data from any grid cell directly to the ocean.
+  * modify the direct term and push all direct water to outlet points
+  * set all tracer 2 water (frozen water) to be a direct term
+  * add ability to skip some tracers in the euler solver via euler_calc flag
+  * add a budget accumulator term
+  * Fix exact restart in atan slope calc
+  * Swenson bugfix for mosart direction file
+  * Swenson river volume normalization bugf
+
+Software changes since: mosart1_0_00
+
+  * Add config_archive for mosart
+  * delete rof_comp_esmf
+  * add model_doi_url,
+  * change some instances of RTM/CLM in documentation to MOSART
+  * Update testlist to version 2 format, remove ys tests
+  * Upgrade config_component to version 3
+  * allow output file format to change
+  * If NINST_ROF > 1, check if instance number in name for REFCASE
+  * Update testlist and use Clm5 compset names
+  * Update routing file
+  * Update to cime5 python namelist infrastructure
+  * Fix an issue with nag, lower amount of log output
+  * Add output frequency to history files
+  * Turn off for CLM_ACCELERATED_SPINUP="on"
+  * Add new namelist options bypass_routing_option,
+  * qgwl_runoff_option
+  * Error checking on max length of history filenames.
+  * Add testdefs dir, testmods and testlist for integration to cime
+  * test system.
+  * remove rofdto from coupler interface fields.
+  * Changes to get Mosart to build with Nag on Hobart
+  * merge ACME fixes to decomp and performance
+  * cime compatible infrastructure
+  * Add direct to ocean runoff flux
+  * PIO2 updates
+
+Changes to User Interface since: mo
+
+===============================================================
 Tag name:  mosart1_0_31
 Originator(s): erik
 Date: May 15, 2018
