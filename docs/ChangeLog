@@ -1,4 +1,24 @@
 ===============================================================
+Tag name:  release-cesm2.0.02
+Originator(s): erik/billsacks
+Date: Oct 12, 2018
+One-line Summary:  Fix for py3 
+
+MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
+
+Issues Fixed: #10
+  #10 -- With python3, coupling_period is real rather than int
+
+Science  changes since: release-cesm2.0.01 
+   * None
+Software changes since: release-cesm2.0.01
+   * None
+
+Pull Requests that document the changes (include PR ids):
+
+Testing:
+
+===============================================================
 Tag name:  release-cesm2.0.01
 Originator(s): erik/jedwards4b
 Date: Oct 09, 2018
@@ -10,7 +30,7 @@ kind rather than real(4), which is a better mechanism. Also ncd_getiodesc
 will read in PIO_DOUBLE for input xtype= PIO_DOUBLE or PIO_REAL. Most of this
 is direct from jedwards4b (other than r8th addition).
 
-MOSART Master Tag This Corresponds To: Identical to mosart1_0_31
+MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
 
 Science  changes since: release-cesm2.0.00
    Added in 8th degree routing file (r8th)
@@ -19,6 +39,7 @@ Software changes since: release-cesm2.0.00
    Corrects the integer fill value. Needed for pio2.
 
 Pull Requests that document the changes (include PR ids):
+Testing:
 
   #15 -- Bring in changes for xlf compiler, pio, and python3 update 
          (#13 and #6 moved to release-cesm2.0)
