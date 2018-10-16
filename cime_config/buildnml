@@ -114,7 +114,7 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         expect(False, "mosart_ncpl %s doesn't divide evenly into basedt %s\n"
                %(mosart_ncpl, basedt))
     else:
-        coupling_period = basedt / mosart_ncpl
+        coupling_period = basedt // mosart_ncpl
     nmlgen.set_value("coupling_period", value=coupling_period)
 
     #----------------------------------------------------
