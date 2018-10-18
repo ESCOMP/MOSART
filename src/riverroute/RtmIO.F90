@@ -1827,7 +1827,7 @@ contains
           call pio_setframe(ncid,vardesc, int(nt,kind=PIO_Offset_kind))
        end if
        if(xtype == ncd_float) then
-          call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, real(data, kind=r4), status, fillval=real(spval,kind=r4))
+          call shr_sys_abort( subname//' error: Attempt to write out single-precision data which is current NOT implemented (see issue #18)' )
        else
           call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=spval)
        endif

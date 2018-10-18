@@ -42,7 +42,7 @@ module RtmHistFile
 !
   integer :: ni
   integer, public :: &
-       rtmhist_ndens(max_tapes) = 2         ! namelist: output density of netcdf history files
+       rtmhist_ndens(max_tapes) = 1         ! namelist: output density of netcdf history files
   integer, public :: &
        rtmhist_mfilt(max_tapes) = 30        ! namelist: number of time samples per tape
   integer, public :: &

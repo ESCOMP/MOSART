@@ -261,13 +261,13 @@
     <type>integer(6)</type> 
     <category>history</category>
     <group>mosart_inparm</group> 
-    <valid_values>1,2</valid_values>
+    <valid_values>1</valid_values>
     <values>
-      <value>2</value>
+      <value>1</value>
     </values>
     <desc>
       Per tape series  history file density (i.e. output precision) 
-      1=double precision, 2=single precision
+      1=double precision, 2=single precision (NOT working)
     </desc>
   </entry>
 
