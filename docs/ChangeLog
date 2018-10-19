@@ -1,8 +1,38 @@
 ===============================================================
+Tag name:  release-cesm2.0.03
+Originator(s): erik
+Date: Oct 19, 2018
+One-line Summary: Remove ability to write out single-precision history because of issues
+
+Don't allow the namelist option rtmhist_ndens to be set to 2, because this
+option doesn't currently function. The simple fix we put into place for it
+is not robust.
+
+MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
+
+Issues Fixed: #10
+  #18 -- rtmhist_ndens=2 does NOT work (so don't allow it as an option)
+
+Science  changes since: release-cesm2.0.01 
+   * None
+Software changes since: release-cesm2.0.01
+   * None
+
+Testing: Run mosart test suite
+   hobart ---- PASS
+   cheyenne -- PASS
+
+Pull Requests that document the changes (include PR ids):
+
+ #19 -- Don't allow single precision history output
+
+===============================================================
 Tag name:  release-cesm2.0.02
 Originator(s): erik/billsacks
-Date: Oct 12, 2018
+Date: Oct 16, 2018
 One-line Summary:  Fix for py3 
+
+Fix for python3, using the floor operator for integer division.
 
 MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
 
@@ -18,7 +48,9 @@ Pull Requests that document the changes (include PR ids):
 
  #17 -- Changes to fix #10, where an integer divide needs the floor operator
 
-Testing:
+Testing: Run mosart test suite
+   hobart ---- PASS
+   cheyenne -- PASS
 
 ===============================================================
 Tag name:  release-cesm2.0.01
@@ -33,6 +65,9 @@ will read in PIO_DOUBLE for input xtype= PIO_DOUBLE or PIO_REAL. Most of this
 is direct from jedwards4b (other than r8th addition).
 
 MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
+
+Issues Fixed: #18
+  #18 -- rtmhist_ndens=2 does NOT work (simplest fix that converts to single on output)
 
 Science  changes since: release-cesm2.0.00
    Added in 8th degree routing file (r8th)
