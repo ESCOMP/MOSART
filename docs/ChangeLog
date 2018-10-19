@@ -1,14 +1,12 @@
 ===============================================================
 Tag name:  release-cesm2.0.03
 Originator(s): erik
-Date: Oct 18, 2018
+Date: Oct 19, 2018
 One-line Summary: Remove ability to write out single-precision history because of issues
 
 Don't allow the namelist option rtmhist_ndens to be set to 2, because this
 option doesn't currently function. The simple fix we put into place for it
-is not robust, and doesn't show conversion issues as soon as possible. We
-need to implement a solution that keeps history buffers at single precision
-and converts the instantaneous double precision data as it goes.
+is not robust.
 
 MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
 
@@ -28,11 +26,10 @@ Pull Requests that document the changes (include PR ids):
 
  #19 -- Don't allow single precision history output
 
-Testing:
 ===============================================================
 Tag name:  release-cesm2.0.02
 Originator(s): erik/billsacks
-Date: Oct 12, 2018
+Date: Oct 16, 2018
 One-line Summary:  Fix for py3 
 
 MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
@@ -49,7 +46,9 @@ Pull Requests that document the changes (include PR ids):
 
  #17 -- Changes to fix #10, where an integer divide needs the floor operator
 
-Testing:
+Testing: Run mosart test suite
+   hobart ---- PASS
+   cheyenne -- PASS
 
 ===============================================================
 Tag name:  release-cesm2.0.01
