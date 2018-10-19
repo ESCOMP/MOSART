@@ -32,6 +32,8 @@ Originator(s): erik/billsacks
 Date: Oct 16, 2018
 One-line Summary:  Fix for py3 
 
+Fix for python3, using the floor operator for integer division.
+
 MOSART Master Tag This Corresponds To: mosart1_0_31 (with changes)
 
 Issues Fixed: #10
