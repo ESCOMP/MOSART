@@ -35,7 +35,6 @@ def _build_mosart():
             caseroot = case.get_value("CASEROOT")
             paths = [ os.path.join(caseroot,"SourceMods","src.mosart"), 
                       os.path.join(srcroot,"components","mosart","src","riverroute"),
-                      os.path.join(srcroot,"components","mosart","src","cpl"),
                       os.path.join(srcroot,"components","mosart","src","cpl",driver)]
 
             with open(filepath_file, "w") as filepath:
