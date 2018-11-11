@@ -1,81 +1,68 @@
 module rof_comp_nuopc
+
   !----------------------------------------------------------------------------
   ! This is the NUOPC cap for MOSART
   !----------------------------------------------------------------------------
 
-  use shr_kind_mod          , only : R8=>SHR_KIND_R8
-  use shr_kind_mod          , only : CL=>SHR_KIND_CL, CXX => shr_kind_CXX
+  use ESMF
+  use NUOPC                 , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
+  use NUOPC                 , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
+  use NUOPC_Model           , only : model_routine_SS           => SetServices
+  use NUOPC_Model           , only : model_label_Advance        => label_Advance
+  use NUOPC_Model           , only : model_label_DataInitialize => label_DataInitialize
+  use NUOPC_Model           , only : model_label_SetRunClock    => label_SetRunClock
+  use NUOPC_Model           , only : model_label_Finalize       => label_Finalize
+  use NUOPC_Model           , only : NUOPC_ModelGet
+  use shr_kind_mod          , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL, CXX => shr_kind_CXX
   use shr_sys_mod           , only : shr_sys_abort
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_file_mod          , only : shr_file_getloglevel, shr_file_setloglevel
   use shr_file_mod          , only : shr_file_setIO, shr_file_getUnit
-  use shr_string_mod        , only : shr_string_listGetNum
   use shr_cal_mod           , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use esmFlds               , only : fldListFr, fldListTo, comprof, compname
-  use esmFlds               , only : flds_scalar_name, flds_scalar_num
-  use esmFlds               , only : flds_scalar_index_nx, flds_scalar_index_ny
-  use esmFlds               , only : flds_scalar_index_rofice_present
-  use esmFlds               , only : flds_scalar_index_flood_present
-  use shr_nuopc_fldList_mod , only : shr_nuopc_fldList_Realize
-  use shr_nuopc_fldList_mod , only : shr_nuopc_fldList_Concat
-  use shr_nuopc_fldList_mod , only : shr_nuopc_fldList_Getnumflds
-  use shr_nuopc_fldList_mod , only : shr_nuopc_fldList_Getfldinfo
+  use shr_nuopc_scalars_mod , only : flds_scalar_name
+  use shr_nuopc_scalars_mod , only : flds_scalar_num
+  use shr_nuopc_scalars_mod , only : flds_scalar_index_nx
+  use shr_nuopc_scalars_mod , only : flds_scalar_index_ny
+  use shr_nuopc_scalars_mod , only : flds_scalar_index_rofice_present
+  use shr_nuopc_scalars_mod , only : flds_scalar_index_flood_present
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_chkerr
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_Clock_TimePrint
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_State_SetScalar
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_State_GetScalar
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_State_Diagnose
-  use shr_nuopc_grid_mod    , only : shr_nuopc_grid_ArrayToState
-  use shr_nuopc_grid_mod    , only : shr_nuopc_grid_StateToArray
+  use shr_nuopc_time_mod    , only : shr_nuopc_time_AlarmInit
 
-  use ESMF
-  use NUOPC
-  use NUOPC_Model, &
-    model_routine_SS        => SetServices,       &
-    model_label_Advance     => label_Advance,     &
-    model_label_SetRunClock => label_SetRunClock, &
-    model_label_Finalize    => label_Finalize
-
-  use mosart_import_export , only : mosart_import, mosart_export
-  use mosart_cpl_indices   , only : mosart_cpl_indices_set, nt_rtm, rtm_tracers
-  use mosart_cpl_indices   , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi
-  use mosart_cpl_indices   , only : index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub
-  use mosart_cpl_indices   , only : index_x2r_Flrl_irrig
-  use mosart_cpl_indices   , only : index_r2x_Forr_rofl, index_r2x_Forr_rofi, index_r2x_Flrr_flood
-  use mosart_cpl_indices   , only : index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
-  use RunoffMod            , only : rtmCTL, TRunoff
-  use RtmVar               , only : rtmlon, rtmlat, ice_runoff, iulog
-  use RtmVar               , only : nsrStartup, nsrContinue, nsrBranch
-  use RtmVar               , only : inst_index, inst_suffix, inst_name, RtmVarSet
-  use RtmSpmd              , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
-  use RtmMod               , only : Rtmini, Rtmrun
-  use RtmTimeManager       , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
-  use perf_mod             , only : t_startf, t_stopf, t_barrierf
+  use rof_import_export     , only : advertise_fields, realize_fields
+  use rof_import_export     , only : import_fields, export_fields
+  use RtmVar                , only : rtmlon, rtmlat, iulog
+  use RtmVar                , only : nsrStartup, nsrContinue, nsrBranch
+  use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
+  use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
+  use RunoffMod             , only : rtmCTL
+  use RtmMod                , only : Rtmini, Rtmrun
+  use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
+  use perf_mod              , only : t_startf, t_stopf, t_barrierf
 
   implicit none
   private ! except
 
-  public :: SetServices
+  ! Module routines
+  public  :: SetServices
+  private :: InitializeP0
+  private :: InitializeAdvertise
+  private :: InitializeRealize
+  private :: ModelSetRunClock
+  private :: ModelAdvance
+  private :: ModelFinalize
 
   !--------------------------------------------------------------------------
   ! Private module data
   !--------------------------------------------------------------------------
 
-  character(CXX)             :: flds_r2x = ''
-  character(CXX)             :: flds_x2r = ''
-  real(r8), allocatable      :: x2r(:,:)
-  real(r8), allocatable      :: r2x(:,:)
-  integer                    :: nflds_r2x
-  integer                    :: nflds_x2r
-  character(len=*),parameter :: grid_option = "mesh" ! grid_de, grid_arb, grid_reg, mesh
-  integer, parameter         :: dbug = 10
-  integer                    :: dbrc
-  logical                    :: flood_present        ! flag
-  logical                    :: rof_prognostic       ! flag
-
-  !----- formats -----
-  character(*),parameter :: modName =  "(mosart_comp_nuopc)"
-  character(*),parameter :: u_FILE_u = __FILE__
+  integer     , parameter :: dbug = 1
+  character(*), parameter :: modName =  "(rof_comp_nuopc)"
+  character(*), parameter :: u_FILE_u = &
+       __FILE__
 
   !===============================================================================
   contains
@@ -84,10 +71,12 @@ module rof_comp_nuopc
   subroutine SetServices(gcomp, rc)
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
+
+    integer :: dbrc
     character(len=*),parameter  :: subname=trim(modName)//':(SetServices) '
 
     rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
 
     ! the NUOPC gcomp component will register the generic methods
     call NUOPC_CompDerive(gcomp, model_routine_SS, rc=rc)
@@ -124,7 +113,7 @@ module rof_comp_nuopc
          specRoutine=ModelFinalize, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (dbug > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
 
   end subroutine SetServices
 
@@ -149,13 +138,19 @@ module rof_comp_nuopc
   !===============================================================================
 
   subroutine InitializeAdvertise(gcomp, importState, exportState, clock, rc)
-    use shr_nuopc_utils_mod    , only : shr_nuopc_set_component_logging, shr_nuopc_get_component_instance
+
+    ! uses
+    use shr_nuopc_utils_mod, only : shr_nuopc_set_component_logging
+    use shr_nuopc_utils_mod, only : shr_nuopc_get_component_instance
+
+    ! input/output arguments
     type(ESMF_GridComp)  :: gcomp
     type(ESMF_State)     :: importState, exportState
     type(ESMF_Clock)     :: clock
     integer, intent(out) :: rc
 
     ! local variables
+    type(ESMF_VM)           :: vm
     type(ESMF_Time)         :: currTime              ! Current time
     type(ESMF_Time)         :: startTime             ! Start time
     type(ESMF_Time)         :: stopTime              ! Stop time
@@ -172,12 +167,8 @@ module rof_comp_nuopc
     integer                 :: stop_tod              ! stop time of day (sec)
     integer                 :: curr_ymd              ! Start date (YYYYMMDD)
     integer                 :: curr_tod              ! Start time of day (sec)
-    type(ESMF_VM)           :: vm
     integer                 :: mpicom
     character(CL)           :: cvalue
-    logical                 :: exists
-    integer                 :: lsize                 ! local array size
-    integer                 :: ierr                  ! error code
     integer                 :: shrlogunit            ! original log unit
     integer                 :: shrloglev             ! original log level
     integer                 :: nsrest                ! restart type
@@ -186,21 +177,18 @@ module rof_comp_nuopc
     character(CL)           :: caseid                ! case identifier name
     character(CL)           :: ctitle                ! case description title
     character(CL)           :: hostname              ! hostname of machine running on
-    character(CL)           :: model_version         ! Model version
+    character(CL)           :: model_version         ! model version
     character(CL)           :: starttype             ! start-type (startup, continue, branch, hybrid)
+    character(CL)           :: stdname, shortname    ! needed for advertise
     logical                 :: brnch_retain_casename ! flag if should retain the case name on a branch start type
-    logical                 :: isPresent
     integer                 :: n
-    character(len=512)      :: diro
-    character(len=512)      :: logfile
-    logical                 :: activefld
-    character(CL)           :: stdname, shortname
+    integer                 :: dbrc
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -213,11 +201,13 @@ module rof_comp_nuopc
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
-    ! initialize MOSART MPI communicator (mpicom_rof in RtmSpmd)
+    ! initialize MOSART MPI communicator 
     !----------------------------------------------------------------------------
 
+    ! The following call initializees the module variable mpicom_rof in RtmSpmd
     call RtmSpmdInit(mpicom)
 
+    ! Set ROFID - needed for the mosart code that requires MCT
     call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) ROFID  ! convert from string to integer
@@ -228,14 +218,74 @@ module rof_comp_nuopc
 
     call shr_nuopc_get_component_instance(gcomp, inst_suffix, inst_index)
     inst_name = "ROF"//trim(inst_suffix)
+
+    !----------------------------------------------------------------------------
+    ! reset shr logging to my log file
+    !----------------------------------------------------------------------------
+
     call shr_nuopc_set_component_logging(gcomp, masterproc, iulog, shrlogunit, shrloglev)
 
+    !----------------------------------------------------------------------------
+    ! advertise fields
+    !----------------------------------------------------------------------------
+
+    call advertise_fields(gcomp, rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !----------------------------------------------------------------------------
+    ! Reset shr logging to original values
+    !----------------------------------------------------------------------------
+
+    call shr_file_setLogLevel(shrloglev)
+    call shr_file_setLogUnit (shrlogunit)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
+
+  end subroutine InitializeAdvertise
+
+  !===============================================================================
+
+  subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
+
+    ! input/output variables
+    type(ESMF_GridComp)  :: gcomp
+    type(ESMF_State)     :: importState
+    type(ESMF_State)     :: exportState
+    type(ESMF_Clock)     :: clock
+    integer, intent(out) :: rc
+
+    ! local variables
+    type(ESMF_Mesh)        :: Emesh
+    logical                :: flood_present        ! flag
+    logical                :: rof_prognostic       ! flag
+    integer , allocatable  :: gindex(:)
+    character(CL)          :: cvalue
+    integer                :: shrlogunit            ! original log unit
+    integer                :: shrloglev             ! original log level
+    integer                :: lsize                 ! local size ofarrays
+    integer                :: n,ni                  ! indices
+    integer                :: lbnum                 ! input to memory diagnostic
+    integer                :: dbrc
+    character(ESMF_MAXSTR) :: convCIM, purpComp
+    character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
+    !---------------------------------------------------------------------------
+
+    rc = ESMF_SUCCESS
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+
+    !----------------------------------------------------------------------------
+    ! Reset shr logging to my log file
+    !----------------------------------------------------------------------------
+
+    call shr_file_getLogUnit (shrlogunit)
+    call shr_file_getLogLevel(shrloglev)
+    call shr_file_setLogUnit (iulog)
+
+#if (defined _MEMTRACE)
     if (masterproc) then
-       write(iulog,format) "MOSART river model initialization"
-       write(iulog,*) ' mosart npes = ',npes
-       write(iulog,*) ' mosart iam  = ',iam
-       write(iulog,*) ' inst_name = ',trim(inst_name)
+       lbnum=1
+       call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
     endif
+#endif
 
     !----------------------
     ! Obtain attribute values
@@ -304,7 +354,7 @@ module rof_comp_nuopc
     end if
 
     !----------------------
-    ! Initialize time info
+    ! Set time manager module variables
     !----------------------
 
     call timemgr_setup(&
@@ -317,10 +367,18 @@ module rof_comp_nuopc
          stop_tod_in=stop_tod)
 
     !----------------------
-    ! Initialize RtmVar module variables
+    ! Read namelist, grid and surface data
     !----------------------
 
-    !TODO: the following strings must not be hard-wired - must have module variables
+    if (masterproc) then
+       write(iulog,format) "MOSART river model initialization"
+       write(iulog,*) ' mosart npes = ',npes
+       write(iulog,*) ' mosart iam  = ',iam
+       write(iulog,*) ' inst_name = ',trim(inst_name)
+    endif
+
+    ! Initialize RtmVar module variables
+    ! TODO: the following strings must not be hard-wired - must have module variables
     ! like seq_infodata_start_type_type - maybe another entry in seq_flds_mod?
     if (     trim(starttype) == trim('startup')) then
        nsrest = nsrStartup
@@ -342,199 +400,78 @@ module rof_comp_nuopc
          username_in=username)
 
     !----------------------
-    ! Read namelist, grid and surface data
+    ! Initialize Mosart
     !----------------------
 
-    ! Note - all of the above needs to be done here to obtain rof_prognostic and flood_present
-    ! This is a limitatin of the current mosart initialization
+    ! - Read in mosart namelist
+    ! - Initialize mosart time manager
+    ! - Initialize number of mosart tracers
+    ! - Read input data (river direction file) (global)
+    ! - Deriver gridbox edges (global)
+    ! - Determine mosart ocn/land mask (global)
+    ! - Compute total number of basins and runoff ponts
+    ! - Compute river basins, actually compute ocean outlet gridcell
+    ! - Allocate basins to pes
+    ! - Count and distribute cells to rglo2gdc (determine rtmCTL%begr, rtmCTL%endr)
+    ! - Adjust area estimation from DRT algorithm for those outlet grids
+    !     - useful for grid-based representation only
+    !     - need to compute areas where they are not defined in input file
+    ! - Initialize runoff datatype (rtmCTL)
+
+    ! TODO: are not handling rof_prognostic = .false. for now
+    ! how should this be handled in NUOPC? 
+    ! What happens if you don't realize any of the component fields - but you ask to run that
+    ! component in the run sequence? Question for Gerhard.
 
     call Rtmini(rtm_active=rof_prognostic, flood_active=flood_present)
 
     !--------------------------------
-    ! create import and export field list and determine field indices of import/export arrays
+    ! generate the mesh and realize fields
     !--------------------------------
 
-    call shr_nuopc_fldList_Concat(fldListFr(comprof), fldListTo(comprof), flds_r2x, flds_x2r, flds_scalar_name)
-
-    call mosart_cpl_indices_set(flds_x2r, flds_r2x)
-
-    !--------------------------------
-    ! Advertise import and export fields
-    !--------------------------------
-
-    do n = 1,shr_nuopc_fldList_Getnumflds(fldListFr(comprof))
-       call shr_nuopc_fldList_Getfldinfo(fldListFr(comprof), n, activefld, stdname, shortname)
-       if (activefld) then
-          call NUOPC_Advertise(exportState, standardName=stdname, shortname=shortname, name=shortname, &
-               TransferOfferGeomObject='will provide', rc=rc)
-          if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-       end if
-       call ESMF_LogWrite(subname//':Fr_'//trim(compname(comprof))//': '//trim(shortname), ESMF_LOGMSG_INFO)
-    end do
-
-    do n = 1,shr_nuopc_fldList_Getnumflds(fldListTo(comprof))
-       call shr_nuopc_fldList_Getfldinfo(fldListTo(comprof), n, activefld, stdname, shortname)
-       if (activefld) then
-          call NUOPC_Advertise(importState, standardName=stdname, shortname=shortname, name=shortname, &
-               TransferOfferGeomObject='will provide', rc=rc)
-          if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-       end if
-       call ESMF_LogWrite(subname//':To_'//trim(compname(comprof))//': '//trim(shortname), ESMF_LOGMSG_INFO)
-    end do
-
-    !----------------------------------------------------------------------------
-    ! Reset shr logging to original values
-    !----------------------------------------------------------------------------
-
-    call shr_file_setLogLevel(shrloglev)
-    call shr_file_setLogUnit (shrlogunit)
-
-  end subroutine InitializeAdvertise
-
-  !===============================================================================
-
-  subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
-    type(ESMF_GridComp)  :: gcomp
-    type(ESMF_State)     :: importState
-    type(ESMF_State)     :: exportState
-    type(ESMF_Clock)     :: clock
-    integer, intent(out) :: rc
-
-    ! local variables
-    integer , allocatable  :: gindex(:)
-    real(r8), pointer      :: elemCoords(:,:)
-    real(r8), pointer      :: elemCornerCoords(:,:,:)
-    real(r8)               :: dx,dy
-    character(CL)          :: cvalue
-    character(ESMF_MAXSTR) :: convCIM, purpComp
-    type(ESMF_Mesh)        :: Emesh
-    integer                :: shrlogunit            ! original log unit
-    integer                :: shrloglev             ! original log level
-    type(ESMF_VM)          :: vm
-    logical                :: connected             ! is field connected?
-    integer                :: lsize                 ! local size ofarrays
-    integer                :: g,i,j,n,m,ni          ! indices
-    integer                :: lbnum                 ! input to memory diagnostic
-    character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
-    !---------------------------------------------------------------------------
-
-    rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
-
-    !----------------------------------------------------------------------------
-    ! Reset shr logging to my log file
-    !----------------------------------------------------------------------------
-
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_getLogLevel(shrloglev)
-    call shr_file_setLogUnit (iulog)
-
-
-#if (defined _MEMTRACE)
-    if(masterproc) then
-       lbnum=1
-       call memmon_dump_fort('memmon.out','rof_init_mct:start::',lbnum)
-    endif
-#endif
-
-    !----------------------
-    ! Determine field arays
-    !----------------------
-
-    nflds_r2x = shr_string_listGetNum(flds_r2x)
-    nflds_x2r = shr_string_listGetNum(flds_x2r)
-    lsize = rtmCTL%lnumr
-    allocate(r2x(nflds_r2x,lsize))
-    allocate(x2r(nflds_x2r,lsize))
-    r2x(:,:)  = 0._r8
-    x2r(:,:)  = 0._r8
-
-    !--------------------------------
-    ! Determine bounds numbering consistency
-    !--------------------------------
-
-    ni = 0
-    do n = rtmCTL%begr,rtmCTL%endr
-       ni = ni + 1
-       if (ni > rtmCTL%lnumr) then
-          write(iulog,*) subname, ' : ERROR runoff count',n,ni,rtmCTL%lnumr
-          call shr_sys_abort( subname //' ERROR: runoff > expected' )
-       end if
-    end do
-    if (ni /= rtmCTL%lnumr) then
-       write(iulog,*) subname, ' : ERROR runoff total count',ni,rtmCTL%lnumr
-       call shr_sys_abort( subname//' ERROR: runoff not equal to expected' )
-    endif
-
-    !--------------------------------
-    ! generate the mesh
-    !--------------------------------
-
+    ! determine global index array
+    lsize = rtmCTL%endr - rtmCTL%begr
     allocate(gindex(lsize))
-    allocate(elemCoords(2,lsize))          ! (lon+lat) * n_gridcells
-    allocate(elemCornerCoords(2,4,lsize))  ! (lon+lat) * n_corners * n_gridcells
-
     ni = 0
     do n = rtmCTL%begr,rtmCTL%endr
        ni = ni + 1
        gindex(ni) = rtmCTL%gindex(n)
-       elemCoords(1,ni) = rtmCTL%lonc(n)
-       elemCoords(2,ni) = rtmCTL%latc(n)
-       ! TBD
-       ! tcraig, MOSART does not define corner values and there is no info about grid sizes (ie. dx, dy)
-       ! anywhere so make something up for now.  this has to be fixed if weights are generated on the fly!
-       ! someone from MOSART has to define the corner lon and lat for use here.
-       ! corners are defined counterclockwise
-       do m = 1,4
-          if (m == 1 .or. m == 4) dx = -0.05
-          if (m == 2 .or. m == 3) dx =  0.05
-          if (m == 1 .or. m == 2) dy = -0.05
-          if (m == 3 .or. m == 4) dy =  0.05
-          elemCornerCoords(1,m,ni) = rtmCTL%lonc(n) + dx
-          elemCornerCoords(2,m,ni) = rtmCTL%latc(n) + dy
-       enddo
     end do
 
-    Emesh = ESMF_MeshCreate(parametricDim=2, &
-       coordSys=ESMF_COORDSYS_SPH_DEG, &
-       elementIds=gindex, &
-       elementType=ESMF_MESHELEMTYPE_QUAD, &
-       elementCoords=elemCoords, &
-       elementCornerCoords=elemCornerCoords, &
-       rc=rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-
+    ! create distGrid from global index array
+    DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     deallocate(gindex)
-    deallocate(elemCoords)
-    deallocate(elemCornerCoords)
 
-    !--------------------------------
-    ! realize the actively coupled fields
-    !--------------------------------
-
-    call shr_nuopc_fldList_Realize(importState, fldListTo(comprof), flds_scalar_name, flds_scalar_num, &
-         mesh=Emesh, tag=subname//':mosartImport', rc=rc)
+    ! read in the mesh 
+    call NUOPC_CompAttributeGet(gcomp, name='mesh_rof', value=cvalue, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_nuopc_fldList_Realize(exportState, fldListFr(comprof), flds_scalar_name, flds_scalar_num, &
-         mesh=Emesh, tag=subname//':mosartExport', rc=rc)
+    EMeshTemp = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (masterproc) then
+       write(iulog,*)'mesh file for domain is ',trim(cvalue)
+    end if
+
+    ! recreate the mesh using the above distGrid
+    EMesh = ESMF_MeshCreate(EMeshTemp, elementDistgrid=Distgrid, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !--------------------------------
+    ! realize actively coupled fields
+    !--------------------------------
+
+    call realize_fields(gcomp, Emesh, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! Create MOSART export state
     !--------------------------------
 
-    call mosart_export( r2x )
+    call export_fields(gcomp, rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    !--------------------------------
-    ! Pack export state
-    ! Copy from r2x to exportState
-    ! Set the coupling scalars
-    !--------------------------------
-
-    call shr_nuopc_grid_ArrayToState(r2x, flds_r2x, exportState, grid_option, rc=rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-
+    ! Set global grid size scalars in export state
     call shr_nuopc_methods_State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, mpicom_rof, &
          flds_scalar_name, flds_scalar_num, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -543,24 +480,31 @@ module rof_comp_nuopc
          flds_scalar_name, flds_scalar_num, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
+    ! Set flood_present scalar in export state
     if (flood_present) then
        call shr_nuopc_methods_State_SetScalar(1.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
             flds_scalar_name, flds_scalar_num, rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     else
        call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
             flds_scalar_name, flds_scalar_num, rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
 
-    ! For now hard-wire rofice_present to be false
+    ! Set rofice_present scalar in export state
+    ! TODO: For now hard-wire rofice_present to be false
     call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_rofice_present, exportState, mpicom_rof, &
          flds_scalar_name, flds_scalar_num, rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !----------------------------------------------------------------------------
+    ! Reset shr logging 
+    !----------------------------------------------------------------------------
 
     call shr_file_setLogLevel(shrloglev)
     call shr_file_setLogUnit (shrlogunit)
 
-    if (dbug > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
 
     !--------------------------------
     ! diagnostics
@@ -568,7 +512,7 @@ module rof_comp_nuopc
 
     if (dbug > 1) then
        call shr_nuopc_methods_State_diagnose(exportState,subname//':ES',rc=rc)
-       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
 
 #ifdef USE_ESMF_METADATA
@@ -587,9 +531,9 @@ module rof_comp_nuopc
 
 #if (defined _MEMTRACE)
     if(masterproc) then
-       write(iulog,*) TRIM(subname) // ':end::'
+       write(iulog,*) TRIM(Sub) // ':end::'
        lbnum=1
-       call memmon_dump_fort('memmon.out','rof_int_mct:end::',lbnum)
+       call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:end::',lbnum)
        call memmon_reset_addr()
     endif
 #endif
@@ -600,7 +544,9 @@ module rof_comp_nuopc
 
   subroutine ModelAdvance(gcomp, rc)
 
+    !------------------------
     ! Run MOSART
+    !------------------------
 
     ! arguments:
     type(ESMF_GridComp)  :: gcomp
@@ -608,8 +554,9 @@ module rof_comp_nuopc
 
     ! local variables:
     type(ESMF_Clock)  :: clock
-    type(ESMF_Time)   :: currTime      ! Current time
     type(ESMF_Alarm)  :: alarm
+    type(ESMF_Time)   :: currTime      
+    type(ESMF_Time)   :: nextTime
     type(ESMF_State)  :: importState
     type(ESMF_State)  :: exportState
     character(CL)     :: cvalue
@@ -626,11 +573,12 @@ module rof_comp_nuopc
     integer           :: lbnum         ! input to memory diagnostic
     integer           :: g,i           ! indices
     character(len=32) :: rdate         ! date char string for restart file names
+    integer           :: dbrc
     character(len=*),parameter  :: subname=trim(modName)//':(ModelAdvance) '
     !-------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_getLogLevel(shrloglev)
@@ -651,19 +599,15 @@ module rof_comp_nuopc
     call NUOPC_ModelGet(gcomp, modelClock=clock, importState=importState, exportState=exportState, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (dbug > 1) then
-      call shr_nuopc_methods_Clock_TimePrint(clock,subname//'clock',rc=rc)
-    endif
-
     !--------------------------------
     ! Unpack import state from mediator
     !--------------------------------
 
     call t_startf ('lc_mosart_import')
-    call shr_nuopc_grid_StateToArray(importState, x2r, flds_x2r, grid_option, rc=rc)
+
+    call import_fields(gcomp, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call mosart_import( x2r )
     call t_stopf ('lc_mosart_import')
 
     !--------------------------------
@@ -702,17 +646,20 @@ module rof_comp_nuopc
     ! Run MOSART
     !--------------------------------
 
-    ! First advance mosart time step
-    call advance_timestep()
+    ! Restart File - use nexttimestr rather than currtimestr here since that is the time at the end of
+    ! the timestep and is preferred for restart file names
 
-    call ESMF_ClockGet( clock, currTime=currTime, rc=rc)
+    call ESMF_ClockGetNextTime(clock, nextTime=nextTime, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_TimeGet( currTime, yy=yr_sync, mm=mon_sync, dd=day_sync, s=tod_sync, rc=rc )
+
+    call ESMF_TimeGet(nexttime, yy=yr_sync, mm=mon_sync, dd=day_sync, s=tod_sync, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
     call shr_cal_ymd2date(yr_sync, mon_sync, day_sync, ymd_sync)
-    write(rdate,'(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr_sync,mon_sync,day_sync,tod_sync
+    write(rdate,'(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr_sync, mon_sync, day_sync, tod_sync
 
-    ! Export data is in rtmCTL and Trunoff data types
+    ! Advance mosart time step then run MOSART (export data is in rtmCTL and Trunoff data types)
+    call advance_timestep()
     call Rtmrun(rstwr, nlend, rdate)
 
     !--------------------------------
@@ -721,10 +668,10 @@ module rof_comp_nuopc
 
     ! (input is rtmCTL%runoff, output is r2x)
     call t_startf ('lc_rof_export')
-    call mosart_export( r2x )
 
-    call shr_nuopc_grid_ArrayToState(r2x, flds_r2x, exportState, grid_option, rc=rc)
+    call export_fields(gcomp, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
     call t_stopf ('lc_rof_export')
 
     !--------------------------------
@@ -754,10 +701,11 @@ module rof_comp_nuopc
     if (dbug > 1) then
        call shr_nuopc_methods_State_diagnose(exportState,subname//':ES',rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    end if
 
+    if (masterproc) then
        call ESMF_ClockPrint(clock, options="currTime", preString="------>Advancing ROF from: ", rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-
        call ESMF_ClockPrint(clock, options="stopTime", preString="--------------------------------> to: ", rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     endif
@@ -782,6 +730,8 @@ module rof_comp_nuopc
   !===============================================================================
 
   subroutine ModelSetRunClock(gcomp, rc)
+
+    ! input/output variables
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
 
@@ -790,17 +740,25 @@ module rof_comp_nuopc
     type(ESMF_Time)          :: mcurrtime, dcurrtime
     type(ESMF_Time)          :: mstoptime
     type(ESMF_TimeInterval)  :: mtimestep, dtimestep
-    character(len=128)       :: mtimestring, dtimestring
-    type(ESMF_Alarm),pointer :: alarmList(:)
-    type(ESMF_Alarm)         :: dalarm
-    integer                  :: alarmcount, n
+    character(len=256)       :: cvalue
+    character(len=256)       :: restart_option ! Restart option units
+    integer                  :: restart_n      ! Number until restart interval
+    integer                  :: restart_ymd    ! Restart date (YYYYMMDD)
+    type(ESMF_ALARM)         :: restart_alarm
+    character(len=256)       :: stop_option    ! Stop option units
+    integer                  :: stop_n         ! Number until stop interval
+    integer                  :: stop_ymd       ! Stop date (YYYYMMDD)
+    type(ESMF_ALARM)         :: stop_alarm
+    character(len=128)       :: name
+    integer                  :: alarmcount
+    integer                  :: dbrc
     character(len=*),parameter :: subname=trim(modName)//':(ModelSetRunClock) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
 
-    ! query the Component for its clock, importState and exportState
+    ! query the Component for its clocks
     call NUOPC_ModelGet(gcomp, driverClock=dclock, modelClock=mclock, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -810,58 +768,76 @@ module rof_comp_nuopc
     call ESMF_ClockGet(mclock, currTime=mcurrtime, timeStep=mtimestep, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-
-    !--------------------------------
-    ! check that the current time in the model and driver are the same
-    !--------------------------------
-
-    if (mcurrtime /= dcurrtime) then
-      call ESMF_TimeGet(dcurrtime, timeString=dtimestring, rc=rc)
-      if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-
-      call ESMF_TimeGet(mcurrtime, timeString=mtimestring, rc=rc)
-      if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-
-      call ESMF_LogWrite(subname//" ERROR in time consistency; "//trim(dtimestring)//" ne "//trim(mtimestring),  &
-           ESMF_LOGMSG_ERROR, rc=dbrc)
-      rc=ESMF_Failure
-      return
-    endif
-
     !--------------------------------
     ! force model clock currtime and timestep to match driver and set stoptime
     !--------------------------------
 
     mstoptime = mcurrtime + dtimestep
-
-    call ESMF_ClockSet(mclock, timeStep=dtimestep, stopTime=mstoptime, rc=rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    call ESMF_ClockSet(mclock, currTime=dcurrtime, timeStep=dtimestep, stopTime=mstoptime, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
-    ! copy alarms from driver to model clock if model clock has no alarms (do this only once!)
+    ! set restart and stop alarms
     !--------------------------------
 
     call ESMF_ClockGetAlarmList(mclock, alarmlistflag=ESMF_ALARMLIST_ALL, alarmCount=alarmCount, rc=rc)
-    if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (alarmCount == 0) then
-      call ESMF_ClockGetAlarmList(dclock, alarmlistflag=ESMF_ALARMLIST_ALL, alarmCount=alarmCount, rc=rc)
-      if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-      allocate(alarmList(alarmCount))
-      call ESMF_ClockGetAlarmList(dclock, alarmlistflag=ESMF_ALARMLIST_ALL, alarmList=alarmList, rc=rc)
-      if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
 
-      do n = 1, alarmCount
-         ! call ESMF_AlarmPrint(alarmList(n), rc=rc)
-         ! if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-         dalarm = ESMF_AlarmCreate(alarmList(n), rc=rc)
-         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-         call ESMF_AlarmSet(dalarm, clock=mclock, rc=rc)
-         if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-      enddo
+       call ESMF_GridCompGet(gcomp, name=name, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_LogWrite(subname//'setting alarms for' // trim(name), ESMF_LOGMSG_INFO, rc=dbrc)
 
-      deallocate(alarmList)
-    endif
+       !----------------
+       ! Restart alarm
+       !----------------
+       call NUOPC_CompAttributeGet(gcomp, name="restart_option", value=restart_option, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call NUOPC_CompAttributeGet(gcomp, name="restart_n", value=cvalue, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) restart_n
+
+       call NUOPC_CompAttributeGet(gcomp, name="restart_ymd", value=cvalue, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) restart_ymd
+
+       call shr_nuopc_time_alarmInit(mclock, restart_alarm, restart_option, &
+            opt_n   = restart_n,           &
+            opt_ymd = restart_ymd,         &
+            RefTime = mcurrTime,           &
+            alarmname = 'alarm_restart', rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call ESMF_AlarmSet(restart_alarm, clock=mclock, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       !----------------
+       ! Stop alarm
+       !----------------
+       call NUOPC_CompAttributeGet(gcomp, name="stop_option", value=stop_option, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call NUOPC_CompAttributeGet(gcomp, name="stop_n", value=cvalue, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) stop_n
+
+       call NUOPC_CompAttributeGet(gcomp, name="stop_ymd", value=cvalue, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+       read(cvalue,*) stop_ymd
+
+       call shr_nuopc_time_alarmInit(mclock, stop_alarm, stop_option, &
+            opt_n   = stop_n,           &
+            opt_ymd = stop_ymd,         &
+            RefTime = mcurrTime,           &
+            alarmname = 'alarm_stop', rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call ESMF_AlarmSet(stop_alarm, clock=mclock, rc=rc)
+       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    end if
 
     !--------------------------------
     ! Advance model clock to trigger alarms then reset model clock back to currtime
@@ -873,7 +849,7 @@ module rof_comp_nuopc
     call ESMF_ClockSet(mclock, currTime=dcurrtime, timeStep=dtimestep, stopTime=mstoptime, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (dbug > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
 
   end subroutine ModelSetRunClock
 
@@ -884,6 +860,7 @@ module rof_comp_nuopc
     integer, intent(out) :: rc
 
     ! local variables
+    integer                 :: dbrc
     character(*), parameter :: F00   = "('(mosart_comp_nuopc) ',8a)"
     character(*), parameter :: F91   = "('(mosart_comp_nuopc) ',73('-'))"
     character(len=*),parameter  :: subname=trim(modName)//':(ModelFinalize) '
@@ -894,7 +871,7 @@ module rof_comp_nuopc
     !--------------------------------
 
     rc = ESMF_SUCCESS
-    if (dbug > 5) call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
 
     if (masterproc) then
        write(iulog,F91)
@@ -902,7 +879,7 @@ module rof_comp_nuopc
        write(iulog,F91)
     end if
 
-    if (dbug > 5) call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO, rc=dbrc)
 
   end subroutine ModelFinalize
 
