@@ -1,15 +1,23 @@
-module mosart_import_export
+module rof_import_export
 
-  use shr_kind_mod        , only : r8 => shr_kind_r8, cl=>shr_kind_cl
-  use shr_sys_mod         , only : shr_sys_abort
-  use mosart_cpl_indices  , only : nt_rtm, rtm_tracers
-  use RunoffMod           , only : rtmCTL, TRunoff
-  use RtmVar              , only : iulog
-  use RtmSpmd             , only : masterproc
-  use RtmTimeManager      , only : get_nstep
+  use ESMF                  , only : ESMF_GridComp, ESMF_State, ESMF_Mesh, ESMF_StateGet
+  use ESMF                  , only : ESMF_KIND_R8, ESMF_SUCCESS, ESMF_MAXSTR, ESMF_LOGMSG_INFO
+  use ESMF                  , only : ESMF_LogWrite, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
+  use ESMF                  , only : ESMF_STATEITEM_NOTFOUND, ESMF_StateItem_Flag
+  use ESMF                  , only : operator(/=), operator(==)
+  use NUOPC                 , only : NUOPC_CompAttributeGet, NUOPC_Advertise, NUOPC_IsConnected
+  use NUOPC_Model           , only : NUOPC_ModelGet
+  use shr_kind_mod          , only : r8 => shr_kind_r8
+  use shr_sys_mod           , only : shr_sys_abort
+  use shr_nuopc_methods_mod , only : shr_nuopc_methods_chkerr
+  use shr_nuopc_scalars_mod , only : flds_scalar_name, flds_scalar_num
+
+  use RunoffMod             , only : rtmCTL, TRunoff
+  use RtmVar                , only : iulog, nt_rtm, rtm_tracers
+  use RtmSpmd               , only : masterproc
+  use RtmTimeManager        , only : get_nstep
 
   implicit none
-
   private ! except
 
   public  :: advertise_fields
@@ -36,6 +44,8 @@ module mosart_import_export
 
   integer     ,parameter :: debug = 1 ! internal debug level
   character(*),parameter :: F01 = "('(mosart_import_export) ',a,i4,2x,i5,2x,i8,2x,d21.8)"
+  character(*),parameter :: u_FILE_u = &
+       __FILE__
 
 !===============================================================================
 contains
@@ -69,7 +79,7 @@ contains
 
     call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')    
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Roff_rofi')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
@@ -91,7 +101,7 @@ contains
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdto')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofirrig')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -155,12 +165,21 @@ contains
 
     ! Local variables
     type(ESMF_State) :: importState
-    integer          :: n
+    integer          :: n,nt
     integer          :: begr, endr
     integer          :: nliq, nfrz 
+    integer          :: dbrc
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
 
+    rc = ESMF_SUCCESS
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+
+    ! Get import state
+    call NUOPC_ModelGet(gcomp, importState=importState, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ! Set tracers
     nliq = 0
     nfrz = 0
     do nt = 1,nt_rtm
@@ -168,13 +187,16 @@ contains
        if (trim(rtm_tracers(nt)) == 'ICE') nfrz = nt
     enddo
     if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
+       write(iulog,*) trim(subname),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
        call shr_sys_abort()
     endif
 
     begr = rtmCTL%begr
     endr = rtmCTL%endr
 
+    ! determine output array and scale by unit convertsion
+    ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
+    
     call state_getimport(importState, 'Flrl_rofsur', begr, endr, rtmCTL%area, output=rtmCTL%qsur(:,nliq), rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -212,7 +234,7 @@ contains
 
     ! Local variables
     type(ESMF_State)  :: exportState
-    integer           :: n
+    integer           :: n,nt
     integer           :: begr,endr
     integer           :: nliq, nfrz
     real(r8), pointer :: rofl(:)
@@ -221,9 +243,18 @@ contains
     real(r8), pointer :: volr(:)
     real(r8), pointer :: volrmch(:)
     logical, save     :: first_time = .true.
+    integer           :: dbrc
     character(len=*), parameter :: subname='(rof_import_export:export_fields)'
     !---------------------------------------------------------------------------
 
+    rc = ESMF_SUCCESS
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO, rc=dbrc)
+
+    ! Get export state
+    call NUOPC_ModelGet(gcomp, exportState=exportState, rc=rc)
+    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ! Set tracers
     nliq = 0
     nfrz = 0
     do nt = 1,nt_rtm
@@ -231,7 +262,7 @@ contains
        if (trim(rtm_tracers(nt)) == 'ICE') nfrz = nt
     enddo
     if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(sub),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
+       write(iulog,*) trim(subname),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
        call shr_sys_abort()
     endif
 
@@ -251,7 +282,7 @@ contains
 
     allocate(rofl(begr:endr))
     allocate(rofi(begr:endr))
-    allocate(flood(begr,endr))
+    allocate(flood(begr:endr))
     allocate(volr(begr:endr))
     allocate(volrmch(begr:endr))
 
@@ -282,10 +313,10 @@ contains
     ! scs: is there a reason for the wr+wt rather than volr (wr+wt+wh)?
     ! volr(n) = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
 
-    do n = rtmCTL%begr, rtmCTL%endr
-       flood(n) = -rtmCTL%flood(n) / (rtmCTL%area(n)*0.001_r8)
-       volr(n) = rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
-       volrmch(n) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
+    do n = begr, endr
+       flood(n)   = -rtmCTL%flood(n)    / (rtmCTL%area(n)*0.001_r8)
+       volr(n)    =  rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
+       volrmch(n) =  Trunoff%wr(n,nliq) / rtmCTL%area(n)
     end do
 
     call state_setexport(exportState, 'Forr_rofl', begr, endr, input=rofl, rc=rc)
@@ -442,6 +473,7 @@ contains
     character(len=*)    , intent(in)    :: fldname
     integer             , intent(in)    :: begr 
     integer             , intent(in)    :: endr
+    real(r8)            , intent(in)    :: area(begr:endr)
     real(r8)            , intent(out)   :: output(begr:endr)
     integer             , intent(out)   :: rc
 
@@ -468,11 +500,11 @@ contains
 
        ! determine output array and scale by unit convertsion
        do g = begr,endr
-          output(g) = fldptr(g-begr+1) * area(n)*0.001_r8
+          output(g) = fldptr(g-begr+1) * area(g)*0.001_r8
        end do
 
        ! write debug output if appropriate
-       if (masterproc .and. debug_import > 0 .and. get_nstep() < 5) then
+       if (masterproc .and. debug > 0 .and. get_nstep() < 5) then
           do g = begr,endr
              i = 1 + g - begr
              write(iulog,F01)'import: nstep, n, '//trim(fldname)//' = ',get_nstep(),i,output(g)
@@ -532,7 +564,7 @@ contains
        end do
 
        ! write debug output if appropriate
-       if (masterproc .and. debug_import > 0 .and. get_nstep() < 5) then
+       if (masterproc .and. debug > 0 .and. get_nstep() < 5) then
           do g = begr,endr
              i = 1 + g - begr
              write(iulog,F01)'export: nstep, n, '//trim(fldname)//' = ',get_nstep(),i,input(g)
@@ -634,4 +666,4 @@ contains
     end if
   end subroutine check_for_nans
 
-end module mosart_import_export
+end module rof_import_export

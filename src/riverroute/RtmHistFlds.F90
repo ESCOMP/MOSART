@@ -8,10 +8,10 @@ module RtmHistFlds
 ! fields.
 !
 ! !USES:
-  use shr_kind_mod       , only : r8 => shr_kind_r8
-  use RunoffMod          , only : rtmCTL
-  use RtmHistFile        , only : RtmHistAddfld, RtmHistPrintflds
-  use mosart_cpl_indices , only : nt_rtm, rtm_tracers  
+  use shr_kind_mod , only : r8 => shr_kind_r8
+  use RunoffMod    , only : rtmCTL
+  use RtmHistFile  , only : RtmHistAddfld, RtmHistPrintflds
+  use RtmVar       , only : nt_rtm, rtm_tracers  
 
   implicit none
 !

@@ -13,7 +13,7 @@ module rof_comp_nuopc
   use NUOPC_Model           , only : model_label_SetRunClock    => label_SetRunClock
   use NUOPC_Model           , only : model_label_Finalize       => label_Finalize
   use NUOPC_Model           , only : NUOPC_ModelGet
-  use shr_kind_mod          , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL, CXX => shr_kind_CXX
+  use shr_kind_mod          , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL
   use shr_sys_mod           , only : shr_sys_abort
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_file_mod          , only : shr_file_getloglevel, shr_file_setloglevel
@@ -59,7 +59,7 @@ module rof_comp_nuopc
   ! Private module data
   !--------------------------------------------------------------------------
 
-  integer     , parameter :: dbug = 1
+  integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
   character(*), parameter :: u_FILE_u = &
        __FILE__
@@ -151,36 +151,10 @@ module rof_comp_nuopc
 
     ! local variables
     type(ESMF_VM)           :: vm
-    type(ESMF_Time)         :: currTime              ! Current time
-    type(ESMF_Time)         :: startTime             ! Start time
-    type(ESMF_Time)         :: stopTime              ! Stop time
-    type(ESMF_Time)         :: refTime               ! Ref time
-    type(ESMF_TimeInterval) :: timeStep              ! Model timestep
-    type(ESMF_Calendar)     :: esmf_calendar         ! esmf calendar
-    type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
-    integer                 :: ref_ymd               ! reference date (YYYYMMDD)
-    integer                 :: ref_tod               ! reference time of day (sec)
-    integer                 :: yy,mm,dd              ! Temporaries for time query
-    integer                 :: start_ymd             ! start date (YYYYMMDD)
-    integer                 :: start_tod             ! start time of day (sec)
-    integer                 :: stop_ymd              ! stop date (YYYYMMDD)
-    integer                 :: stop_tod              ! stop time of day (sec)
-    integer                 :: curr_ymd              ! Start date (YYYYMMDD)
-    integer                 :: curr_tod              ! Start time of day (sec)
     integer                 :: mpicom
     character(CL)           :: cvalue
     integer                 :: shrlogunit            ! original log unit
     integer                 :: shrloglev             ! original log level
-    integer                 :: nsrest                ! restart type
-    character(CL)           :: calendar              ! calendar type name
-    character(CL)           :: username              ! user name
-    character(CL)           :: caseid                ! case identifier name
-    character(CL)           :: ctitle                ! case description title
-    character(CL)           :: hostname              ! hostname of machine running on
-    character(CL)           :: model_version         ! model version
-    character(CL)           :: starttype             ! start-type (startup, continue, branch, hybrid)
-    character(CL)           :: stdname, shortname    ! needed for advertise
-    logical                 :: brnch_retain_casename ! flag if should retain the case name on a branch start type
     integer                 :: n
     integer                 :: dbrc
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
@@ -254,18 +228,45 @@ module rof_comp_nuopc
     integer, intent(out) :: rc
 
     ! local variables
-    type(ESMF_Mesh)        :: Emesh
-    logical                :: flood_present        ! flag
-    logical                :: rof_prognostic       ! flag
-    integer , allocatable  :: gindex(:)
-    character(CL)          :: cvalue
-    integer                :: shrlogunit            ! original log unit
-    integer                :: shrloglev             ! original log level
-    integer                :: lsize                 ! local size ofarrays
-    integer                :: n,ni                  ! indices
-    integer                :: lbnum                 ! input to memory diagnostic
-    integer                :: dbrc
-    character(ESMF_MAXSTR) :: convCIM, purpComp
+    type(ESMF_Mesh)             :: Emesh, EMeshTemp
+    type(ESMF_DistGrid)         :: DistGrid              ! esmf global index space descriptor
+    type(ESMF_Time)             :: currTime              ! Current time
+    type(ESMF_Time)             :: startTime             ! Start time
+    type(ESMF_Time)             :: stopTime              ! Stop time
+    type(ESMF_Time)             :: refTime               ! Ref time
+    type(ESMF_TimeInterval)     :: timeStep              ! Model timestep
+    type(ESMF_Calendar)         :: esmf_calendar         ! esmf calendar
+    type(ESMF_CalKind_Flag)     :: esmf_caltype          ! esmf calendar type
+    integer , allocatable       :: gindex(:)             ! global index space on my processor
+    integer                     :: ref_ymd               ! reference date (YYYYMMDD)
+    integer                     :: ref_tod               ! reference time of day (sec)
+    integer                     :: yy,mm,dd              ! Temporaries for time query
+    integer                     :: start_ymd             ! start date (YYYYMMDD)
+    integer                     :: start_tod             ! start time of day (sec)
+    integer                     :: stop_ymd              ! stop date (YYYYMMDD)
+    integer                     :: stop_tod              ! stop time of day (sec)
+    integer                     :: curr_ymd              ! Start date (YYYYMMDD)
+    integer                     :: curr_tod              ! Start time of day (sec)
+    logical                     :: flood_present         ! flag
+    logical                     :: rof_prognostic        ! flag
+    integer                     :: shrlogunit            ! original log unit
+    integer                     :: shrloglev             ! original log level
+    integer                     :: lsize                 ! local size ofarrays
+    integer                     :: n,ni                  ! indices
+    integer                     :: lbnum                 ! input to memory diagnostic
+    integer                     :: nsrest                ! restart type
+    character(CL)               :: calendar              ! calendar type name
+    character(CL)               :: username              ! user name
+    character(CL)               :: caseid                ! case identifier name
+    character(CL)               :: ctitle                ! case description title
+    character(CL)               :: hostname              ! hostname of machine running on
+    character(CL)               :: model_version         ! model version
+    character(CL)               :: starttype             ! start-type (startup, continue, branch, hybrid)
+    character(CL)               :: stdname, shortname    ! needed for advertise
+    logical                     :: brnch_retain_casename ! flag if should retain the case name on a branch start type
+    character(CL)               :: cvalue
+    integer                     :: dbrc
+    character(ESMF_MAXSTR)      :: convCIM, purpComp
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
     !---------------------------------------------------------------------------
 
@@ -371,7 +372,7 @@ module rof_comp_nuopc
     !----------------------
 
     if (masterproc) then
-       write(iulog,format) "MOSART river model initialization"
+       write(iulog,*) "MOSART river model initialization"
        write(iulog,*) ' mosart npes = ',npes
        write(iulog,*) ' mosart iam  = ',iam
        write(iulog,*) ' inst_name = ',trim(inst_name)
@@ -430,7 +431,7 @@ module rof_comp_nuopc
     !--------------------------------
 
     ! determine global index array
-    lsize = rtmCTL%endr - rtmCTL%begr
+    lsize = rtmCTL%endr - rtmCTL%begr + 1
     allocate(gindex(lsize))
     ni = 0
     do n = rtmCTL%begr,rtmCTL%endr
@@ -510,7 +511,7 @@ module rof_comp_nuopc
     ! diagnostics
     !--------------------------------
 
-    if (dbug > 1) then
+    if (debug > 1) then
        call shr_nuopc_methods_State_diagnose(exportState,subname//':ES',rc=rc)
        if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
@@ -614,7 +615,7 @@ module rof_comp_nuopc
     ! Determine if time to write restart
     !--------------------------------
 
-    call ESMF_ClockGetAlarm(clock, alarmname='seq_timemgr_alarm_restart', alarm=alarm, rc=rc)
+    call ESMF_ClockGetAlarm(clock, alarmname='alarm_restart', alarm=alarm, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
@@ -630,7 +631,7 @@ module rof_comp_nuopc
     ! Determine if time to stop
     !--------------------------------
 
-    call ESMF_ClockGetAlarm(clock, alarmname='seq_timemgr_alarm_stop', alarm=alarm, rc=rc)
+    call ESMF_ClockGetAlarm(clock, alarmname='alarm_stop', alarm=alarm, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
@@ -698,7 +699,7 @@ module rof_comp_nuopc
     ! diagnostics
     !--------------------------------
 
-    if (dbug > 1) then
+    if (debug > 1) then
        call shr_nuopc_methods_State_diagnose(exportState,subname//':ES',rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     end if

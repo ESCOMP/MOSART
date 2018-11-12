@@ -7,6 +7,10 @@ module RtmVar
 
   implicit none
 
+  !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
+  integer, parameter, public :: nt_rtm = 2    ! number of tracers
+  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE'/)
+
   ! Constants
   integer, parameter, private ::  iundef = -9999999
   integer, parameter, private ::  rundef = -9999999._r8
@@ -64,9 +68,8 @@ module RtmVar
 
   logical, private :: RtmVar_isset = .false.
 
+!================================================================================
 contains
-
-
 !================================================================================
 
   subroutine RtmVarSet( caseid_in, ctitle_in, brnch_retain_casename_in,    &

@@ -22,12 +22,7 @@ module mosart_cpl_indices
   integer, public :: index_x2r_Flrl_irrig  = 0 ! lnd->rof fraction of volr to be removed for irrigation
   integer, public :: nflds_x2r             = 0
 
-  !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
-  integer, parameter, public :: nt_rtm = 2    ! number of tracers
-  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE'/)
-
   ! roff to driver (part of land for now) (optional if ROF is off)
-
   integer, public :: index_r2x_Forr_rofl    = 0 ! rof->ocn liquid runoff to ocean
   integer, public :: index_r2x_Forr_rofi    = 0 ! rof->ocn ice runoff to ocean
   integer, public :: index_r2x_Flrr_flood   = 0 ! rof->lnd flood runoff (>fthresh) back to land
@@ -62,7 +57,6 @@ contains
     ! driver -> mosart
     !-------------------------------------------------------------
 
-    write(6,*)'DEBUG: flds_x2r= ',trim(flds_x2r)
     call mct_aVect_init(avtmp, rList=flds_x2r, lsize=1)
 
     index_x2r_Flrl_rofsur = mct_avect_indexra(avtmp,'Flrl_rofsur')

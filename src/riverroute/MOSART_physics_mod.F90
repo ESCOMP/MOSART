@@ -13,12 +13,11 @@ MODULE MOSART_physics_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmVar        , only : iulog, barrier_timers
-  use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL, &
-                             SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
+  use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers
+  use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL
+  use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
   use RtmSpmd       , only : masterproc, mpicom_rof
-  use mosart_cpl_indices, only : nt_rtm, rtm_tracers
-  use perf_mod, only: t_startf, t_stopf
+  use perf_mod      , only: t_startf, t_stopf
   use mct_mod
 
   implicit none
@@ -28,6 +27,7 @@ MODULE MOSART_physics_mod
     integer  :: nt               ! loop indices
   real(r8), parameter :: SLOPE1def = 0.1_r8        ! here give it a small value in order to avoid the abrupt change of hydraulic radidus etc.
   real(r8) :: sinatanSLOPE1defr   ! 1.0/sin(atan(slope1))
+
   public Euler
   public updatestate_hillslope
   public updatestate_subnetwork

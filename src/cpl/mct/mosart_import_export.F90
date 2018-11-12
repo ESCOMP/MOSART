@@ -2,7 +2,6 @@ module mosart_import_export
 
   use shr_kind_mod        , only : r8 => shr_kind_r8, cl=>shr_kind_cl
   use shr_sys_mod         , only : shr_sys_abort
-  use mosart_cpl_indices  , only : nt_rtm, rtm_tracers
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub
   use mosart_cpl_indices  , only : index_x2r_Flrl_irrig
@@ -10,7 +9,7 @@ module mosart_import_export
   use mosart_cpl_indices  , only : index_r2x_Flrr_flood
   use mosart_cpl_indices  , only : index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
   use RunoffMod           , only : rtmCTL, TRunoff
-  use RtmVar              , only : iulog, ice_runoff
+  use RtmVar              , only : iulog, ice_runoff, nt_rtm, rtm_tracers
   use RtmSpmd             , only : masterproc, iam
   use RtmTimeManager      , only : get_nstep
 

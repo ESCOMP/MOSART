@@ -21,14 +21,15 @@ module rof_comp_mct
   use RunoffMod        , only : rtmCTL, TRunoff
   use RtmVar           , only : rtmlon, rtmlat, ice_runoff, iulog, &
                                 nsrStartup, nsrContinue, nsrBranch, & 
-                                inst_index, inst_suffix, inst_name, RtmVarSet
+                                inst_index, inst_suffix, inst_name, RtmVarSet, &
+                                nt_rtm, rtm_tracers
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
   use RtmMod           , only : Rtmini, Rtmrun
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep 
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
 
   use mosart_import_export, only : mosart_import, mosart_export
-  use mosart_cpl_indices  , only : mosart_cpl_indices_set, nt_rtm, rtm_tracers
+  use mosart_cpl_indices  , only : mosart_cpl_indices_set
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub
   use mosart_cpl_indices  , only : index_x2r_Flrl_irrig
