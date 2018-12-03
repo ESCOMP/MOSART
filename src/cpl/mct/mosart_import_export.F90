@@ -21,7 +21,7 @@ module mosart_import_export
   public :: mosart_export
 
   integer     ,parameter :: debug = 1 ! internal debug level
-  character(*),parameter :: F01 = "('(mosart_import_export) ',a,i4,2x,i5,2x,i8,2x,d21.8)"
+  character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
 
 !===============================================================================
 contains
@@ -74,28 +74,13 @@ contains
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
     enddo
 
-    if (debug > 0 .and. masterproc) then
-       write(6,*)'DEBUG: index_x2r_Flrl_rofsur= ',index_x2r_Flrl_rofsur
-       write(6,*)'DEBUG: index_x2r_Flrl_rofsub= ',index_x2r_Flrl_rofsub
-       write(6,*)'DEBUG: index_x2r_Flrl_rofgwl= ',index_x2r_Flrl_rofgwl
-
+    if (debug > 0 .and. masterproc .and. get_nstep() < 5) then
        do n = begr,endr
-          n2 = n - begr + 1
-          if (x2r(index_x2r_Flrl_rofsur,n2) /= 0.0) then
-             write(6,F01)'import: iam, nstep, n, Flrl_rofsur = ',iam,get_nstep(),n,x2r(index_x2r_Flrl_rofsur,n2)
-          end if
-          if (x2r(index_x2r_Flrl_rofsub,n2) /= 0.0) then
-             write(6,F01)'import: iam, nstep, n, Flrl_rofsub = ',iam,get_nstep(),n,x2r(index_x2r_Flrl_rofsub,n2)
-          end if
-          if (x2r(index_x2r_Flrl_rofgwl,n2) /= 0.0) then
-             write(6,F01)'import: iam, nstep, n, Flrl_rofgwl = ',iam,get_nstep(),n,x2r(index_x2r_Flrl_rofgwl,n2)
-          end if
-          if (x2r(index_x2r_Flrl_rofi  ,n2) /= 0.0) then
-             write(6,F01)'import: iam, nstep, n, Flrl_rofi   = ',iam,get_nstep(),n,x2r(index_x2r_Flrl_rofi  ,n2)
-          end if
-          if (x2r(index_x2r_Flrl_irrig ,n2) /= 0.0) then
-             write(6,F01)'import: iam, nstep, n, Flrl_irrig  = ',iam,get_nstep(),n,x2r(index_x2r_Flrl_irrig ,n2)
-          end if
+          write(iulog,F01)'import: nstep, n, Flrl_rofsur = ',get_nstep(),n,rtmCTL%qsur(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofsub = ',get_nstep(),n,rtmCTL%qsub(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofgwl = ',get_nstep(),n,rtmCTL%qgwl(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofi   = ',get_nstep(),n,rtmCTL%qsur(n,nfrz)
+          write(iulog,F01)'import: nstep, n, Flrl_irrig  = ',get_nstep(),n,rtmCTL%qirrig(n)
        end do
     end if
 
@@ -192,25 +177,15 @@ contains
        r2x(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
     end do
 
-    if (debug > 0 .and. masterproc) then
+    if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
        ni = 0
        do n = rtmCTL%begr, rtmCTL%endr
           ni = ni + 1
-          if (r2x(index_r2x_Flrr_flood  ,ni) /= 0.0) then
-             write(6,F01)'export: iam, nstep, n, Flrr_flood   = ',iam, get_nstep(), n, r2x(index_r2x_Flrr_flood  ,ni)
-          end if
-          if (r2x(index_r2x_Flrr_volr   ,ni) /= 0.0) then
-             write(6,F01)'export: iam, nstep, n, Flrr_volr    = ',iam, get_nstep(), n, r2x(index_r2x_Flrr_volr   ,ni)
-          end if
-          if (r2x(index_r2x_Flrr_volrmch,ni) /= 0.0) then
-             write(6,F01)'export: iam, nstep, n, Flrr_volrmch = ',iam, get_nstep(), n, r2x(index_r2x_Flrr_volrmch,ni)
-          end if
-          if (r2x(index_r2x_Forr_rofl  , ni) /= 0.0) then
-             write(6,F01)'export: iam, nstep, n, Forr_rofl    = ',iam, get_nstep() ,n, r2x(index_r2x_Forr_rofl  , ni)
-          end if
-          if (r2x(index_r2x_Forr_rofi  , ni) /= 0.0) then
-             write(6,F01)'export: iam, nstep, n, Forr_rofi    = ',iam, get_nstep() ,n, r2x(index_r2x_Forr_rofi  , ni)
-          end if
+          write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, r2x(index_r2x_Flrr_flood  ,ni)
+          write(iulog,F01)'export: nstep, n, Flrr_volr    = ',get_nstep(), n, r2x(index_r2x_Flrr_volr   ,ni)
+          write(iulog,F01)'export: nstep, n, Flrr_volrmch = ',get_nstep(), n, r2x(index_r2x_Flrr_volrmch,ni)
+          write(iulog,F01)'export: nstep, n, Forr_rofl    = ',get_nstep() ,n, r2x(index_r2x_Forr_rofl  , ni)
+          write(iulog,F01)'export: nstep, n, Forr_rofi    = ',get_nstep() ,n, r2x(index_r2x_Forr_rofi  , ni)
        end do
     end if
 

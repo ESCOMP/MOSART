@@ -43,7 +43,7 @@ module rof_import_export
   type (fld_list_type)   :: fldsFrRof(fldsMax)
 
   integer     ,parameter :: debug = 1 ! internal debug level
-  character(*),parameter :: F01 = "('(mosart_import_export) ',a,i4,2x,i5,2x,i8,2x,d21.8)"
+  character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
 
@@ -215,6 +215,16 @@ contains
     rtmCTL%qsub(begr:endr, nfrz) = 0.0_r8
     rtmCTL%qgwl(begr:endr, nfrz) = 0.0_r8
 
+    if (debug > 0 .and. masterproc .and. get_nstep() < 5) then
+       do n = begr,endr
+          write(iulog,F01)'import: nstep, n, Flrl_rofsur = ',get_nstep(),n,rtmCTL%qsur(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofsub = ',get_nstep(),n,rtmCTL%qsub(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofgwl = ',get_nstep(),n,rtmCTL%qgwl(n,nliq)
+          write(iulog,F01)'import: nstep, n, Flrl_rofi   = ',get_nstep(),n,rtmCTL%qsur(n,nfrz)
+          write(iulog,F01)'import: nstep, n, Flrl_irrig  = ',get_nstep(),n,rtmCTL%qirrig(n)
+       end do
+    end if
+
   end subroutine import_fields
 
   !====================================================================================
@@ -331,8 +341,18 @@ contains
     call state_setexport(exportState, 'Flrr_volr', begr, endr, input=volr, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport(exportState, 'Flrr_volr', begr, endr, input=volrmch, rc=rc)
+    call state_setexport(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, rc=rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
+       do n = begr,endr
+          write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, flood(n)
+          write(iulog,F01)'export: nstep, n, Flrr_volr    = ',get_nstep(), n, volr(n)
+          write(iulog,F01)'export: nstep, n, Flrr_volrmch = ',get_nstep(), n, volrmch(n)
+          write(iulog,F01)'export: nstep, n, Forr_rofl    = ',get_nstep() ,n, rofl(n)
+          write(iulog,F01)'export: nstep, n, Forr_rofi    = ',get_nstep() ,n, rofi(n)
+       end do
+    end if
 
     deallocate(rofl, rofi, flood, volr, volrmch)
 
@@ -507,7 +527,9 @@ contains
        if (masterproc .and. debug > 0 .and. get_nstep() < 5) then
           do g = begr,endr
              i = 1 + g - begr
-             write(iulog,F01)'import: nstep, n, '//trim(fldname)//' = ',get_nstep(),i,output(g)
+             if (output(g) /= 0._r8) then
+!                write(iulog,F01)'import: nstep, n, '//trim(fldname)//' = ',get_nstep(),g,output(g)
+             end if
           end do
        end if
 
@@ -567,7 +589,9 @@ contains
        if (masterproc .and. debug > 0 .and. get_nstep() < 5) then
           do g = begr,endr
              i = 1 + g - begr
-             write(iulog,F01)'export: nstep, n, '//trim(fldname)//' = ',get_nstep(),i,input(g)
+             if (input(g) /= 0._r8) then
+!                write(iulog,F01)'export: nstep, n, '//trim(fldname)//' = ',get_nstep(),i,input(g)
+             end if
           end do
        end if
 
