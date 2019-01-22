@@ -121,7 +121,7 @@ contains
     ! local variables
     type(ESMF_State)     :: importState
     type(ESMF_State)     :: exportState
-    character(len=*), parameter :: subname='(lnd_import_export:realize_fields)'
+    character(len=*), parameter :: subname='(rof_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -368,7 +368,7 @@ contains
     ! local variables
     integer :: rc
     integer :: dbrc
-    character(len=*), parameter :: subname='(dshr_nuopc_mod:fldlist_add)'
+    character(len=*), parameter :: subname='(rof_import_export:fldlist_add)'
     !-------------------------------------------------------------------------------
 
     ! Set up a list of field information
@@ -407,7 +407,7 @@ contains
     integer                :: n
     type(ESMF_Field)       :: field
     character(len=80)      :: stdname
-    character(len=*),parameter  :: subname='(dshr_nuopc_mod:fldlist_realize)'
+    character(len=*),parameter  :: subname='(rof_import_export:fldlist_realize)'
     ! ----------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -460,7 +460,7 @@ contains
       ! local variables
       type(ESMF_Distgrid) :: distgrid
       type(ESMF_Grid)     :: grid
-      character(len=*), parameter :: subname='(dshr_nuopc_mod:SetScalarField)'
+      character(len=*), parameter :: subname='(rof_import_export:SetScalarField)'
       ! ----------------------------------------------
 
       rc = ESMF_SUCCESS

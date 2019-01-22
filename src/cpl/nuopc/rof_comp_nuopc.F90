@@ -23,8 +23,6 @@ module rof_comp_nuopc
   use shr_nuopc_scalars_mod , only : flds_scalar_num
   use shr_nuopc_scalars_mod , only : flds_scalar_index_nx
   use shr_nuopc_scalars_mod , only : flds_scalar_index_ny
-  use shr_nuopc_scalars_mod , only : flds_scalar_index_rofice_present
-  use shr_nuopc_scalars_mod , only : flds_scalar_index_flood_present
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_chkerr
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_Clock_TimePrint
   use shr_nuopc_methods_mod , only : shr_nuopc_methods_State_SetScalar
@@ -419,10 +417,7 @@ module rof_comp_nuopc
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    ! TODO: are not handling rof_prognostic = .false. for now
-    ! how should this be handled in NUOPC? 
-    ! What happens if you don't realize any of the component fields - but you ask to run that
-    ! component in the run sequence? Question for Gerhard.
+    ! TODO: are not handling rof_prognostic = .false. for now, how should this be handled in NUOPC? 
 
     call Rtmini(rtm_active=rof_prognostic, flood_active=flood_present)
 
@@ -473,28 +468,11 @@ module rof_comp_nuopc
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Set global grid size scalars in export state
-    call shr_nuopc_methods_State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, mpicom_rof, &
+    call shr_nuopc_methods_State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
          flds_scalar_name, flds_scalar_num, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_nuopc_methods_State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, mpicom_rof, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    ! Set flood_present scalar in export state
-    if (flood_present) then
-       call shr_nuopc_methods_State_SetScalar(1.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    else
-       call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_flood_present, exportState, mpicom_rof, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
-
-    ! Set rofice_present scalar in export state
-    ! TODO: For now hard-wire rofice_present to be false
-    call shr_nuopc_methods_State_SetScalar(0.0_r8, flds_scalar_index_rofice_present, exportState, mpicom_rof, &
+    call shr_nuopc_methods_State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
          flds_scalar_name, flds_scalar_num, rc)
     if (shr_nuopc_methods_ChkErr(rc,__LINE__,u_FILE_u)) return
 
