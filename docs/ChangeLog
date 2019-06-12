@@ -1,4 +1,18 @@
 ===============================================================
+Tag name:  mosart1_0_33
+Originator(s): erik
+Date: Jun 11, 2019
+One-line Summary: buildlib updates for cime5.8 and nldas grid
+
+buildlib changes needed for cime5.8 from @jedwards.
+
+Also adds a nldas routing grid from @billsacks.
+
+Testing: Run mosart test suite (with cime tag branch_tags/cime5.8.3_chint17-02)
+   hobart ---- PASS
+   cheyenne -- PASS
+
+===============================================================
 Tag name:  mosart1_0_32
 Originator(s): erik
 Date: May 07, 2019
