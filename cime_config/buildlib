@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-
-import os, shutil, sys, glob
+"""
+Build the mosart component library
+"""
+#pylint: disable=unused-wildcard-import, wildcard-import, multiple-imports
+#pylint: disable=wrong-import-position, invalid-name, too-many-locals
+import os, sys
 
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
@@ -23,8 +27,8 @@ def _build_mosart():
 
     with Case(caseroot) as case:
         casetools = case.get_value("CASETOOLS")
-        gmake_j   = case.get_value("GMAKE_J")
-        gmake     = case.get_value("GMAKE")
+        gmake_j = case.get_value("GMAKE_J")
+        gmake = case.get_value("GMAKE")
 
         # create Filepath file
         objroot = case.get_value("OBJROOT")
@@ -43,7 +47,7 @@ def _build_mosart():
                 filepath.write("\n")
 
         # build the library
-        complib = os.path.join(libroot,"librof.a")
+        complib = os.path.join(libroot, "librof.a")
         makefile = os.path.join(casetools, "Makefile")
 
         cmd = "{} complib -j {} MODEL=mosart COMPLIB={} -f {} {}" \
@@ -52,7 +56,7 @@ def _build_mosart():
         rc, out, err = run_cmd(cmd, from_dir=bldroot)
         expect(rc == 0, "Command %s failed rc=%d\nout=%s\nerr=%s" % (cmd, rc, out, err))
 
-        logger.info("Command %s completed with output %s\nerr %s" ,cmd, out, err)
+        logger.info("Command %s completed with output %s\nerr %s", cmd, out, err)
 
 ###############################################################################
 

@@ -1,4 +1,50 @@
 ===============================================================
+Tag name:  mosart1_0_33
+Originator(s): erik
+Date: Jun 11, 2019
+One-line Summary: buildlib updates for cime5.8 and nldas grid
+
+buildlib changes needed for cime5.8 from @jedwards.
+
+Also adds a nldas routing grid from @billsacks.
+
+Testing: Run mosart test suite (with cime tag branch_tags/cime5.8.3_chint17-02)
+   hobart ---- PASS
+   cheyenne -- PASS
+
+===============================================================
+Tag name:  mosart1_0_32
+Originator(s): erik
+Date: May 07, 2019
+One-line Summary:  Move release-cesm2.0.03 to mosart master
+
+Don't allow the namelist option rtmhist_ndens to be set to 2, because this
+option doesn't currently function. The simple fix we put into place for it
+is not robust.
+
+Fix for python3, using the floor operator for integer division.
+
+Add in 8th degree routine file. Run pylint and check for py3 compatability.
+There's explict setting of fill type. And also explicit use of shr_kind_r4 for 
+kind rather than real(4), which is a better mechanism. Also ncd_getiodesc 
+will read in PIO_DOUBLE for input xtype= PIO_DOUBLE or PIO_REAL. Most of this
+is direct from jedwards4b (other than r8th addition).
+
+Issues Fixed: #18 #10
+  #18 -- rtmhist_ndens=2 does NOT work (so don't allow it as an option)
+  #10 -- With python3, coupling_period is real rather than int
+
+Science  changes since: mosart1_0_31
+   Added in 8th degree routing file (r8th)
+Software changes since: mosart1_0_31
+   Run pylint on python buildlib and buildnml scripts, check for py3 compatibility.
+   Corrects the integer fill value. Needed for pio2.
+
+Testing: Run mosart test suite
+   hobart ---- PASS
+   cheyenne -- PASS
+
+===============================================================
 Tag name:  mosart1_0_31
 Originator(s): erik
 Date: May 15, 2018

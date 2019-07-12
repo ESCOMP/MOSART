@@ -42,7 +42,7 @@ module RtmHistFile
 !
   integer :: ni
   integer, public :: &
-       rtmhist_ndens(max_tapes) = 2         ! namelist: output density of netcdf history files
+       rtmhist_ndens(max_tapes) = 1         ! namelist: output density of netcdf history files
   integer, public :: &
        rtmhist_mfilt(max_tapes) = 30        ! namelist: number of time samples per tape
   integer, public :: &
@@ -51,7 +51,7 @@ module RtmHistFile
        rtmhist_avgflag_pertape(max_tapes) = (/(' ',ni=1,max_tapes)/)   ! namelist: per tape averaging flag
 
   ! list of fields to add
-  character(len=max_namlen+2), public :: rtmhist_fincl1(max_flds) = ' '       
+  character(len=max_namlen+2), public :: rtmhist_fincl1(max_flds) = ' '
   character(len=max_namlen+2), public :: rtmhist_fincl2(max_flds) = ' '
   character(len=max_namlen+2), public :: rtmhist_fincl3(max_flds) = ' '
   !
@@ -60,13 +60,13 @@ module RtmHistFile
   character(len=max_namlen+2), public :: time_period_freq = ' '
 
   ! list of fields to remove
-  character(len=max_namlen+2), public :: rtmhist_fexcl1(max_flds) = ' ' 
-  character(len=max_namlen+2), public :: rtmhist_fexcl2(max_flds) = ' ' 
-  character(len=max_namlen+2), public :: rtmhist_fexcl3(max_flds) = ' ' 
+  character(len=max_namlen+2), public :: rtmhist_fexcl1(max_flds) = ' '
+  character(len=max_namlen+2), public :: rtmhist_fexcl2(max_flds) = ' '
+  character(len=max_namlen+2), public :: rtmhist_fexcl3(max_flds) = ' '
 
   ! equivalence list of fields to add/remove
-  character(len=max_namlen+2), public :: fexcl(max_flds,max_tapes)         
-  character(len=max_namlen+2), public :: fincl(max_flds,max_tapes)         
+  character(len=max_namlen+2), public :: fexcl(max_flds,max_tapes)
+  character(len=max_namlen+2), public :: fincl(max_flds,max_tapes)
 
 !! Restart
 !
@@ -114,7 +114,7 @@ module RtmHistFile
      character(len=max_namlen) :: name         ! field name
      character(len=max_chars)  :: long_name    ! long name
      character(len=max_chars)  :: units        ! units
-     integer :: hpindex                        ! history pointer index 
+     integer :: hpindex                        ! history pointer index
   end type field_info
 
   type master_entry
@@ -213,7 +213,7 @@ contains
   subroutine RtmHistHtapesBuild ()
 
     ! !DESCRIPTION:
-    ! Initialize ntapes history file for initial or branch run.  
+    ! Initialize ntapes history file for initial or branch run.
 
     ! !ARGUMENTS:
     implicit none
@@ -376,7 +376,7 @@ contains
              ! will not be called for field
              avgflag = getflag (fincl(ff,t))
              call htape_addfld (t, f, avgflag)
-          else 
+          else
              ! find index of field in exclude list
              call list_index (fexcl(1,t), mastername, ff)
 
@@ -465,7 +465,7 @@ contains
        call shr_sys_flush(iulog)
     end if
 
-    ! Set flag indicating h-tape contents are now defined 
+    ! Set flag indicating h-tape contents are now defined
 
     htapes_defined = .true.
 
@@ -711,9 +711,9 @@ contains
     str = get_filename(frivinp_rtm)
     call ncd_putatt(lnfid, ncd_global, 'RTM_input_dataset', trim(str))
 
-    !     
+    !
     ! add global attribute time_period_freq
-    !     
+    !
     if (rtmhist_nhtfrq(t) < 0) then !hour need to convert to seconds
         sec_hist_nhtfrq = abs(rtmhist_nhtfrq(t))*3600
     else
@@ -825,7 +825,7 @@ contains
        dim1id(1) = time_dimid
        str = 'days since ' // basedate // " " // basesec
        call ncd_defvar(nfid(t), 'time', tape(t)%ncprec, 1, dim1id, varid, &
-            long_name='time',units=str) 
+            long_name='time',units=str)
        cal = get_calendar()
        if (      trim(cal) == NO_LEAP_C   )then
           caldesc = "noleap"
@@ -860,13 +860,13 @@ contains
        call ncd_defvar(varname='lat', xtype=tape(t)%ncprec, dim1name='lat', &
             long_name='runoff coordinate latitude', units='degrees_north', ncid=nfid(t))
        call ncd_defvar(varname='mask', xtype=ncd_int, dim1name='lon', dim2name='lat', &
-            long_name='runoff mask', units='unitless', ncid=nfid(t))
+            long_name='runoff mask', units='unitless', ncid=nfid(t), ifill_value=ispval)
        call ncd_defvar(varname='area', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-            long_name='runoff grid area', units='m2', ncid=nfid(t))
+            long_name='runoff grid area', units='m2', ncid=nfid(t), fill_value=spval)
        call ncd_defvar(varname='areatotal', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-            long_name='basin upstream areatotal', units='m2', ncid=nfid(t))
+            long_name='basin upstream areatotal', units='m2', ncid=nfid(t), fill_value=spval)
        call ncd_defvar(varname='areatotal2', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-            long_name='computed basin upstream areatotal', units='m2', ncid=nfid(t))
+            long_name='computed basin upstream areatotal', units='m2', ncid=nfid(t), fill_value=spval)
 
     else if (mode == 'write') then
 
@@ -1012,7 +1012,7 @@ contains
                 end if
              end do
           end do
-          
+
           ! Increment current time sample counter.
           tape(t)%ntimes = tape(t)%ntimes + 1
 
@@ -1041,7 +1041,7 @@ contains
                 long_name  = tape(t)%hlist(f)%field%long_name
                 units      = tape(t)%hlist(f)%field%units
                 avgflag    = tape(t)%hlist(f)%avgflag
-                
+
                 select case (avgflag)
                 case ('A')
                    avgstr = 'mean'
@@ -1056,13 +1056,13 @@ contains
                         ' ERROR: unknown time averaging flag (avgflag)=',avgflag
                    call shr_sys_abort()
                 end select
-                
+
                 call ncd_defvar(ncid=nfid(t), varname=varname, xtype=tape(t)%ncprec, &
                      dim1name='lon', dim2name='lat', dim3name='time', &
                      long_name=long_name, units=units, cell_method=avgstr, &
                      missing_value=spval, fill_value=spval)
              end do
-                
+
              ! Exit define model
              call ncd_enddef(nfid(t))
 
@@ -1108,11 +1108,11 @@ contains
     ! must reopen the files
 
     do t = 1, ntapes
-       if (nlend) then      
+       if (nlend) then
           if_close(t) = .true.
-       else if (rstwr) then 
+       else if (rstwr) then
           if_close(t) = .true.
-       else                  
+       else
           if (tape(t)%ntimes == tape(t)%mfilt) then
              if_close(t) = .true.
           else
@@ -1233,7 +1233,7 @@ contains
             dim1name='max_chars', dim2name="ntapes" )
 
        ! max_nflds is the maximum number of fields on any tape
-       ! max_flds is the maximum number possible number of fields 
+       ! max_flds is the maximum number possible number of fields
        max_nflds = max_nFields()
 
        ! Loop over tapes - write out namelist information to each restart-history tape
@@ -1260,7 +1260,7 @@ contains
                 long_name_acc  =  trim(long_name) // " accumulator number of samples"
                 nacs           => tape(t)%hlist(f)%nacs
                 hbuf           => tape(t)%hlist(f)%hbuf
-               
+
                 call ncd_defvar(ncid=ncid_hist(t), varname=trim(name), xtype=ncd_double, &
                      dim1name='lon', dim2name='lat', &
                      long_name=trim(long_name), units=trim(units))
@@ -1278,9 +1278,9 @@ contains
           call ncd_defdim( ncid_hist(t), 'len1'         , 1           , dimid)
           call ncd_defdim( ncid_hist(t), 'scalar'       , 1           , dimid)
           call ncd_defdim( ncid_hist(t), 'max_chars'    , max_chars   , dimid)
-          call ncd_defdim( ncid_hist(t), 'max_nflds'    , max_nflds   ,  dimid)   
-          call ncd_defdim( ncid_hist(t), 'max_flds'     , max_flds    , dimid)   
-       
+          call ncd_defdim( ncid_hist(t), 'max_nflds'    , max_nflds   ,  dimid)
+          call ncd_defdim( ncid_hist(t), 'max_flds'     , max_flds    , dimid)
+
           call ncd_defvar(ncid=ncid_hist(t), varname='nhtfrq', xtype=ncd_int, &
                long_name="Frequency of history writes",               &
                comment="Namelist item", &
@@ -1316,7 +1316,7 @@ contains
           call ncd_defvar(ncid=ncid_hist(t), varname='begtime', xtype=ncd_double, &
                long_name="Beginning time", units="time units",     &
                dim1name='scalar')
-   
+
           call ncd_defvar(ncid=ncid_hist(t), varname='hpindex', xtype=ncd_int, &
                long_name="History pointer index", units="unitless",     &
                dim1name='max_nflds' )
@@ -1336,7 +1336,7 @@ contains
                dim1name='max_chars', dim2name='max_nflds' )
           call ncd_enddef(ncid_hist(t))
 
-       end do   ! end of ntapes loop   
+       end do   ! end of ntapes loop
 
        RETURN
 
@@ -1349,7 +1349,7 @@ contains
           call ncd_io('locfnh',  locfnh(t),  'write', ncid, nt=t)
           call ncd_io('locfnhr', locfnhr(t), 'write', ncid, nt=t)
        end do
-       
+
        fincl(:,1) = rtmhist_fincl1(:)
        fincl(:,2) = rtmhist_fincl2(:)
        fincl(:,3) = rtmhist_fincl3(:)
@@ -1413,11 +1413,11 @@ contains
           call strip_null(locfnh(t))
        end do
 
-       ! Determine necessary indices - the following is needed if model decomposition 
+       ! Determine necessary indices - the following is needed if model decomposition
        ! is different on restart
        begrof = rtmCTL%begr
        endrof = rtmCTL%endr
-       
+
        start(1)=1
        do t = 1,ntapes
           call getfil( locrest(t), locfnhr(t), 0 )
@@ -1489,7 +1489,7 @@ contains
        rtmhist_fexcl1(:) = fexcl(:,1)
        rtmhist_fexcl2(:) = fexcl(:,2)
        rtmhist_fexcl3(:) = fexcl(:,3)
-       
+
        if ( allocated(itemp2d) ) deallocate(itemp2d)
 
     end if
@@ -1498,8 +1498,8 @@ contains
     ! If the current history file(s) are not full, file(s) are opened
     ! so that subsequent time samples are added until the file is full.
     ! A new history file is used on a branch run.
-    
-    if (flag == 'write') then     
+
+    if (flag == 'write') then
 
        do t = 1,ntapes
           if (.not. tape(t)%is_endhist) then
@@ -1516,9 +1516,9 @@ contains
              end do
           end if  ! end of is_endhist block
           call ncd_pio_closefile(ncid_hist(t))
-       end do  ! end of ntapes loop   
+       end do  ! end of ntapes loop
 
-    else if (flag == 'read') then 
+    else if (flag == 'read') then
 
        ! Read history restart information if history files are not full
        do t = 1,ntapes
@@ -1528,7 +1528,7 @@ contains
                 name_acc   =  trim(name) // "_acc"
                 nacs       => tape(t)%hlist(f)%nacs
                 hbuf       => tape(t)%hlist(f)%hbuf
-                
+
                 call ncd_io(ncid=ncid_hist(t), flag='read', varname=trim(name), &
                      dim1name='allrof', data=hbuf)
                 call ncd_io(ncid=ncid_hist(t), flag='read', varname=trim(name_acc), &
@@ -1539,7 +1539,7 @@ contains
        end do
 
     end if
-    
+
   end subroutine RtmHistRestart
 
 !-----------------------------------------------------------------------
@@ -1560,7 +1560,7 @@ contains
     do t = 1,ntapes
        max_nFields = max(max_nFields, tape(t)%nflds)
     end do
-    
+
   end function max_nFields
 
 !-----------------------------------------------------------------------
@@ -1570,29 +1570,29 @@ contains
     ! DESCRIPTION:
     ! Retrieve name portion of inname. If an averaging flag separater character
     ! is present (:) in inname, lop it off.
-    
+
     ! ARGUMENTS:
     implicit none
     character(len=*), intent(in) :: inname
-    
+
     integer :: length
     integer :: i
     character(len=*),parameter :: subname = 'getname'
-    
+
     length = len (inname)
     if (length < max_namlen .or. length > max_namlen+2) then
        write(iulog,*) trim(subname),' ERROR: bad length=',length
        call shr_sys_abort()
     end if
-    
+
     getname = ' '
     do i = 1,max_namlen
        if (inname(i:i) == ':') exit
        getname(i:i) = inname(i:i)
     end do
-    
+
    end function getname
-   
+
 !-----------------------------------------------------------------------
 
    character(len=1) function getflag (inname)
@@ -1659,13 +1659,13 @@ contains
   character(len=max_length_filename) function set_hist_filename (hist_freq, rtmhist_mfilt, hist_file)
 
     ! Determine history dataset filenames.
-    
+
     ! !ARGUMENTS:
     implicit none
     integer, intent(in)  :: hist_freq   !history file frequency
     integer, intent(in)  :: rtmhist_mfilt  !history file number of time-samples
     integer, intent(in)  :: hist_file   !history file index
-    
+
     ! !LOCAL VARIABLES:
     character(len=256) :: cdate       !date char string
     character(len=  1) :: hist_index  !p,1 or 2 (currently)
@@ -1675,7 +1675,7 @@ contains
     integer :: sec                    !seconds into current day
     integer :: filename_length
     character(len=*),parameter :: subname = 'set_hist_filename'
-    
+
     if (hist_freq == 0 .and. rtmhist_mfilt == 1) then   !monthly
        call get_prev_date (yr, mon, day, sec)
        write(cdate,'(i4.4,"-",i2.2)') yr,mon
@@ -1708,7 +1708,7 @@ contains
 
   subroutine RtmHistAddfld (fname, units, avgflag, long_name, ptr_rof, default)
 
-    ! Initialize a single level history field. 
+    ! Initialize a single level history field.
 
     ! !ARGUMENTS:
     implicit none
@@ -1717,7 +1717,7 @@ contains
     character(len=1), intent(in)           :: avgflag        ! time averaging flag
     character(len=*), intent(in)           :: long_name      ! long name of field
     real(r8)        , pointer              :: ptr_rof(:)     ! pointer to channel runoff
-    character(len=*), optional, intent(in) :: default        ! if set to 'inactive, 
+    character(len=*), optional, intent(in) :: default        ! if set to 'inactive,
                                                              ! field will not appear on primary tape
 
     ! !LOCAL VARIABLES:
@@ -1794,11 +1794,10 @@ contains
 
   subroutine strip_null(str)
     character(len=*), intent(inout) :: str
-    integer :: i	
+    integer :: i
     do i=1,len(str)
        if(ichar(str(i:i))==0) str(i:i)=' '
     end do
   end subroutine strip_null
-  
-end module RtmHistFile
 
+end module RtmHistFile

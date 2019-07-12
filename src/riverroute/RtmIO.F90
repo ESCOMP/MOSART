@@ -9,7 +9,7 @@ module RtmIO
 ! Generic interfaces to write fields to netcdf files for RTM
 !
 ! !USES:
-  use shr_kind_mod   , only : r8 => shr_kind_r8, i8=>shr_kind_i8, shr_kind_cl
+  use shr_kind_mod   , only : r8 => shr_kind_r8, i8=>shr_kind_i8, shr_kind_cl, r4=>shr_kind_r4
   use shr_sys_mod    , only : shr_sys_flush, shr_sys_abort
   use shr_file_mod   , only : shr_file_getunit, shr_file_freeunit
   use RtmFileUtils   , only : getavu, relavu
@@ -632,10 +632,10 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer :: status
-    real*4  :: value4
+    real(r4)  :: value4
     !-----------------------------------------------------------------------
 
-    value4 = value
+    value4 = real(value, kind=r4)
 
     if (xtype == pio_double) then
        status = PIO_put_att(ncid,varid,trim(attrib),value)
@@ -698,6 +698,7 @@ contains
     integer          , intent(in), optional :: ifill_value    ! attribute for int
     integer          , intent(in), optional :: flag_values(:)  ! attribute for int
     integer          , intent(in), optional :: nvalid_range(2)  ! attribute for int
+
     !
     ! !LOCAL VARIABLES:
     integer :: n                   ! indices
@@ -1607,7 +1608,7 @@ contains
        if (present(nt)) then
           call pio_setframe(ncid, vardesc, int(nt,kind=PIO_Offset_kind))
        end if
-       call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=0)
+       call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=ispval)
 
     else
 
@@ -1825,8 +1826,11 @@ contains
        if (present(nt)) then
           call pio_setframe(ncid,vardesc, int(nt,kind=PIO_Offset_kind))
        end if
-       call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=spval)
-
+       if(xtype == ncd_float) then
+          call shr_sys_abort( subname//' error: Attempt to write out single-precision data which is current NOT implemented (see issue #18)' )
+       else
+          call pio_write_darray(ncid, vardesc, iodesc_plus%iodesc, data, status, fillval=spval)
+       endif
     else
 
        if (masterproc) then
@@ -1855,7 +1859,6 @@ contains
     integer          , intent(out)   :: iodnum     ! iodesc num in list
     ! !LOCAL VARIABLES:
     integer :: k,m,n,cnt                     ! indices
-    integer :: basetype                      ! pio basetype
     integer :: lsize                         ! local size
     integer :: gsize                         ! global size
     integer :: status                        ! error status
@@ -1928,14 +1931,6 @@ contains
 
     ! Initialize the decomposition for PIO
 
-    if (xtype == pio_double ) then
-       basetype = PIO_DOUBLE
-    else if (xtype == pio_real) then
-       basetype  = PIO_DOUBLE
-    else if (xtype == pio_int) then
-       basetype = PIO_INT
-    end if
-
     gsize = rtmCTL%numr
     lsize = rtmCTL%lnumr
     allocate(compDOF(lsize))
@@ -1954,7 +1949,7 @@ contains
           call mpi_barrier(mpicom_rof,status)
        enddo
     endif
-    call pio_initdecomp(pio_subsystem, baseTYPE, dims(1:ndims), compDOF, iodesc_list(iodnum)%iodesc)
+    call pio_initdecomp(pio_subsystem, xTYPE, dims(1:ndims), compDOF, iodesc_list(iodnum)%iodesc)
     deallocate(compDOF)
 
     iodesc_list(iodnum)%type  = xtype

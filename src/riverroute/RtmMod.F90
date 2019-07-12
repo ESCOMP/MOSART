@@ -2579,7 +2579,7 @@ contains
            TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
 
            ! constrain hlen (hillslope length) values based on cell area
-           hlen_max = max(1000.0, sqrt(TUnit%area(iunit)))
+           hlen_max = max(1000.0_r8, sqrt(TUnit%area(iunit)))
            if(TUnit%hlen(iunit) > hlen_max) then
               TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainag\e density estimation. TO DO
            end if
