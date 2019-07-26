@@ -695,12 +695,8 @@ contains
     ! Check that internal clock is in sync with master clock
     !--------------------------------
 
-    ! Check that internal clock is in sync with master clock
-    ! Note that the driver clock has not been updated yet - so at this point
-    ! MOSART is actually 1 coupling intervals ahead of the driver clock
-
     dtime = get_step_size()
-    call get_curr_date( yr, mon, day, tod, offset=-dtime )
+    call get_curr_date( yr, mon, day, tod)
     ymd = yr*10000 + mon*100 + day
     tod = tod
 
