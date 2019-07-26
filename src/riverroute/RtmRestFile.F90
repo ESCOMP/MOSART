@@ -16,14 +16,14 @@ module RtmRestFile
                              caseid, nsrest, brnch_retain_casename, &
                              finidat_rtm, nrevsn_rtm, spval, &
                              nsrContinue, nsrBranch, nsrStartup, &
-                             ctitle, version, username, hostname, conventions, source
+                             ctitle, version, username, hostname, conventions, source, &
+                             nt_rtm, nt_rtm, rtm_tracers 
   use RtmHistFile   , only : RtmHistRestart
   use RtmFileUtils  , only : relavu, getavu, opnfil, getfil
   use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
   use RunoffMod     , only : rtmCTL
   use RtmIO
   use RtmDateTime
-  use rof_cpl_indices , only : nt_rtm, rtm_tracers
 !
 ! !PUBLIC TYPES:
   implicit none
