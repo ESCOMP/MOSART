@@ -1,4 +1,35 @@
 ===============================================================
+Tag name:  mosart1_0_34
+Originator(s): mvertens/erik
+Date: Jul 25, 2019
+One-line Summary: Add nuopc cap for NUOPC coupler option
+
+Add another driver cap for NUOPC in addition to the MCT cap.
+As part of this rof_cpl_indices.F90 which was shared under
+"src/cpl" was moved inside of the "src/cpl/mct" with "rof"
+renamed to "mosart" since this isn't shared in between the
+driver caps. The NUOPC cap doesn't use the coupler integer
+indexes, only the character names.
+
+A helper module for NUOPC ESMF functionality was added called
+rof_comp_nuopc.
+
+This also meant that nt_rtm and rtm_tracers was moved from
+the rof_cpl_indices file to RtmVar.F90 so it could be shared
+between the two caps.
+
+Also to match the nuopc cap the import_export part of the
+MCT cap was pulled out in it's own file.
+
+Testing: Run mosart test suite (with ctsm tag ctsm1.0.dev049 and
+         branch_tags/cime5.8.3_chint17-03
+   izumi ---- PASS (compare to hobart)
+
+Pull Request: #25
+  #25 -- nuopc cap
+
+===============================================================
+===============================================================
 Tag name:  mosart1_0_33
 Originator(s): erik
 Date: Jun 11, 2019
