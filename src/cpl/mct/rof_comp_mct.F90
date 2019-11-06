@@ -6,7 +6,7 @@ module rof_comp_mct
 
   use seq_flds_mod     , only : seq_flds_x2r_fields, seq_flds_r2x_fields
   use shr_flds_mod     , only : shr_flds_dom_coord, shr_flds_dom_other
-  use shr_kind_mod     , only : r8 => shr_kind_r8
+  use shr_kind_mod     , only : r8 => shr_kind_r8, CL => shr_kind_cl
   use shr_file_mod     , only : shr_file_setLogUnit, shr_file_setLogLevel, &
                                 shr_file_getLogUnit, shr_file_getLogLevel, &
                                 shr_file_getUnit, shr_file_setIO
@@ -95,14 +95,14 @@ contains
     integer :: lbnum                                 ! input to memory diagnostic
     integer :: shrlogunit,shrloglev                  ! old values for log unit and log level
     integer :: begr, endr
-    character(len=SHR_KIND_CL) :: caseid             ! case identifier name
-    character(len=SHR_KIND_CL) :: ctitle             ! case description title
-    character(len=SHR_KIND_CL) :: starttype          ! start-type (startup, continue, branch, hybrid)
-    character(len=SHR_KIND_CL) :: calendar           ! calendar type name
-    character(len=SHR_KIND_CL) :: hostname           ! hostname of machine running on
-    character(len=SHR_KIND_CL) :: version            ! Model version
-    character(len=SHR_KIND_CL) :: username           ! user running the model
-    character(len=SHR_KIND_CL) :: model_doi_url      ! Web address for model Digital Object Identifier (DOI)
+    character(len=CL) :: caseid                      ! case identifier name
+    character(len=CL) :: ctitle                      ! case description title
+    character(len=CL) :: starttype                   ! start-type (startup, continue, branch, hybrid)
+    character(len=CL) :: calendar                    ! calendar type name
+    character(len=CL) :: hostname                    ! hostname of machine running on
+    character(len=CL) :: version                     ! Model version
+    character(len=CL) :: username                    ! user running the model
+    character(len=CL) :: model_doi_url               ! Web address for model Digital Object Identifier (DOI)
     character(len=32), parameter :: sub = 'rof_init_mct'
     character(len=*),  parameter :: format = "('("//trim(sub)//") :',A)"
     !---------------------------------------------------------------------------
