@@ -68,6 +68,7 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
     #----------------------------------------------------
 
     run_type = case.get_value("RUN_TYPE")
+    finidat_rtm = str(nmlgen.get_value("finidat_rtm"))
     if run_type == 'branch' or run_type == 'hybrid':
         run_refcase = case.get_value("RUN_REFCASE")
         run_refdate = case.get_value("RUN_REFDATE")
@@ -82,9 +83,11 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         else:
 
             nmlgen.add_default("nrevsn_rtm", value=filename)
+    elif nmlgen.get_value("finidat_rtm").strip() == '':
+        nmlgen.set_value('finidat_rtm', value=' ')
     else:
         if nmlgen.get_default('finidat_rtm') == 'UNSET':
-            nmlgen.add_default('finidat_rtm', value='', ignore_abs_path=True)
+            nmlgen.add_default('finidat_rtm', value=' ', ignore_abs_path=True)
         else:
             nmlgen.add_default("finidat_rtm")
 
