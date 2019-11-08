@@ -83,7 +83,7 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         else:
 
             nmlgen.add_default("nrevsn_rtm", value=filename)
-    elif nmlgen.get_value("finidat_rtm").strip() == '':
+    elif finidat_rtm.strip() == '':
         nmlgen.set_value('finidat_rtm', value=' ')
     else:
         if nmlgen.get_default('finidat_rtm') == 'UNSET':
