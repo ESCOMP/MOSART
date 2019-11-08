@@ -1,4 +1,22 @@
 ===============================================================
+Tag name:  mosart1_0_35
+Originator(s): erik
+Date: Nov 08, 2019
+One-line Summary: Add nuopc cap for NUOPC coupler option
+
+    Fix for cold start #24 and add cold start test
+
+    Fix 8th degree file, #26
+
+    Change wallclock time in tests and change hobart for izumi
+
+    Add code of conduct
+
+    Change all instances of SHR_KIND_CL to use CL that is renamed from
+    shr_kind_cl in shr_kind_mod. This is important for a recent cime
+    update.
+
+===============================================================
 Tag name:  mosart1_0_34
 Originator(s): mvertens/erik
 Date: Jul 25, 2019
