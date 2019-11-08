@@ -5,10 +5,10 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
-      <machine name="hobart" compiler="nag" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
       <option name="comment"  >Restart test without DEBUG on all machines/compilers</option>
     </options>
   </test>
@@ -17,7 +17,7 @@
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   <test name="ERS_Ld5" grid="f10_f10_musgs" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
@@ -25,17 +25,17 @@
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   <test name="SMS_D_Ld5" grid="f10_f10_musgs" compset="I1850Clm50Bgc" testmods="mosart/default">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
-      <machine name="hobart" compiler="nag" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
       <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
     </options>
   </test>
@@ -44,7 +44,7 @@
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
       <option name="comment"  >decompOpts are not bit for bit on PE layout change</option>
     </options>
   </test>
@@ -53,7 +53,7 @@
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
-      <option name="wallclock">0:20</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
 </testlist>
