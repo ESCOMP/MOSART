@@ -20,6 +20,15 @@ from CIME.build import get_standard_makefile_args
 logger = logging.getLogger(__name__)
 
 ###############################################################################
+def _get_osvar(key, default):
+###############################################################################
+    if key in os.environ:
+        value = os.environ[key]
+    else:
+        value = default
+    return value
+
+###############################################################################
 def _build_mosart():
 ###############################################################################
 
@@ -34,6 +43,10 @@ def _build_mosart():
         objroot = case.get_value("OBJROOT")
         filepath_file = os.path.join(objroot,"rof","obj","Filepath")
         driver = case.get_value("COMP_INTERFACE").lower()
+
+        lilac_mode = _get_osvar('LILAC_MODE', 'off')
+        if lilac_mode == 'on':
+            driver = "lilac"
 
         if not os.path.isfile(filepath_file):
             srcroot = case.get_value("SRCROOT")

@@ -80,22 +80,22 @@ contains
     !  Set input control variables.
     !
     ! !ARGUMENTS:
-    character(len=CL), optional, intent(IN) :: caseid_in                ! case id
-    character(len=CL), optional, intent(IN) :: ctitle_in                ! case title
-    integer          , optional, intent(IN) :: nsrest_in                ! 0: initial run. 1: restart: 3: branch
-    character(len=CL), optional, intent(IN) :: version_in               ! model version
-    character(len=CL), optional, intent(IN) :: hostname_in              ! hostname running on
-    character(len=CL), optional, intent(IN) :: username_in              ! username running job
-    character(len=CL), optional, intent(IN) :: model_doi_url_in         ! web address of Digital Object Identifier (DOI) for model version
-    logical          , optional, intent(IN) :: brnch_retain_casename_in ! true => allow case name to
+    character(len=*) , optional, intent(in) :: caseid_in                ! case id
+    character(len=*) , optional, intent(in) :: ctitle_in                ! case title
+    integer          , optional, intent(in) :: nsrest_in                ! 0: initial run. 1: restart: 3: branch
+    character(len=*) , optional, intent(in) :: version_in               ! model version
+    character(len=*) , optional, intent(in) :: hostname_in              ! hostname running on
+    character(len=*) , optional, intent(in) :: username_in              ! username running job
+    character(len=*) , optional, intent(in) :: model_doi_url_in         ! web address of Digital Object Identifier (DOI) for model version
+    logical          , optional, intent(in) :: brnch_retain_casename_in ! true => allow case name to
     !-----------------------------------------------------------------------
 
     if ( RtmVar_isset )then
        call shr_sys_abort( 'RtmVarSet ERROR:: control variables already set -- EXIT' )
     end if
 
-    if (present(caseid_in)) caseid = caseid_in
-    if (present(ctitle_in)) ctitle = ctitle_in
+    if (present(caseid_in)) caseid = trim(caseid_in)
+    if (present(ctitle_in)) ctitle = trim(ctitle_in)
     if (present(nsrest_in)) nsrest = nsrest_in
     if (present(version_in)) version = version_in
     if (present(username_in)) username = username_in

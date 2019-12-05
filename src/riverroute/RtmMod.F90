@@ -101,37 +101,20 @@ module RtmMod
 !
 !EOP
 !-----------------------------------------------------------------------
-
 contains
-
 !-----------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: Rtmini
-!
-! !INTERFACE:
-  subroutine Rtmini(rtm_active,flood_active)
-!
-! !DESCRIPTION:
-! Initialize MOSART grid, mask, decomp
-!
-! !USES:
-!
-! !ARGUMENTS:
-    implicit none
+
+  subroutine Rtmini(rtm_active,flood_active, dtime_driver)
+
+    ! !DESCRIPTION:
+    ! Initialize MOSART grid, mask, decomp
+
+    ! input/output variables
     logical, intent(out) :: rtm_active
     logical, intent(out) :: flood_active
-!
-! !CALLED FROM:
-! subroutine initialize in module initializeMod
-!
-! !REVISION HISTORY:
-! Author: Sam Levis
-! Update: T Craig, Dec 2006
-!
-!
-! !LOCAL VARIABLES:
-!EOP
+    integer, intent(in), optional :: dtime_driver 
+
+    ! local variables
     real(r8) :: effvel0 = 10.0_r8             ! default velocity (m/s)
     real(r8) :: effvel(nt_rtm)                ! downstream velocity (m/s)
     real(r8) :: edgen                         ! North edge of the direction file
@@ -273,12 +256,17 @@ contains
     runtyp(nsrContinue + 1) = 'restart'
     runtyp(nsrBranch   + 1) = 'branch '
 
+    if (present(dtime_driver)) then
+       ! overwrite dtime with coupling_period instead of what is being used in the namelist
+       if (masterproc) then
+          write(iulog,*) 'WARNING: using coupling_period is set from dtime_driver rather than from what is read in the namelist'
+       end if
+       coupling_period = dtime_driver
+    end if
+
     if (masterproc) then
        write(iulog,*) 'define run:'
        write(iulog,*) '   run type              = ',runtyp(nsrest+1)
-      !write(iulog,*) '   case title            = ',trim(ctitle)
-      !write(iulog,*) '   username              = ',trim(username)
-      !write(iulog,*) '   hostname              = ',trim(hostname)
        write(iulog,*) '   coupling_period       = ',coupling_period
        write(iulog,*) '   delt_mosart           = ',delt_mosart
        write(iulog,*) '   decomp option         = ',trim(decomp_option)
