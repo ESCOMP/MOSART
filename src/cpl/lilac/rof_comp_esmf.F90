@@ -9,7 +9,6 @@ module rof_comp_esmf
   use mpi               , only : MPI_BCAST, MPI_CHARACTER
   use mct_mod           , only : mct_world_init
   use perf_mod          , only : t_startf, t_stopf, t_barrierf
-  use lilac_utils       , only : lilac_field_bundle_to_land, lilac_field_bundle_fr_land
 
   ! cime share code
   use shr_kind_mod      , only : r8 => shr_kind_r8, cl=>shr_kind_cl
