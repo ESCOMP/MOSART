@@ -2,7 +2,7 @@
 Tag name:  mosart1_0_35
 Originator(s): erik
 Date: Nov 08, 2019
-One-line Summary: Add nuopc cap for NUOPC coupler option
+One-line Summary: Fix cold-start, 8th degree file, wallclock, add COC, change SHR_KIND
 
     Fix for cold start #24 and add cold start test
 
