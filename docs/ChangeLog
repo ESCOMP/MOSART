@@ -1,4 +1,73 @@
 ===============================================================
+Tag name:  release-cesm2.0.04
+Originator(s): erik
+Date: Jan 14, 2020
+One-line Summary: Bring in mosart1_0_35 to release branch
+
+    Fix for cold start and add cold start test
+
+    Change wallclock time in tests and change hobart for izumi
+
+    Add code of conduct
+
+    Change all instances of SHR_KIND_CL to use CL that is renamed from
+    shr_kind_cl in shr_kind_mod. This is important for a recent cime
+    update.
+
+MOSART Master Tag This Corresponds To: mosart1_0_35 (with changes)
+
+Issues Fixed:  #24 #26
+   #24 -- cold start
+   #26 -- 8th degree file
+
+Science  changes since: release-cesm2.0.01 
+   * None
+Software changes since: release-cesm2.0.03
+   * Fix cold starts and 8th degree routing file
+
+Testing: Run mosart test suite
+   cheyenne -- PASS
+   izumi ----- PASS
+
+Pull Requests that document the changes (include PR ids): #29
+  #29 -- Bring in updates on mosart1_0_35 to release branch
+
+===============================================================
+Tag name:  mosart1_0_35
+Originator(s): erik
+Date: Nov 08, 2019
+One-line Summary: Fix cold-start, 8th degree file, wallclock, add COC, change SHR_KIND
+
+    Fix for cold start #24 and add cold start test
+
+    Fix 8th degree file, #26
+
+    Change wallclock time in tests and change hobart for izumi
+
+    Add code of conduct
+
+    Change all instances of SHR_KIND_CL to use CL that is renamed from
+    shr_kind_cl in shr_kind_mod. This is important for a recent cime
+    update.
+
+===============================================================
+Tag name:  mosart1_0_34
+Originator(s): mvertens/erik
+Date: Jul 25, 2019
+One-line Summary: Add nuopc cap for NUOPC coupler option -- SKIPPED on release branch
+===============================================================
+Tag name:  mosart1_0_33
+Originator(s): erik
+Date: Jun 11, 2019
+One-line Summary: buildlib updates for cime5.8 and nldas grid -- SKIPPED on release branch
+
++===============================================================
+Tag name:  mosart1_0_32
+Originator(s): erik
+Date: May 07, 2019
+One-line Summary:  Move release-cesm2.0.03 to mosart master -- SKIPPED on release branch
+
+===============================================================
 Tag name:  release-cesm2.0.03
 Originator(s): erik
 Date: Oct 19, 2018
