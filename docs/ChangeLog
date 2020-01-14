@@ -1,7 +1,7 @@
 ===============================================================
 Tag name:  release-cesm2.0.04
 Originator(s): erik
-Date: Jan 13, 2020
+Date: Jan 14, 2020
 One-line Summary: Bring in mosart1_0_35 to release branch
 
     Fix for cold start and add cold start test
@@ -16,20 +16,21 @@ One-line Summary: Bring in mosart1_0_35 to release branch
 
 MOSART Master Tag This Corresponds To: mosart1_0_35 (with changes)
 
-Issues Fixed:  #24 @26
+Issues Fixed:  #24 #26
    #24 -- cold start
    #26 -- 8th degree file
 
 Science  changes since: release-cesm2.0.01 
    * None
-Software changes since: release-cesm2.0.01
+Software changes since: release-cesm2.0.03
    * Fix cold starts and 8th degree routing file
 
 Testing: Run mosart test suite
-   izumi ----- ?
-   cheyenne -- ?
+   cheyenne -- PASS
+   izumi ----- PASS
 
-Pull Requests that document the changes (include PR ids):
+Pull Requests that document the changes (include PR ids): #29
+  #29 -- Bring in updates on mosart1_0_35 to release branch
 
 ===============================================================
 Tag name:  mosart1_0_35
