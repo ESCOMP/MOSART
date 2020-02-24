@@ -6,7 +6,7 @@ module rof_comp_esmf
 
   ! external libraries
   use ESMF
-  use mpi               , only : MPI_BCAST, MPI_CHARACTER
+  use shr_mpi_mod       , only : shr_mpi_bcast
   use mct_mod           , only : mct_world_init
   use perf_mod          , only : t_startf, t_stopf, t_barrierf
 
@@ -259,9 +259,9 @@ contains
        end if
        close(fileunit)
     end if
-    call mpi_bcast(rof_mesh_filename, len(rof_mesh_filename), MPI_CHARACTER, 0, mpicom_rof, ierr)
-    call mpi_bcast(starttype, len(starttype), MPI_CHARACTER, 0, mpicom_rof, ierr)
-    call mpi_bcast(caseid, len(caseid), MPI_CHARACTER, 0, mpicom_rof, ierr)
+    call shr_mpi_bcast(rof_mesh_filename, mpicom_rof)
+    call shr_mpi_bcast(starttype, mpicom_rof)
+    call shr_mpi_bcast(caseid, mpicom_rof)
 
     !--------------------------------
     ! Initialize RtmVar module variables
