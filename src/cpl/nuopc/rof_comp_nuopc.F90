@@ -52,7 +52,7 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
 
-  logical                 :: do_rtm 
+  logical                 :: do_rtm
   logical                 :: do_rtmflood
 
   integer     , parameter :: debug = 1
@@ -485,20 +485,20 @@ contains
           ni = ni + 1
           gindex(ni) = rtmCTL%gindex(n)
        end do
-       
+
        ! create distGrid from global index array
        DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        deallocate(gindex)
     end if
-       
+
     ! read in the mesh
     call NUOPC_CompAttributeGet(gcomp, name='mesh_rof', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (masterproc) then
        write(iulog,*)'mesh file for domain is ',trim(cvalue)
     end if
-       
+
     if (do_rtm) then
        EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=Distgrid, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -507,7 +507,7 @@ contains
        EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
-       
+
     !--------------------------------
     ! realize actively coupled fields
     !--------------------------------
@@ -653,7 +653,6 @@ contains
 
     call t_startf ('lc_mosart_import')
 
-    write(6,*)'DEBUG: calling mosart import'
     call import_fields(gcomp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
