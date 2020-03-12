@@ -40,7 +40,7 @@ module rof_import_export
   type (fld_list_type)   :: fldsToRof(fldsMax)
   type (fld_list_type)   :: fldsFrRof(fldsMax)
 
-  integer     ,parameter :: debug = 2 ! internal debug level
+  integer     ,parameter :: debug = 0 ! internal debug level
   character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
