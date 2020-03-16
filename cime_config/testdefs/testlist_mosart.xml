@@ -50,6 +50,15 @@
       <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
     </options>
   </test>
+  <test name="SMS_D_Ld5_Vnuopc" grid="f10_f10_musgs" compset="I2000Clm50BgcCropGs" testmods="mosart/default">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Smoke test with DEBUG and NUOPC driver</option>
+    </options>
+  </test>
   <test name="SMS_D" grid="f10_f10_musgs" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
