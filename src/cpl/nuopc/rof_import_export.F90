@@ -49,11 +49,13 @@ module rof_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, rc)
+  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtm, do_rtmflood, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
+    logical          , intent(in)  :: do_rtm
+    logical          , intent(in)  :: do_rtmflood
     integer          , intent(out) :: rc
 
     ! local variables
@@ -76,12 +78,14 @@ contains
     ! Advertise export fields
     !--------------------------------
 
-    call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')    
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+    if (do_rtm) then
+       call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+    end if
 
     do n = 1,fldsFrRof_num
        call NUOPC_Advertise(exportState, standardName=fldsFrRof(n)%stdname, &
@@ -93,14 +97,15 @@ contains
     ! Advertise import fields
     !--------------------------------
 
-    call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
-
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdto')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
+    if (do_rtm) then
+       call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdto')
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
+    end if
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -118,7 +123,7 @@ contains
     type(ESMF_GridComp) , intent(inout) :: gcomp
     type(ESMF_Mesh)     , intent(in)    :: Emesh
     character(len=*)    , intent(in)    :: flds_scalar_name
-    integer             , intent(in)    :: flds_scalar_num 
+    integer             , intent(in)    :: flds_scalar_num
     integer             , intent(out)   :: rc
 
     ! local variables
@@ -170,7 +175,7 @@ contains
     type(ESMF_State) :: importState
     integer          :: n,nt
     integer          :: begr, endr
-    integer          :: nliq, nfrz 
+    integer          :: nliq, nfrz
     integer          :: dbrc
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
@@ -199,7 +204,7 @@ contains
 
     ! determine output array and scale by unit convertsion
     ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
-    
+
     call state_getimport(importState, 'Flrl_rofsur', begr, endr, rtmCTL%area, output=rtmCTL%qsur(:,nliq), rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -494,7 +499,7 @@ contains
     ! input/output variables
     type(ESMF_State)    , intent(in)    :: state
     character(len=*)    , intent(in)    :: fldname
-    integer             , intent(in)    :: begr 
+    integer             , intent(in)    :: begr
     integer             , intent(in)    :: endr
     real(r8)            , intent(in)    :: area(begr:endr)
     real(r8)            , intent(out)   :: output(begr:endr)
@@ -549,7 +554,7 @@ contains
     use shr_const_mod, only : fillvalue=>SHR_CONST_SPVAL
 
     ! ----------------------------------------------
-    ! Map input array to export state field 
+    ! Map input array to export state field
     ! ----------------------------------------------
 
     ! input/output variables

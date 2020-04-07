@@ -936,20 +936,20 @@ contains
 
     elseif (flag == 'write') then
 
-       if (present(nt))      then
-          start(1) = nt
-          count(1) = 1
-       else
-          start(1) = 1
-          count(1) = 1
-       end if
        call ncd_inqvid  (ncid, varname, varid, vardesc)
        if ( data )then
           temp(1) = 1
        else
           temp(1) = 0
        end if
-       status = pio_put_var(ncid, varid, start, count, temp)
+       if (present(nt))      then
+          start(1) = nt
+          count(1) = 1
+          status = pio_put_var(ncid, varid, start, count, temp)
+       else
+          status = pio_put_var(ncid, varid, temp(1))
+       end if
+
 
     endif   ! flag
 
@@ -992,16 +992,15 @@ contains
 
     elseif (flag == 'write') then
 
+       call ncd_inqvid  (ncid, varname, varid, vardesc)
        if (present(nt))      then
           start(1) = nt
           count(1) = 1
+          temp(1) = data
+          status = pio_put_var(ncid, varid, start, count, temp)
        else
-          start(1) = 1
-          count(1) = 1
+          status = pio_put_var(ncid, varid, data)
        end if
-       call ncd_inqvid  (ncid, varname, varid, vardesc)
-       temp(1) = data
-       status = pio_put_var(ncid, varid, start, count, temp)
 
     endif   ! flag
 
@@ -1044,16 +1043,15 @@ contains
 
     else if (flag == 'write') then
 
+       call ncd_inqvid  (ncid, varname, varid, vardesc)
        if (present(nt))      then
           start(1) = nt
           count(1) = 1
+          temp(1) = data
+          status = pio_put_var(ncid, varid, start, count, temp)
        else
-          start(1) = 1
-          count(1) = 1
+          status = pio_put_var(ncid, varid, data)
        end if
-       call ncd_inqvid  (ncid, varname, varid, vardesc)
-       temp(1) = data
-       status = pio_put_var(ncid, varid, start, count, temp)
 
     endif   ! flag
 

@@ -52,6 +52,9 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
 
+  logical                 :: do_rtm
+  logical                 :: do_rtmflood
+
   integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
   character(*), parameter :: u_FILE_u = &
@@ -138,13 +141,41 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
-    type(ESMF_VM)     :: vm
-    integer           :: mpicom
-    character(CL)     :: cvalue
-    integer           :: shrlogunit
-    integer           :: n
-    character(len=CL) :: logmsg
-    logical           :: isPresent, isSet
+    type(ESMF_Time)         :: currTime              ! Current time
+    type(ESMF_Time)         :: startTime             ! Start time
+    type(ESMF_Time)         :: stopTime              ! Stop time
+    type(ESMF_Time)         :: refTime               ! Ref time
+    type(ESMF_TimeInterval) :: timeStep              ! Model timestep
+    type(ESMF_Calendar)     :: esmf_calendar         ! esmf calendar
+    type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
+    type(ESMF_VM)           :: vm                    ! esmf virtual machine
+    integer                 :: mpicom
+    character(CL)           :: cvalue
+    character(len=CL)       :: logmsg
+    integer                 :: ref_ymd               ! reference date (YYYYMMDD)
+    integer                 :: ref_tod               ! reference time of day (sec)
+    integer                 :: yy,mm,dd              ! Temporaries for time query
+    integer                 :: start_ymd             ! start date (YYYYMMDD)
+    integer                 :: start_tod             ! start time of day (sec)
+    integer                 :: stop_ymd              ! stop date (YYYYMMDD)
+    integer                 :: stop_tod              ! stop time of day (sec)
+    integer                 :: curr_ymd              ! Start date (YYYYMMDD)
+    integer                 :: curr_tod              ! Start time of day (sec)
+    logical                 :: flood_present         ! flag
+    logical                 :: rof_prognostic        ! flag
+    integer                 :: shrlogunit            ! original log unit
+    integer                 :: n,ni                  ! indices
+    integer                 :: nsrest                ! restart type
+    character(CL)           :: calendar              ! calendar type name
+    character(CL)           :: username              ! user name
+    character(CL)           :: caseid                ! case identifier name
+    character(CL)           :: ctitle                ! case description title
+    character(CL)           :: hostname              ! hostname of machine running on
+    character(CL)           :: model_version         ! model version
+    character(CL)           :: starttype             ! start-type (startup, continue, branch, hybrid)
+    character(CL)           :: stdname, shortname    ! needed for advertise
+    logical                 :: brnch_retain_casename ! flag if should retain the case name on a branch start type
+    logical                 :: isPresent, isSet
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     !-------------------------------------------------------------------------------
@@ -248,86 +279,8 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    call advertise_fields(gcomp, flds_scalar_name, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    !----------------------------------------------------------------------------
-    ! Reset shr logging to original values
-    !----------------------------------------------------------------------------
-
-    call shr_file_setLogUnit (shrlogunit)
-    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
-
-  end subroutine InitializeAdvertise
-
-  !===============================================================================
-
-  subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
-
-    ! input/output variables
-    type(ESMF_GridComp)  :: gcomp
-    type(ESMF_State)     :: importState
-    type(ESMF_State)     :: exportState
-    type(ESMF_Clock)     :: clock
-    integer, intent(out) :: rc
-
-    ! local variables
-    type(ESMF_Mesh)             :: Emesh, EMeshTemp
-    type(ESMF_DistGrid)         :: DistGrid              ! esmf global index space descriptor
-    type(ESMF_Time)             :: currTime              ! Current time
-    type(ESMF_Time)             :: startTime             ! Start time
-    type(ESMF_Time)             :: stopTime              ! Stop time
-    type(ESMF_Time)             :: refTime               ! Ref time
-    type(ESMF_TimeInterval)     :: timeStep              ! Model timestep
-    type(ESMF_Calendar)         :: esmf_calendar         ! esmf calendar
-    type(ESMF_CalKind_Flag)     :: esmf_caltype          ! esmf calendar type
-    integer , allocatable       :: gindex(:)             ! global index space on my processor
-    integer                     :: ref_ymd               ! reference date (YYYYMMDD)
-    integer                     :: ref_tod               ! reference time of day (sec)
-    integer                     :: yy,mm,dd              ! Temporaries for time query
-    integer                     :: start_ymd             ! start date (YYYYMMDD)
-    integer                     :: start_tod             ! start time of day (sec)
-    integer                     :: stop_ymd              ! stop date (YYYYMMDD)
-    integer                     :: stop_tod              ! stop time of day (sec)
-    integer                     :: curr_ymd              ! Start date (YYYYMMDD)
-    integer                     :: curr_tod              ! Start time of day (sec)
-    logical                     :: flood_present         ! flag
-    logical                     :: rof_prognostic        ! flag
-    integer                     :: shrlogunit            ! original log unit
-    integer                     :: lsize                 ! local size ofarrays
-    integer                     :: n,ni                  ! indices
-    integer                     :: lbnum                 ! input to memory diagnostic
-    integer                     :: nsrest                ! restart type
-    character(CL)               :: calendar              ! calendar type name
-    character(CL)               :: username              ! user name
-    character(CL)               :: caseid                ! case identifier name
-    character(CL)               :: ctitle                ! case description title
-    character(CL)               :: hostname              ! hostname of machine running on
-    character(CL)               :: model_version         ! model version
-    character(CL)               :: starttype             ! start-type (startup, continue, branch, hybrid)
-    character(CL)               :: stdname, shortname    ! needed for advertise
-    logical                     :: brnch_retain_casename ! flag if should retain the case name on a branch start type
-    character(CL)               :: cvalue
-    character(ESMF_MAXSTR)      :: convCIM, purpComp
-    character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
-    !---------------------------------------------------------------------------
-
-    rc = ESMF_SUCCESS
-    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
-
-    !----------------------------------------------------------------------------
-    ! Reset shr logging to my log file
-    !----------------------------------------------------------------------------
-
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
-
-#if (defined _MEMTRACE)
-    if (masterproc) then
-       lbnum=1
-       call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
-    endif
-#endif
+    ! Need to run the initial phase of rtm here to determine if do_rtm and do_flood is true in order to
+    ! get the advertise phase correct
 
     !----------------------
     ! Obtain attribute values
@@ -460,41 +413,100 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    ! TODO: are not handling rof_prognostic = .false. for now, how should this be handled in NUOPC?
+    call Rtmini(do_rtm, do_rtmflood)
 
-    call Rtmini(rtm_active=rof_prognostic, flood_active=flood_present)
+    !----------------------------------------------------------------------------
+    ! Now advertise fields
+    !----------------------------------------------------------------------------
+
+    call advertise_fields(gcomp, flds_scalar_name, do_rtm, do_rtmflood, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !----------------------------------------------------------------------------
+    ! Reset shr logging to original values
+    !----------------------------------------------------------------------------
+
+    call shr_file_setLogUnit (shrlogunit)
+    call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+
+  end subroutine InitializeAdvertise
+
+  !===============================================================================
+
+  subroutine InitializeRealize(gcomp, importState, exportState, clock, rc)
+
+    ! input/output variables
+    type(ESMF_GridComp)  :: gcomp
+    type(ESMF_State)     :: importState
+    type(ESMF_State)     :: exportState
+    type(ESMF_Clock)     :: clock
+    integer, intent(out) :: rc
+
+    ! local variables
+    type(ESMF_Mesh)       :: Emesh
+    type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
+    integer , allocatable :: gindex(:)             ! global index space on my processor
+    integer               :: lbnum                 ! input to memory diagnostic
+    character(CL)         :: cvalue                ! temporary
+    integer               :: shrlogunit            ! original log unit
+    integer               :: lsize
+    integer               :: n,ni
+    character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
+    !---------------------------------------------------------------------------
+
+    rc = ESMF_SUCCESS
+
+    call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+
+    !----------------------------------------------------------------------------
+    ! Reset shr logging to my log file
+    !----------------------------------------------------------------------------
+
+    call shr_file_getLogUnit (shrlogunit)
+    call shr_file_setLogUnit (iulog)
+
+#if (defined _MEMTRACE)
+    if (masterproc) then
+       lbnum=1
+       call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
+    endif
+#endif
 
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------
 
-    ! determine global index array
-    lsize = rtmCTL%endr - rtmCTL%begr + 1
-    allocate(gindex(lsize))
-    ni = 0
-    do n = rtmCTL%begr,rtmCTL%endr
-       ni = ni + 1
-       gindex(ni) = rtmCTL%gindex(n)
-    end do
+    if (do_rtm) then
+       ! determine global index array
+       lsize = rtmCTL%endr - rtmCTL%begr + 1
+       allocate(gindex(lsize))
+       ni = 0
+       do n = rtmCTL%begr,rtmCTL%endr
+          ni = ni + 1
+          gindex(ni) = rtmCTL%gindex(n)
+       end do
 
-    ! create distGrid from global index array
-    DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    deallocate(gindex)
+       ! create distGrid from global index array
+       DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       deallocate(gindex)
+    end if
 
     ! read in the mesh
     call NUOPC_CompAttributeGet(gcomp, name='mesh_rof', value=cvalue, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    EMeshTemp = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (masterproc) then
        write(iulog,*)'mesh file for domain is ',trim(cvalue)
     end if
 
-    ! recreate the mesh using the above distGrid
-    EMesh = ESMF_MeshCreate(EMeshTemp, elementDistgrid=Distgrid, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (do_rtm) then
+       EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=Distgrid, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else
+       ! If do_rtm is false - then will still realize fields - but nothing will be realized
+       EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     !--------------------------------
     ! realize actively coupled fields
@@ -507,24 +519,25 @@ contains
     ! Create MOSART export state
     !--------------------------------
 
-    call export_fields(gcomp, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (do_rtm) then
+       call export_fields(gcomp, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ! Set global grid size scalars in export state
-    call State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       ! Set global grid size scalars in export state
+       call State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
-         flds_scalar_name, flds_scalar_num, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
+            flds_scalar_name, flds_scalar_num, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     !----------------------------------------------------------------------------
     ! Reset shr logging
     !----------------------------------------------------------------------------
 
     call shr_file_setLogUnit (shrlogunit)
-
     call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
 
     !--------------------------------
@@ -535,20 +548,6 @@ contains
        call State_diagnose(exportState,subname//':ES',rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
-
-#ifdef USE_ESMF_METADATA
-    convCIM  = "CIM"
-    purpComp = "Model Component Simulation Description"
-    call ESMF_AttributeAdd(comp, convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ShortName", "MOSART", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "LongName", "MOSART River Model", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "Description", "MOSART River Model", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ReleaseDate", "2017", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ModelType", "River", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "Name", "TBD", convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "EmailAddress", TBD, convention=convCIM, purpose=purpComp, rc=rc)
-    call ESMF_AttributeSet(comp, "ResponsiblePartyRole", "contact", convention=convCIM, purpose=purpComp, rc=rc)
-#endif
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -617,17 +616,6 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
-    ! Unpack import state from mediator
-    !--------------------------------
-
-    call t_startf ('lc_mosart_import')
-
-    call import_fields(gcomp, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call t_stopf ('lc_mosart_import')
-
-    !--------------------------------
     ! Determine if time to write restart
     !--------------------------------
 
@@ -658,6 +646,17 @@ contains
     else
        nlend = .false.
     endif
+
+    !--------------------------------
+    ! Unpack import state from mediator
+    !--------------------------------
+
+    call t_startf ('lc_mosart_import')
+
+    call import_fields(gcomp, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call t_stopf ('lc_mosart_import')
 
     !--------------------------------
     ! Run MOSART
