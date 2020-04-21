@@ -718,7 +718,7 @@ contains
     end if
 
     if (debug > 1) then
-       call log_clock_advanc(clock, 'MOSART', iulog, rc)
+       call log_clock_advance(clock, 'MOSART', iulog, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
 
