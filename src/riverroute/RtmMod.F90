@@ -12,7 +12,7 @@ module RtmMod
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_flush
   use shr_const_mod   , only : SHR_CONST_PI, SHR_CONST_CDAY
-  use rof_cpl_indices , only : nt_rtm, rtm_tracers 
+  use RtmVar          , only : nt_rtm, rtm_tracers 
   use RtmSpmd         , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
                                MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
   use RtmVar          , only : re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
@@ -2582,7 +2582,7 @@ contains
            TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
 
            ! constrain hlen (hillslope length) values based on cell area
-           hlen_max = max(1000.0, sqrt(TUnit%area(iunit)))
+           hlen_max = max(1000.0_r8, sqrt(TUnit%area(iunit)))
            if(TUnit%hlen(iunit) > hlen_max) then
               TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainag\e density estimation. TO DO
            end if

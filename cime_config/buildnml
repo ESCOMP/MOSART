@@ -8,8 +8,8 @@
 
 # Disable these because this is our standard setup
 # pylint: disable=wildcard-import,unused-wildcard-import,wrong-import-position
-
-import os, shutil, sys, glob
+# pylint: disable=multiple-imports
+import os, shutil, sys
 
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
@@ -20,13 +20,13 @@ from standard_script_setup import *
 from CIME.case import Case
 from CIME.nmlgen import NamelistGenerator
 from CIME.utils import expect
-from CIME.buildnml import create_namelist_infile
+from CIME.buildnml import create_namelist_infile, parse_input
 
 logger = logging.getLogger(__name__)
 
 # pylint: disable=too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 ####################################################################################
-def _create_namelists(case, confdir, inst_string, infile, nmlgen):
+def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path):
 ####################################################################################
     """Write out the namelist for this component.
 
@@ -40,48 +40,42 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen):
     #----------------------------------------------------
     config = {}
     config['mosart_mode'] = case.get_value("MOSART_MODE")
-    config['mosart_flood_mode']  = case.get_value("MOSART_FLOOD_MODE")
+    config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
     config['clm_accel'] = case.get_value("CLM_ACCELERATED_SPINUP")
     config['rof_grid'] = case.get_value("ROF_GRID")
     config['lnd_grid'] = case.get_value("LND_GRID")
     config['rof_ncpl'] = case.get_value("ROF_NCPL")
     config['simyr'] = case.get_value("MOSART_SIM_YEAR")
 
-    logger.debug ("River Transport Model (MOSART) mode is %s " %(config['mosart_mode']))
-    logger.debug ("  MOSART lnd grid is %s " %(config['lnd_grid']))
-    logger.debug ("  MOSART rof grid is %s " %(config['rof_grid']))
+    logger.debug("River Transport Model (MOSART) mode is %s ", config['mosart_mode'])
+    logger.debug("  MOSART lnd grid is %s ", config['lnd_grid'])
+    logger.debug("  MOSART rof grid is %s ", config['rof_grid'])
 
     #----------------------------------------------------
     # Check for incompatible options.
     #----------------------------------------------------
 
     if config["rof_grid"] == "null" and config["mosart_mode"] != "NULL":
-        expect (False, "ROF_GRID is null MOSART_MODE not NULL")
-
-    #----------------------------------------------------
-    # Clear out old data.
-    #----------------------------------------------------
-    data_list_path = os.path.join(case.get_case_root(), "Buildconf", "mosart.input_data_list")
-    if os.path.exists(data_list_path):
-        os.remove(data_list_path)
+        expect(False, "ROF_GRID is null MOSART_MODE not NULL")
 
     #----------------------------------------------------
     # Initialize namelist defaults
     #----------------------------------------------------
     nmlgen.init_defaults(infile, config)
-        
+
     #----------------------------------------------------
     # Set values not obtained in the default settings
     #----------------------------------------------------
 
     run_type = case.get_value("RUN_TYPE")
+    finidat_rtm = str(nmlgen.get_value("finidat_rtm"))
     if run_type == 'branch' or run_type == 'hybrid':
         run_refcase = case.get_value("RUN_REFCASE")
         run_refdate = case.get_value("RUN_REFDATE")
-        run_tod     = case.get_value("RUN_REFTOD")
-        rundir      = case.get_value("RUNDIR")
+        run_tod = case.get_value("RUN_REFTOD")
+        rundir = case.get_value("RUNDIR")
         filename = "%s.mosart%s.r.%s-%s.nc" %(run_refcase, inst_string, run_refdate, run_tod)
-        if not os.path.exists(os.path.join(rundir, filename ) ):
+        if not os.path.exists(os.path.join(rundir, filename)):
             filename = "%s.mosart.r.%s-%s.nc" %(run_refcase, run_refdate, run_tod)
 
         if run_type == "hybrid":
@@ -89,13 +83,15 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen):
         else:
 
             nmlgen.add_default("nrevsn_rtm", value=filename)
+    elif finidat_rtm.strip() == '':
+        nmlgen.set_value('finidat_rtm', value=' ')
     else:
         if nmlgen.get_default('finidat_rtm') == 'UNSET':
-            nmlgen.add_default('finidat_rtm', value='', ignore_abs_path=True)
+            nmlgen.add_default('finidat_rtm', value=' ', ignore_abs_path=True)
         else:
             nmlgen.add_default("finidat_rtm")
 
-    ncpl_base_period  = case.get_value('NCPL_BASE_PERIOD')
+    ncpl_base_period = case.get_value('NCPL_BASE_PERIOD')
     if ncpl_base_period == 'hour':
         basedt = 3600
     elif ncpl_base_period == 'day':
@@ -118,10 +114,10 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen):
 
     mosart_ncpl = case.get_value("ROF_NCPL")
     if basedt % mosart_ncpl != 0:
-        expect(False, "mosart_ncpl %s doesn't divide evenly into basedt \n" 
+        expect(False, "mosart_ncpl %s doesn't divide evenly into basedt %s\n"
                %(mosart_ncpl, basedt))
     else:
-        coupling_period = basedt / mosart_ncpl
+        coupling_period = basedt // mosart_ncpl
     nmlgen.set_value("coupling_period", value=coupling_period)
 
     #----------------------------------------------------
@@ -135,26 +131,26 @@ def buildnml(case, caseroot, compname):
 ###############################################################################
     """Build the mosart namelist """
 
-    # Build the component namelist 
+    # Build the component namelist
     if compname != "mosart":
         raise AttributeError
 
-    srcroot = case.get_value("SRCROOT") 
+    srcroot = case.get_value("SRCROOT")
     rundir = case.get_value("RUNDIR")
     ninst = case.get_value("NINST_ROF")
 
     # Determine configuration directory
-    confdir = os.path.join(caseroot,"Buildconf","mosartconf")
+    confdir = os.path.join(caseroot, "Buildconf", "mosartconf")
     if not os.path.isdir(confdir):
         os.makedirs(confdir)
 
     #----------------------------------------------------
-    # Construct the namelist generator 
+    # Construct the namelist generator
     #----------------------------------------------------
     # Determine directory for user modified namelist_definitions.xml and namelist_defaults.xml
     user_xml_dir = os.path.join(caseroot, "SourceMods", "src.mosart")
-    expect (os.path.isdir(user_xml_dir),
-            "user_xml_dir %s does not exist " %user_xml_dir)
+    expect(os.path.isdir(user_xml_dir),
+           "user_xml_dir %s does not exist "%user_xml_dir)
 
     # NOTE: User definition *replaces* existing definition.
     namelist_xml_dir = os.path.join(srcroot, "components", "mosart", "cime_config")
@@ -169,6 +165,12 @@ def buildnml(case, caseroot, compname):
     nmlgen = NamelistGenerator(case, definition_file)
 
     #----------------------------------------------------
+    # Clear out old data.
+    #----------------------------------------------------
+    data_list_path = os.path.join(case.get_case_root(), "Buildconf", "mosart.input_data_list")
+    if os.path.exists(data_list_path):
+        os.remove(data_list_path)
+    #----------------------------------------------------
     # Loop over instances
     #----------------------------------------------------
     for inst_counter in range(1, ninst+1):
@@ -180,9 +182,9 @@ def buildnml(case, caseroot, compname):
 
         # If multi-instance case does not have restart file, use
         # single-case restart for each instance
-        rpointer = "rpointer.rof" 
-        if (os.path.isfile(os.path.join(rundir,rpointer)) and
-            (not os.path.isfile(os.path.join(rundir,rpointer + inst_string)))):
+        rpointer = "rpointer.rof"
+        if (os.path.isfile(os.path.join(rundir, rpointer)) and
+                (not os.path.isfile(os.path.join(rundir, rpointer + inst_string)))):
             shutil.copy(os.path.join(rundir, rpointer),
                         os.path.join(rundir, rpointer + inst_string))
 
@@ -199,16 +201,16 @@ def buildnml(case, caseroot, compname):
         namelist_infile = [infile]
 
         # create namelist and stream file(s) data component
-        _create_namelists(case, confdir, inst_string, namelist_infile, nmlgen)
+        _create_namelists(case, confdir, inst_string, namelist_infile, nmlgen, data_list_path)
 
         # copy namelist files and stream text files, to rundir
         if os.path.isdir(rundir):
-            file_src  = os.path.join(confdir, 'mosart_in')
+            file_src = os.path.join(confdir, 'mosart_in')
             file_dest = os.path.join(rundir, 'mosart_in')
             if inst_string:
                 file_dest += inst_string
             shutil.copy(file_src, file_dest)
-            
+
 ###############################################################################
 def _main_func():
 

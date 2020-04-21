@@ -165,7 +165,9 @@
     <input_pathname>abs</input_pathname>
     <group>mosart_inparm</group> 
     <values>
-      <value rof_grid="r05">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170601.nc</value>
+      <value rof_grid="r05"        >$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170601.nc</value>
+      <value rof_grid="r8th"       >$DIN_LOC_ROOT/rof/mosart/MOSART_Global_8th_20191007.nc</value>
+      <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_c190415.nc</value>
     </values>
     <desc>
       Full pathname of input datafile for RTM.
@@ -260,13 +262,13 @@
     <type>integer(6)</type> 
     <category>history</category>
     <group>mosart_inparm</group> 
-    <valid_values>1,2</valid_values>
+    <valid_values>1</valid_values>
     <values>
-      <value>2</value>
+      <value>1</value>
     </values>
     <desc>
       Per tape series  history file density (i.e. output precision) 
-      1=double precision, 2=single precision
+      1=double precision, 2=single precision (NOT working)
     </desc>
   </entry>
 
