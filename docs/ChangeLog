@@ -1,4 +1,21 @@
 ===============================================================
+Tag name:  mosart1_0_36
+Originator(s): mvertens, sacks
+Date: March 16, 2020
+One-line Summary: Updates to NUOPC cap
+
+Main purpose is updates to NUOPC cap. Also a fix for PIO2.
+
+Most changes are from Mariana Vertenstein, brought to master by Bill
+Sacks.
+
+These changes are documented in https://github.com/ESCOMP/MOSART/pull/30
+
+Testing: mosart test suite (cheyenne & izumi), in the context of a CTSM
+checkout (https://github.com/ESCOMP/CTSM/pull/939). Baseline comparisons
+done against ctsm1.0.dev085.
+
+===============================================================
 Tag name:  mosart1_0_35
 Originator(s): erik
 Date: Nov 08, 2019
