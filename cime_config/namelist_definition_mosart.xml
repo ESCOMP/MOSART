@@ -9,15 +9,15 @@
   <!-- ========================================================================================  -->
 
   <entry id="do_rtm" >
-    <type>logical</type> 
+    <type>logical</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <desc>
       If .true., turn on mosart river routing
       If the value of the xml variable ROF GRID in env_build.xml is set to 'null', then
       the MOSART build-namelist will set do_mosart to .false.
       If do_mosart is set to .false., then MOSART will send a flag of rof_prognostic = .false.
-      back to the coupler on initialization. 
+      back to the coupler on initialization.
     </desc>
     <values>
       <value>.true.</value>
@@ -29,9 +29,9 @@
   </entry>
 
   <entry id="do_rtmflood" modify_via_xml="MOSART_FLOOD_MODE">
-    <type>logical</type> 
+    <type>logical</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value mosart_flood_mode="ACTIVE">.true.</value>
       <value mosart_flood_mode="NULL">.false.</value>
@@ -43,7 +43,7 @@
   </entry>
 
   <entry id="ice_runoff">
-    <type>logical</type> 
+    <type>logical</type>
     <category>mosart</category>
     <group>mosart_inparm</group>
     <values>
@@ -58,9 +58,9 @@
   </entry>
 
   <entry id="coupling_period" modify_via_xml="ROF_NCPL" skip_default_entry="true">
-    <type>integer</type> 
+    <type>integer</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <desc>
       MOSART coupling period to driver (sec).
       Can ONLY be set by modifying the value of the xml variable ROF_NCPL in env_run.xml.
@@ -68,9 +68,9 @@
   </entry>
 
   <entry id="delt_mosart">
-    <type>integer</type> 
+    <type>integer</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>3600</value>
     </values>
@@ -82,9 +82,9 @@
   </entry>
 
   <entry id="smat_option">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <valid_values>opt,Xonly,Yonly</valid_values>
     <values>
       <value>Xonly</value>
@@ -96,9 +96,9 @@
   </entry>
 
   <entry id="decomp_option">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <valid_values>basin,1d,roundrobin</valid_values>
     <values>
       <value>roundrobin</value>
@@ -109,12 +109,12 @@
   </entry>
 
   <entry id="bypass_routing_option">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <valid_values>direct_in_place,direct_to_outlet,none</valid_values>
     <values>
-      <value>direct_in_place</value> 
+      <value>direct_in_place</value>
     </values>
     <desc>
       Method for bypassing routing model.
@@ -122,12 +122,12 @@
   </entry>
 
   <entry id="qgwl_runoff_option">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <valid_values>all,negative,threshold</valid_values>
     <values>
-      <value>threshold</value> 
+      <value>threshold</value>
     </values>
     <desc>
       Method for handling of qgwl runoff inputs.
@@ -135,22 +135,22 @@
   </entry>
 
   <entry id="finidat_rtm" skip_default_entry="true">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <input_pathname>abs</input_pathname>
     <values>
       <value>UNSET</value>
     </values>
     <desc>
-      Full pathname of initial rtm file 
+      Full pathname of initial rtm file
     </desc>
   </entry>
 
   <entry id="nrevsn_rtm" skip_default_entry="true">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -160,14 +160,14 @@
   </entry>
 
   <entry id="frivinp_rtm">
-    <type>char</type> 
+    <type>char</type>
     <category>mosart</category>
     <input_pathname>abs</input_pathname>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value rof_grid="r05"        >$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170601.nc</value>
       <value rof_grid="r8th"       >$DIN_LOC_ROOT/rof/mosart/MOSART_Global_8th_20191007.nc</value>
-      <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_c190415.nc</value>
+      <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_c190415cdf5.nc</value>
     </values>
     <desc>
       Full pathname of input datafile for RTM.
@@ -175,9 +175,9 @@
   </entry>
 
   <entry id="rtmhist_fexcl1">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -187,9 +187,9 @@
   </entry>
 
   <entry id="rtmhist_fexcl2">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -199,9 +199,9 @@
   </entry>
 
   <entry id="rtmhist_fexcl3">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -211,9 +211,9 @@
   </entry>
 
   <entry id="rtmhist_fincl1">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -223,9 +223,9 @@
   </entry>
 
   <entry id="rtmhist_fincl2">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -235,9 +235,9 @@
   </entry>
 
   <entry id="rtmhist_fincl3">
-    <type>char(1000)</type> 
+    <type>char(1000)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>''</value>
     </values>
@@ -247,9 +247,9 @@
   </entry>
 
   <entry id="rtmhist_mfilt">
-    <type>integer(6)</type> 
+    <type>integer(6)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>1</value>
     </values>
@@ -259,15 +259,15 @@
   </entry>
 
   <entry id="rtmhist_ndens">
-    <type>integer(6)</type> 
+    <type>integer(6)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <valid_values>1</valid_values>
     <values>
       <value>1</value>
     </values>
     <desc>
-      Per tape series  history file density (i.e. output precision) 
+      Per tape series  history file density (i.e. output precision)
       1=double precision, 2=single precision (NOT working)
     </desc>
   </entry>
@@ -275,12 +275,12 @@
   <entry id="rtmhist_nhtfrq">
     <type>integer(6)</type>
     <category>history</category>
-    <group>mosart_inparm</group> 
+    <group>mosart_inparm</group>
     <values>
       <value>0</value>
     </values>
     <desc>
-      Per tape series history write frequency. 
+      Per tape series history write frequency.
       positive means in time steps,  0=monthly, negative means hours
       (i.e. 24 means every 24 time-steps and -24 means every day
     </desc>
