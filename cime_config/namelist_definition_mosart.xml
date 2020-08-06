@@ -167,7 +167,7 @@
     <values>
       <value rof_grid="r05"        >$DIN_LOC_ROOT/rof/mosart/MOSART_routing_Global_0.5x0.5_c170601.nc</value>
       <value rof_grid="r8th"       >$DIN_LOC_ROOT/rof/mosart/MOSART_Global_8th_20191007.nc</value>
-      <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_c190415cdf5.nc</value>
+      <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_cdf5_c200727.nc</value>
     </values>
     <desc>
       Full pathname of input datafile for RTM.

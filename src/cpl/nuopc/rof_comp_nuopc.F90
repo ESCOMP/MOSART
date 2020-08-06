@@ -8,6 +8,7 @@ module rof_comp_nuopc
   use NUOPC                 , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
   use NUOPC                 , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
   use NUOPC_Model           , only : model_routine_SS           => SetServices
+  use NUOPC_Model           , only : SetVM
   use NUOPC_Model           , only : model_label_Advance        => label_Advance
   use NUOPC_Model           , only : model_label_DataInitialize => label_DataInitialize
   use NUOPC_Model           , only : model_label_SetRunClock    => label_SetRunClock
@@ -27,14 +28,15 @@ module rof_comp_nuopc
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
   use rof_import_export     , only : import_fields, export_fields
-  use rof_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use rof_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
+  use nuopc_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+  use nuopc_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
 
   implicit none
   private ! except
 
   ! Module routines
   public  :: SetServices
+  public  :: SetVM
   private :: InitializeP0
   private :: InitializeAdvertise
   private :: InitializeRealize
@@ -715,12 +717,11 @@ contains
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
     end if
 
-    if (masterproc) then
-       call ESMF_ClockPrint(clock, options="currTime", preString="------>Advancing ROF from: ", rc=rc)
-       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
-       call ESMF_ClockPrint(clock, options="stopTime", preString="--------------------------------> to: ", rc=rc)
-       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+    if (debug > 1) then
+       call log_clock_advance(clock, 'MOSART', iulog, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     endif
+
 
     !--------------------------------
     ! Reset shr logging to my original values

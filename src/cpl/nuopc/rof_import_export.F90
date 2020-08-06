@@ -9,7 +9,7 @@ module rof_import_export
   use NUOPC_Model     , only : NUOPC_ModelGet
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_abort
-  use rof_shr_methods , only : chkerr
+  use nuopc_shr_methods , only : chkerr
   use RunoffMod       , only : rtmCTL, TRunoff
   use RtmVar          , only : iulog, nt_rtm, rtm_tracers
   use RtmSpmd         , only : masterproc

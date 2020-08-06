@@ -13,9 +13,9 @@ module RtmIO
   use shr_sys_mod    , only : shr_sys_flush, shr_sys_abort
   use shr_file_mod   , only : shr_file_getunit, shr_file_freeunit
   use RtmFileUtils   , only : getavu, relavu
-  use RtmSpmd        , only : masterproc, mpicom_rof, iam, npes
+  use RtmSpmd        , only : masterproc, mpicom_rof, iam, npes, rofid
   use RunoffMod      , only : rtmCTL
-  use RtmVar         , only : spval, ispval, iulog, inst_name
+  use RtmVar         , only : spval, ispval, iulog
   use perf_mod       , only : t_startf, t_stopf
   use mct_mod
   use pio
@@ -150,9 +150,9 @@ contains
     character(len=*),parameter :: subname='ncd_pio_init' ! subroutine name
     !-----------------------------------------------------------------------
 
-    PIO_subsystem => shr_pio_getiosys(inst_name)
-    io_type       =  shr_pio_getiotype(inst_name)
-    io_format    = shr_pio_getioformat(inst_name)
+    PIO_subsystem => shr_pio_getiosys(ROFID)
+    io_type       =  shr_pio_getiotype(ROFID)
+    io_format    = shr_pio_getioformat(ROFID)
 
   end subroutine ncd_pio_init
 
