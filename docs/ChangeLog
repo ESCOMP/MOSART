@@ -1,4 +1,17 @@
 ===============================================================
+Tag name:  mosart1_0_37
+Originator(s): mvertens, erik, jedwards
+Date: August 06, 2020
+One-line Summary: Bring updates needed for NUOPC
+
+Some more changes from @mvertens with updates for the NUOPC cap. 
+There's a new nuopc_cap_share directory added. SetVM is made public
+in rof_comp_nuopc.F90 and some of the logging is slightly changed. 
+RtmIO is now using ROFID rather than instance name.
+
+Also convert the nldas2 file into NetCDF5 format from Jim Edwards.
+
+===============================================================
 Tag name:  mosart1_0_36
 Originator(s): mvertens, sacks
 Date: March 16, 2020
