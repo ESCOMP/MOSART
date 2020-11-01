@@ -1,4 +1,18 @@
 ===============================================================
+Tag name:  mosart1_0_38
+Originator(s): sacks
+Date: November 01, 2020
+One-line Summary: Change compset in test
+
+In an upcoming CTSM tag, the compset I2000Clm50BgcCropGs will be renamed
+to I2000Clm50BgcCrop (while keeping the same meaning as before). This
+tag changes a test to use the new alias, to keep MOSART compatible with
+this upcoming CTSM tag.
+
+Note that this change will require the upcoming CTSM tag (probably
+ctsm5.1.dev011) in order to run this test from the mosart test list.
+
+===============================================================
 Tag name:  mosart1_0_37
 Originator(s): mvertens, erik, jedwards
 Date: August 06, 2020
