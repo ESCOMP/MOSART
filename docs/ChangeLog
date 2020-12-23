@@ -1,4 +1,16 @@
 ===============================================================
+Tag name:  mosart1_0_39
+Originator(s): jedwards
+Date: December 22, 2020
+One-line Summary: Remove nuopc_cap_share from build
+
+nuopc_cap_share is now included in the share library.
+
+Testing: mosart test suite on cheyenne & izumi, in the context of
+ctsm5.1.dev019. All tests passed and were bit-for-bit with baselines.
+
+
+===============================================================
 Tag name:  mosart1_0_38
 Originator(s): sacks
 Date: November 01, 2020
