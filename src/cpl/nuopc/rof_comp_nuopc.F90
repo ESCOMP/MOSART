@@ -30,7 +30,7 @@ module rof_comp_nuopc
   use rof_import_export     , only : import_fields, export_fields
   use nuopc_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
-
+!$ use omp_lib              , only : omp_set_num_threads
   implicit none
   private ! except
 
@@ -56,6 +56,7 @@ module rof_comp_nuopc
 
   logical                 :: do_rtm
   logical                 :: do_rtmflood
+  integer                 :: nthrds
 
   integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
@@ -447,12 +448,14 @@ contains
     ! local variables
     type(ESMF_Mesh)       :: Emesh
     type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
+    type(ESMF_VM)         :: vm
     integer , allocatable :: gindex(:)             ! global index space on my processor
     integer               :: lbnum                 ! input to memory diagnostic
     character(CL)         :: cvalue                ! temporary
     integer               :: shrlogunit            ! original log unit
     integer               :: lsize
     integer               :: n,ni
+    integer               :: localPet
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
     !---------------------------------------------------------------------------
 
@@ -466,6 +469,13 @@ contains
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
+
+    call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMGet(vm, pet=localPet, peCount=nthrds, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+!$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -602,6 +612,7 @@ contains
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
+!$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
