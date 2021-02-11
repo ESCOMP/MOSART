@@ -11,7 +11,7 @@ module rof_import_export
   use shr_sys_mod     , only : shr_sys_abort
   use RunoffMod       , only : rtmCTL, TRunoff
   use RtmVar          , only : iulog, nt_rtm, rtm_tracers
-  use RtmSpmd         , only : masterproc
+  use RtmSpmd         , only : masterproc, mpicom_rof
   use RtmTimeManager  , only : get_nstep
   use nuopc_shr_methods , only : chkerr
 
@@ -123,6 +123,7 @@ contains
     use ESMF          , only : ESMF_Mesh, ESMF_MeshGet
     use ESMF          , only : ESMF_Field, ESMF_FieldGet, ESMF_FieldRegridGetArea
     use shr_const_mod , only : shr_const_rearth
+    use shr_mpi_mod   , only : shr_mpi_min, shr_mpi_max
 
     ! input/output variables
     type(ESMF_GridComp) , intent(inout) :: gcomp
@@ -141,6 +142,14 @@ contains
     real(r8), allocatable :: model_areas(:)
     real(r8), pointer     :: dataptr(:)
     real(r8)              :: re = shr_const_rearth*0.001_r8 ! radius of earth (km)
+    real(r8)              :: max_mod2med_areacor
+    real(r8)              :: max_med2mod_areacor
+    real(r8)              :: min_mod2med_areacor
+    real(r8)              :: min_med2mod_areacor
+    real(r8)              :: max_mod2med_areacor_glob
+    real(r8)              :: max_med2mod_areacor_glob
+    real(r8)              :: min_mod2med_areacor_glob
+    real(r8)              :: min_med2mod_areacor_glob
     character(len=*), parameter :: subname='(rof_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
@@ -183,25 +192,33 @@ contains
 
     ! Determine model areas
     allocate(model_areas(numOwnedElements))
+    allocate(mod2med_areacor(numOwnedElements))
+    allocate(med2mod_areacor(numOwnedElements))
     n = 0
     do g = rtmCTL%begr,rtmCTL%endr
        n = n + 1
        model_areas(n) = rtmCTL%area(g)*1.0e-6_r8/(re*re)
-    end do
-
-    ! Determine flux correction factors (module variables)
-    allocate (mod2med_areacor(numOwnedElements))
-    allocate (med2mod_areacor(numOwnedElements))
-    do n = 1,numOwnedElements
        mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
-       med2mod_areacor(n) = 1._r8 / mod2med_areacor(n)
-       if (abs(mod2med_areacor(n) - 1._r8) > 1.e-13) then
-          write(6,'(a,i8,2x,d21.14,2x)')' AREACOR mosart: n, abs(mod2med_areacor(n)-1)', &
-               n, abs(mod2med_areacor(n) - 1._r8)
-       end if
+       med2mod_areacor(n) = mesh_areas(n) / model_areas(n)
     end do
     deallocate(model_areas)
     deallocate(mesh_areas)
+
+    min_mod2med_areacor = minval(mod2med_areacor)
+    max_mod2med_areacor = maxval(mod2med_areacor)
+    min_med2mod_areacor = minval(med2mod_areacor)
+    max_med2mod_areacor = maxval(med2mod_areacor)
+    call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom_rof)
+    call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom_rof)
+    call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom_rof)
+    call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom_rof)
+
+    if (masterproc) then
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
+            min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'MOSART'
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
+            min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'MOSART'
+    end if
 
   end subroutine realize_fields
 
