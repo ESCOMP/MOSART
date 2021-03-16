@@ -1,4 +1,21 @@
 ===============================================================
+Tag name:  mosart1_0_40
+Originator(s): mvertens, jedwards
+Date: March 16, 2021
+One-line Summary: Addition of flux area correction factors
+
+Adds area flux correction factors as is done in CPL7. Remove some debug
+writes of coupler fields. And remove state_getfldptr as it was unused.
+
+Also sets the number of OpenMP threads according to the coupler namelist
+rather than env variables.
+
+Testing:
+SMS_D_Ld5_Vnuopc.f10_f10_mg37.I2000Clm50BgcCrop.cheyenne_intel.mosart-default
+in the context of CESM's nuopc_dev branch. (No baseline comparisons done
+for full set of changes.)
+
+===============================================================
 Tag name:  mosart1_0_39
 Originator(s): jedwards
 Date: December 22, 2020
