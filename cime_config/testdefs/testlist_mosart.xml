@@ -5,7 +5,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
-      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -24,7 +23,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
-      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
