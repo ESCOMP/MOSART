@@ -291,9 +291,8 @@ contains
     call get_prev_time(day, sec)
     do t=1,ntapes
        tape(t)%begtime = day + sec/secspday
-       locfnh(t) = ''
-       locfnhr(t) = ''
     end do
+
     if (masterproc) then
        write(iulog,*)  trim(subname),' Successfully initialized MOSART history files'
        write(iulog,'(72a1)') ("-",i=1,60)
