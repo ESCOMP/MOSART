@@ -1,4 +1,15 @@
 ===============================================================
+Tag name:  mosart1_0_41
+Originator(s): jedwards
+Date: March 17, 2021
+One-line Summary: Minor changes for pio2 compatibility
+
+Testing: mosart test suite on cheyenne & izumi, in the context of
+ctsm5.1.dev027. All tests passed (once I removed the two non-debug nag
+tests, which now fail) and were bit-for-bit with baselines (baselines
+were generated using mosart1_0_40 in the context of ctsm5.1.dev027).
+
+===============================================================
 Tag name:  mosart1_0_40
 Originator(s): mvertens, jedwards
 Date: March 16, 2021
