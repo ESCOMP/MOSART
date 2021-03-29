@@ -481,7 +481,8 @@ contains
        read(cvalue,*) nthrds
     else
        nthrds = localPeCount
-    endif!$  call omp_set_num_threads(nthrds)
+    endif
+    !$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
