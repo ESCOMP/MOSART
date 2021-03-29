@@ -475,6 +475,12 @@ contains
     call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
+    !----------------------------------------------------------------------------
+    ! Initialize threading.  If ESMF_AWARE_THREADING is used localPeCount will be
+    ! the thread count, otherwise the nthreads attribute is used.
+    !----------------------------------------------------------------------------
+
+
     if(localPeCount == 1) then
        call NUOPC_CompAttributeGet(gcomp, "nthreads", value=cvalue, rc=rc)
        if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
