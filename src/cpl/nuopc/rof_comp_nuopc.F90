@@ -455,6 +455,7 @@ contains
     integer               :: lsize
     integer               :: n,ni
     integer               :: localPet
+    integer               :: localPeCount
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
     !---------------------------------------------------------------------------
 
@@ -471,10 +472,16 @@ contains
 
     call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMGet(vm, pet=localPet, peCount=nthrds, rc=rc)
+    call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-!$  call omp_set_num_threads(nthrds)
+    if(localPeCount == 1) then
+       call NUOPC_CompAttributeGet(gcomp, "nthreads", value=cvalue, rc=rc)
+       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+       read(cvalue,*) nthrds
+    else
+       nthrds = localPeCount
+    endif!$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
