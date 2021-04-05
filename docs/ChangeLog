@@ -1,4 +1,17 @@
 ===============================================================
+Tag name:  mosart1_0_42
+Originator(s): jedwards
+Date: April 5, 2021
+One-line Summary: Support for threading with NUOPC/CMEPS
+
+See https://github.com/ESCOMP/MOSART/pull/41
+
+Testing:
+Mariana Vertenstein ran
+ERS_Vnuopc_Ld5.f09_g17.I1850Clm50Sp.cheyenne_intel.clm-default; this was
+bit-for-bit against baselines.
+
+===============================================================
 Tag name:  mosart1_0_41
 Originator(s): jedwards
 Date: March 17, 2021
