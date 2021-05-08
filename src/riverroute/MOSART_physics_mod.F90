@@ -14,11 +14,12 @@ MODULE MOSART_physics_mod
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
   use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers
-  use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL
+  use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL,Tdom
   use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
   use RtmSpmd       , only : masterproc, mpicom_rof
   use perf_mod      , only: t_startf, t_stopf
   use mct_mod
+  use DommasbMod
 
   implicit none
   private
@@ -63,6 +64,7 @@ MODULE MOSART_physics_mod
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
+          call hillslopeRoutingDOM(iunit,nt,Tctl%DeltaT)
        endif
     end do
     endif
@@ -101,6 +103,7 @@ MODULE MOSART_physics_mod
                 TRunoff%wt(iunit,nt) = TRunoff%wt(iunit,nt) + TRunoff%dwt(iunit,nt) * localDeltaT
                 call UpdateState_subnetwork(iunit,nt)
                 TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt)-TRunoff%etout(iunit,nt)
+                call subnetworkRoutingDOM(iunit,nt,localDeltaT)
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
           endif
