@@ -2544,6 +2544,18 @@ contains
      allocate (TPara%c_twid(begr:endr))
      TPara%c_twid = 1.0_r8
 
+     !Initialize dom flux variables
+     allocate (domSource(begr:endr,nt_rtm))
+     Tdom%domSource = 0._r8
+     allocate (Tdom%domH(begr:endr,nt_rtm))
+     Tdom%domH = 0._r8
+     allocate (Tdom%domT(begr:endr,nt_rtm))
+     Tdom%domT = 0._r8
+     allocate (Tdom%domR(begr:endr,nt_rtm))
+     Tdom%domR = 0._r8
+     allocate (Tdom%dom(begr:endr,nt_rtm))
+     Tdom%dom = 0._r8
+
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)
      call pio_closefile(ncid)
