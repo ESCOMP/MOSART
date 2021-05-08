@@ -269,13 +269,33 @@ module RunoffMod
      real(r8), pointer :: c_nr(:)       ! coefficient to adjust the manning's roughness of channels
      real(r8), pointer :: c_nh(:)       ! coefficient to adjust the manning's roughness of overland flow across hillslopes
      real(r8), pointer :: c_twid(:)     ! coefficient to adjust the width of sub-reach channel
-  end type Tparameter 
-
+  end type Tparameter
+ 
+  ! DOM status and flux variables
+  public :: Domflux
+  type Domflux
+     !dom source generated from CLM soil carbon
+     real(r8), pointer :: domSource(:,:)  ! dom production from soil organic matter (mgC/L/day)
+     !hillslope
+     real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (mgC/L)
+     !sub-network
+     real(r8), pointer :: domT(:,:)    ! dom discharge from sub-network into main reach (mgC/L)
+     !main channel upstream interactions
+     real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (mgC/L)
+     !out flow from the outlet
+     real(r8), pointer :: dom(:,:)     ! dom outflow from main channel to ocean (mgC/L) 
+     !history fields
+     real(r8), pointer :: doc(:)       ! dissolved organic carbon (mgC/L) from dom
+     real(r8), pointer :: don(:)       ! dissolved organic nitrogen (mgN/L) from dom
+     real(r8), pointer :: domTUp(:,:)  ! outflow sum of upstream gridcells,instantaneous (mgC/L)
+  end type Domflux 
+  
   !== Hongyi
   type (Tcontrol)    , public :: Tctl
   type (Tspatialunit), public :: TUnit
   type (TstatusFlux) , public :: TRunoff
   type (Tparameter)  , public :: TPara
+  type (Domflux)     , public :: Tdom
   !== Hongyi
 
   type (runoff_flow) , public :: rtmCTL
