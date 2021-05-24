@@ -16,6 +16,7 @@ MODULE MOSART_physics_mod
   use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL,Tdom
   use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
+  use RunoffMod     , only : SMatP_domRUp, avsrc_domRUp, avdst_domRUp
   use RtmSpmd       , only : masterproc, mpicom_rof
   use perf_mod      , only: t_startf, t_stopf
   use mct_mod
@@ -136,16 +137,20 @@ MODULE MOSART_physics_mod
 #else
        !--- copy erout into avsrc_eroutUp ---
        call mct_avect_zero(avsrc_eroutUp)
+       call mct_avect_zero(avsrc_eroutUp)
        cnt = 0
        do iunit = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
           do nt = 1,nt_rtm
              avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
+             avsrc_domRUp%rAttr(nt,cnt) = Tdom%domR(iunit,nt)
           enddo
        enddo
        call mct_avect_zero(avdst_eroutUp)
+       call mct_avect_zero(avdst_domRUp)
 
        call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
+       call mct_sMat_avMult(avsrc_domRUp, sMatP_domRUp, avdst_domRUp)
 
        !--- add mapped eroutUp to TRunoff ---
        cnt = 0
@@ -160,7 +165,7 @@ MODULE MOSART_physics_mod
 
        TRunoff%eroutup_avg = TRunoff%eroutup_avg + TRunoff%eroutUp
        TRunoff%erlat_avg   = TRunoff%erlat_avg   + TRunoff%erlateral
-
+       Tdom%domRout        = Tdom%domRout + Tdom%domRUp
        !------------------
        ! channel routing
        !------------------
@@ -175,6 +180,7 @@ MODULE MOSART_physics_mod
              do k=1,TUnit%numDT_r(iunit)
                 call mainchannelRouting(iunit,nt,localDeltaT)    
                 TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
+                call mainchannelRoutingDOM(iunit,nt,localDeltaT)
 ! check for negative channel storage
 !                if(TRunoff%wr(iunit,1) < -1.e-10) then
 !                   write(iulog,*) 'Negative channel storage! ', iunit, TRunoff%wr(iunit,1)

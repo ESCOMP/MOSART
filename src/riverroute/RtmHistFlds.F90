@@ -9,7 +9,7 @@ module RtmHistFlds
 !
 ! !USES:
   use shr_kind_mod , only : r8 => shr_kind_r8
-  use RunoffMod    , only : rtmCTL,Tdom
+  use RunoffMod    , only : rtmCTL, Tdom
   use RtmHistFile  , only : RtmHistAddfld, RtmHistPrintflds
   use RtmVar       , only : nt_rtm, rtm_tracers  
 
@@ -132,11 +132,11 @@ contains
 
     call RtmHistAddfld (fname='DOC'//'_'//trim(rtm_tracers(3)), units='mgC/L',  &
          avgflag='A', long_name='Dissolved Organic Carbon: '//trim(rtm_tracers(3)), &
-         ptr_rof=Tdom%doc, default='active')
+         ptr_rof=rtmCTL%dom_nt3, default='active')
 
     call RtmHistAddfld (fname='DON'//'_'//trim(rtm_tracers(4)), units='mgC/L',  &
          avgflag='A', long_name='Dissolved Organic Nitrogen: '//trim(rtm_tracers(4)), &
-         ptr_rof=Tdom%don, default='active')
+         ptr_rof=rtmCTL%dom_nt4, default='active')
 
     ! Print masterlist of history fields
 
@@ -160,8 +160,8 @@ contains
     rtmCTL%runofflnd_nt1(:)  = rtmCTL%runofflnd(:,1)
     rtmCTL%runofflnd_nt2(:)  = rtmCTL%runofflnd(:,2)
 
-    Tdom%doc(:)              = Tdom%dom(:,3)
-    Tdom%don(:)              = Tdom%dom(:,4)
+    rtmCTL%dom_nt3(:)        = Tdom%domR(:,3)
+    rtmCTL%dom_nt4(:)        = Tdom%domR(:,4)
 
     rtmCTL%runoffocn_nt1(:)  = rtmCTL%runoffocn(:,1)
     rtmCTL%runoffocn_nt2(:)  = rtmCTL%runoffocn(:,2)

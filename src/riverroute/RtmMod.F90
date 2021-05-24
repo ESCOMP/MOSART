@@ -24,7 +24,7 @@ module RtmMod
                                barrier_timers
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date
-  use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet 
+  use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet
   use RtmHistFile     , only : RtmHistUpdateHbuf, RtmHistHtapesWrapup, RtmHistHtapesBuild, &
                                rtmhist_ndens, rtmhist_mfilt, rtmhist_nhtfrq,     &
                                rtmhist_avgflag_pertape, rtmhist_avgflag_pertape, & 
@@ -37,7 +37,8 @@ module RtmMod
                                gsmap_r, &
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_direct, avsrc_direct, avdst_direct, &
-                               SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
+                               SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp, &
+                               Tdom
   use MOSART_physics_mod, only : Euler
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel
@@ -1821,6 +1822,7 @@ contains
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
+       Tdom%domSource(nr,nt) = 1000._r8
     enddo
     enddo
 
@@ -2545,7 +2547,7 @@ contains
      TPara%c_twid = 1.0_r8
 
      !Initialize dom flux variables
-     allocate (domSource(begr:endr,nt_rtm))
+     allocate (Tdom%domSource(begr:endr,nt_rtm))
      Tdom%domSource = 0._r8
      allocate (Tdom%domH(begr:endr,nt_rtm))
      Tdom%domH = 0._r8
@@ -2553,8 +2555,18 @@ contains
      Tdom%domT = 0._r8
      allocate (Tdom%domR(begr:endr,nt_rtm))
      Tdom%domR = 0._r8
+     allocate (Tdom%domRout(begr:endr,nt_rtm))
+     Tdom%domRout = 0._r8
+     allocate (Tdom%domRin(begr:endr,nt_rtm))
+     Tdom%domRin = 0._r8
+     allocate (Tdom%domRUp(begr:endr,nt_rtm))
+     Tdom%domRUp = 0._r8
      allocate (Tdom%dom(begr:endr,nt_rtm))
      Tdom%dom = 0._r8
+     !allocate (Tdom%doc(begr:endr))
+     !Tdom%doc = 0._r8
+     !allocate (Tdom%don(begr:endr))
+     !Tdom%don = 0._r8
 
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)
