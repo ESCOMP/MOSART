@@ -65,7 +65,9 @@ MODULE MOSART_physics_mod
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
-          call hillslopeRoutingDOM(iunit,nt,Tctl%DeltaT)
+          if (wh(iunit,nt)> 0._r8 ) then
+             call hillslopeRoutingDOM(iunit,nt,Tctl%DeltaT)
+          endif !wh
        endif
     end do
     endif
