@@ -2770,10 +2770,11 @@ contains
      cnt = 0
      call mct_avect_zero(avsrc_eroutUp)
      call mct_avect_zero(avsrc_domRUp)
+
      do nr = rtmCTL%begr,rtmCTL%endr
         cnt = cnt + 1
         avsrc_eroutUp%rAttr(1,cnt) = avdst_eroutUp%rAttr(1,cnt)
-        avsrc_domRUp%rAttr(1.cnt) = avdst_domRUp%rAttr(1,cnt)
+        avsrc_domRUp%rAttr(1,cnt) = avdst_domRUp%rAttr(1,cnt)
      enddo
 
      call mct_avect_zero(avdst_eroutUp)
