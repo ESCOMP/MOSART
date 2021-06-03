@@ -38,6 +38,7 @@ module RtmMod
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_direct, avsrc_direct, avdst_direct, &
                                SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp, &
+                               sMatP_domRUp, avsrc_domRUp, avdst_domRUp, &
                                Tdom
   use MOSART_physics_mod, only : Euler
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
@@ -2670,6 +2671,7 @@ contains
         enddo
 
         call mct_sMatP_Init(sMatP_eroutUp, sMat, gsMap_r, gsMap_r, 0, mpicom_rof, ROFID)
+        call mct_sMatP_Init(sMatP_domRUp, sMat, gsMap_r, gsMap_r, 0, mpicom_rof, ROFID)
 
      elseif (smat_option == 'Xonly' .or. smat_option == 'Yonly') then
         ! root initialization
@@ -2711,6 +2713,7 @@ contains
         call mct_avect_clean(avtmp)
 
         call mct_sMatP_Init(sMatP_eroutUp, sMat, gsMap_r, gsMap_r, smat_option, 0, mpicom_rof, ROFID)
+        call mct_sMatP_Init(sMatP_domRUp, sMat, gsMap_r, gsMap_r, smat_option, 0, mpicom_rof, ROFID)
 
      else
 
@@ -2727,8 +2730,11 @@ contains
      if ( masterproc ) write(iulog,*) trim(subname),' MOSART initialize avect ',trim(rList)
      call mct_aVect_init(avsrc_eroutUp,rList=rList,lsize=rtmCTL%lnumr)
      call mct_aVect_init(avdst_eroutUp,rList=rList,lsize=rtmCTL%lnumr)
+     call mct_aVect_init(avsrc_domRUp,rList=rList,lsize=rtmCTL%lnumr)
+     call mct_aVect_init(avdst_domRUp,rList=rList,lsize=rtmCTL%lnumr)
 
      lsize = mct_smat_gNumEl(sMatP_eroutUp%Matrix,mpicom_rof)
+     lsize = mct_smat_gNumEl(sMatP_domRUp%Matrix,mpicom_rof)
      if (masterproc) write(iulog,*) subname," Done initializing SmatP_eroutUp, nElements = ",lsize
 
      ! keep only sMatP
@@ -2750,6 +2756,7 @@ contains
      cnt = cnt + 1
      avdst_eroutUp%rAttr(1,cnt) = rtmCTL%area(nr)
      Tunit%areatotal2(nr) = avdst_eroutUp%rAttr(1,cnt)
+     avdst_domRUp%rAttr(1,cnt) = rtmCTL%area(nr)
   enddo
 
   tcnt = 0
@@ -2762,14 +2769,19 @@ contains
      ! copy avdst to avsrc for next downstream step
      cnt = 0
      call mct_avect_zero(avsrc_eroutUp)
+     call mct_avect_zero(avsrc_domRUp)
      do nr = rtmCTL%begr,rtmCTL%endr
         cnt = cnt + 1
         avsrc_eroutUp%rAttr(1,cnt) = avdst_eroutUp%rAttr(1,cnt)
+        avsrc_domRUp%rAttr(1.cnt) = avdst_domRUp%rAttr(1,cnt)
      enddo
 
      call mct_avect_zero(avdst_eroutUp)
+     call mct_avect_zero(avdst_domRUp)
 
      call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
+     call mct_sMat_avMult(avsrc_domRUp, sMatP_domRUp, avdst_domRUp)
+     
 
      ! add avdst to areatot and compute new global sum
      cnt = 0
