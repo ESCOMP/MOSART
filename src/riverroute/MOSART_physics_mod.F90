@@ -106,7 +106,9 @@ MODULE MOSART_physics_mod
                 TRunoff%wt(iunit,nt) = TRunoff%wt(iunit,nt) + TRunoff%dwt(iunit,nt) * localDeltaT
                 call UpdateState_subnetwork(iunit,nt)
                 TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt)-TRunoff%etout(iunit,nt)
-                call subnetworkRoutingDOM(iunit,nt,localDeltaT)
+                if (TRunoff%wt(iunit,nt) > 0._r8) then
+                   call subnetworkRoutingDOM(iunit,nt,localDeltaT)
+                endif !wt
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
           endif
