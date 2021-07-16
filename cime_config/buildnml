@@ -120,6 +120,9 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         coupling_period = basedt // mosart_ncpl
     nmlgen.set_value("coupling_period", value=coupling_period)
 
+    if ( nmlgen.get_value("frivinp_rtm") == "UNSET" ):
+        raise SystemExit("ERROR: Direction file is NOT set and is required: frivinp_rtm")
+
     #----------------------------------------------------
     # Write output file
     #----------------------------------------------------
