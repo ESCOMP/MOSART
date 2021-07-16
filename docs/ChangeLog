@@ -1,4 +1,20 @@
 ===============================================================
+Tag name:  mosart1_0_43
+Originator(s): erik
+Date: July 16, 2021
+One-line Summary: Change shebang lines to python3, abort if direction file not set, add compset
+
+Change the shebang lines in buildnml and buildlib for python3
+Abort if a direction file is not set
+Add a compset for running MOSART on it's own (not tested yet)
+
+Fixes #42 -- Change shebang lines for python
+Fixes #35 -- point to directory
+Fixes #28 -- add R2000MOSART compset
+
+See https://github.com/ESCOMP/MOSART/pull/43
+
+===============================================================
 Tag name:  mosart1_0_42
 Originator(s): jedwards
 Date: April 5, 2021
