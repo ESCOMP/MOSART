@@ -10,7 +10,7 @@ module rof_import_export
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_abort
   use nuopc_shr_methods , only : chkerr
-  use RunoffMod       , only : rtmCTL, TRunoff
+  use RunoffMod       , only : rtmCTL, TRunoff, TUnit
   use RtmVar          , only : iulog, nt_rtm, rtm_tracers
   use RtmSpmd         , only : masterproc
   use RtmTimeManager  , only : get_nstep
@@ -85,6 +85,8 @@ contains
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
     end if
 
     do n = 1,fldsFrRof_num
@@ -260,6 +262,8 @@ contains
     real(r8), pointer :: flood(:)
     real(r8), pointer :: volr(:)
     real(r8), pointer :: volrmch(:)
+    real(r8), pointer :: tdepth(:)
+    real(r8), pointer :: tdepth_max(:)
     logical, save     :: first_time = .true.
     integer           :: dbrc
     character(len=*), parameter :: subname='(rof_import_export:export_fields)'
@@ -303,6 +307,8 @@ contains
     allocate(flood(begr:endr))
     allocate(volr(begr:endr))
     allocate(volrmch(begr:endr))
+    allocate(tdepth(begr:endr))
+    allocate(tdepth_max(begr:endr))
 
     if ( ice_runoff )then
        ! separate liquid and ice runoff
@@ -335,6 +341,9 @@ contains
        flood(n)   = -rtmCTL%flood(n)    / (rtmCTL%area(n)*0.001_r8)
        volr(n)    =  rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
        volrmch(n) =  Trunoff%wr(n,nliq) / rtmCTL%area(n)
+       tdepth(n)  = Trunoff%yt(n,nliq)
+       ! assume height to width ratio is the same for tributaries and main channel
+       tdepth_max(n) = max(TUnit%twidth0(n),0._r8)*(TUnit%rdepth(n)/TUnit%rwidth(n))
     end do
 
     call state_setexport(exportState, 'Forr_rofl', begr, endr, input=rofl, rc=rc)
@@ -352,6 +361,12 @@ contains
     call state_setexport(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+    call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
        do n = begr,endr
           write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, flood(n)
@@ -362,7 +377,7 @@ contains
        end do
     end if
 
-    deallocate(rofl, rofi, flood, volr, volrmch)
+    deallocate(rofl, rofi, flood, volr, volrmch, tdepth, tdepth_max)
 
   end subroutine export_fields
 
