@@ -1258,7 +1258,6 @@ contains
     ! !LOCAL VARIABLES:
     integer :: varid                   ! netCDF variable id
     integer :: m                       ! indices
-    integer :: start(2), count(2)      ! output bounds
     integer :: status                  ! error code
     logical :: varpresent              ! if true, variable is on tape
     character(len=32) :: vname         ! variable error checking
@@ -1280,19 +1279,7 @@ contains
        call ncd_inqvid  (ncid, varname, varid, vardesc)
 
        if (present(nt))      then
-          count(1) = len_trim(data)
-          count(2) = 1
-          do m = 1,count(1)
-             tmpString(m:m) = data(m:m)
-          end do
-          if ( count(1) > size(tmpString) )then
-             write(iulog,*) subname//' ERROR: input string size is too large:'//trim(data)
-             call shr_sys_abort( )
-          end if
-          start(1) = 1
-          start(2) = nt
-          status = pio_put_var(ncid, varid, start=start, count=count, &
-               ival=tmpString(1:count(1)) )
+          status = pio_put_var(ncid, varid, (/1,nt/), ival=data)
        else
           status = pio_put_var(ncid, varid, data )
        end if
@@ -1507,13 +1494,9 @@ contains
     !-----------------------------------------------------------------------
 
     if (flag == 'read') then
-
        status = pio_get_var(ncid, vardesc, start, data )
-
     elseif (flag == 'write') then
-
        status = pio_put_var(ncid, vardesc, start, data )
-
     endif
 
   end subroutine ncd_io_char_varn_strt_nf

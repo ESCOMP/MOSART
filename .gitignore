@@ -26,6 +26,7 @@ core.*
 *.gz
 *.log
 cime_config/buildnmlc
+__pycache__
 
 # test and case directories
 tests/

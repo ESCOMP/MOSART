@@ -30,7 +30,7 @@ module rof_comp_nuopc
   use rof_import_export     , only : import_fields, export_fields
   use nuopc_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
-
+!$ use omp_lib              , only : omp_set_num_threads
   implicit none
   private ! except
 
@@ -56,6 +56,7 @@ module rof_comp_nuopc
 
   logical                 :: do_rtm
   logical                 :: do_rtmflood
+  integer                 :: nthrds
 
   integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
@@ -148,7 +149,6 @@ contains
     type(ESMF_Time)         :: stopTime              ! Stop time
     type(ESMF_Time)         :: refTime               ! Ref time
     type(ESMF_TimeInterval) :: timeStep              ! Model timestep
-    type(ESMF_Calendar)     :: esmf_calendar         ! esmf calendar
     type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
     type(ESMF_VM)           :: vm                    ! esmf virtual machine
     integer                 :: mpicom
@@ -447,12 +447,15 @@ contains
     ! local variables
     type(ESMF_Mesh)       :: Emesh
     type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
+    type(ESMF_VM)         :: vm
     integer , allocatable :: gindex(:)             ! global index space on my processor
     integer               :: lbnum                 ! input to memory diagnostic
     character(CL)         :: cvalue                ! temporary
     integer               :: shrlogunit            ! original log unit
     integer               :: lsize
     integer               :: n,ni
+    integer               :: localPet
+    integer               :: localPeCount
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
     !---------------------------------------------------------------------------
 
@@ -466,6 +469,26 @@ contains
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
+
+    call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMGet(vm, pet=localPet, peCount=localPeCount, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    !----------------------------------------------------------------------------
+    ! Initialize threading.  If ESMF_AWARE_THREADING is used localPeCount will be
+    ! the thread count, otherwise the nthreads attribute is used.
+    !----------------------------------------------------------------------------
+
+
+    if(localPeCount == 1) then
+       call NUOPC_CompAttributeGet(gcomp, "nthreads", value=cvalue, rc=rc)
+       if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=u_FILE_u)) return
+       read(cvalue,*) nthrds
+    else
+       nthrds = localPeCount
+    endif
+    !$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -602,6 +625,7 @@ contains
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
+!$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if(masterproc) then

@@ -10,8 +10,8 @@ module RtmHistFile
   use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
   use shr_log_mod   , only : errMsg => shr_log_errMsg
   use RunoffMod     , only : rtmCTL, Tunit
-  use RtmVar        , only : rtmlon, rtmlat, spval, ispval, secspday, frivinp_rtm, &   
-                             iulog, nsrest, caseid, inst_suffix, nsrStartup, nsrBranch, & 
+  use RtmVar        , only : rtmlon, rtmlat, spval, ispval, secspday, frivinp_rtm, &
+                             iulog, nsrest, caseid, inst_suffix, nsrStartup, nsrBranch, &
                              ctitle, version, hostname, username, conventions, source, &
                              model_doi_url
   use RtmFileUtils  , only : get_filename, getfil
@@ -1056,7 +1056,6 @@ contains
                         ' ERROR: unknown time averaging flag (avgflag)=',avgflag
                    call shr_sys_abort()
                 end select
-
                 call ncd_defvar(ncid=nfid(t), varname=varname, xtype=tape(t)%ncprec, &
                      dim1name='lon', dim2name='lat', dim3name='time', &
                      long_name=long_name, units=units, cell_method=avgstr, &
@@ -1127,7 +1126,7 @@ contains
                      trim(locfnh(t)),' at nstep = ', get_nstep()
                 write(iulog,*)
              endif
-	     call ncd_pio_closefile(nfid(t))
+             call ncd_pio_closefile(nfid(t))
              if ((.not.nlend) .and. (tape(t)%ntimes/=tape(t)%mfilt)) then
                 call ncd_pio_openfile (nfid(t), trim(locfnh(t)), ncd_write)
              end if
@@ -1147,7 +1146,6 @@ contains
 !-----------------------------------------------------------------------
 
   subroutine RtmHistRestart (ncid, flag, rdate)
-
     ! !DESCRIPTION:
     ! Read/write history file restart data.
     ! If the current history file(s) are not full, file(s) are opened
@@ -1343,7 +1341,6 @@ contains
     !================================================
     else if (flag == 'write') then
     !================================================
-
        ! Add history filenames to master restart file
        do t = 1,ntapes
           call ncd_io('locfnh',  locfnh(t),  'write', ncid, nt=t)

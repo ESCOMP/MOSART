@@ -1,4 +1,87 @@
 ===============================================================
+Tag name:  mosart1_0_43
+Originator(s): erik
+Date: July 16, 2021
+One-line Summary: Change shebang lines to python3, abort if direction file not set, add compset
+
+Change the shebang lines in buildnml and buildlib for python3
+Abort if a direction file is not set
+Add a compset for running MOSART on it's own (not tested yet)
+
+Fixes #42 -- Change shebang lines for python
+Fixes #35 -- point to directory
+Fixes #28 -- add R2000MOSART compset
+
+See https://github.com/ESCOMP/MOSART/pull/43
+
+===============================================================
+Tag name:  mosart1_0_42
+Originator(s): jedwards
+Date: April 5, 2021
+One-line Summary: Support for threading with NUOPC/CMEPS
+
+See https://github.com/ESCOMP/MOSART/pull/41
+
+Testing:
+Mariana Vertenstein ran
+ERS_Vnuopc_Ld5.f09_g17.I1850Clm50Sp.cheyenne_intel.clm-default; this was
+bit-for-bit against baselines.
+
+===============================================================
+Tag name:  mosart1_0_41
+Originator(s): jedwards
+Date: March 17, 2021
+One-line Summary: Minor changes for pio2 compatibility
+
+Testing: mosart test suite on cheyenne & izumi, in the context of
+ctsm5.1.dev027. All tests passed (once I removed the two non-debug nag
+tests, which now fail) and were bit-for-bit with baselines (baselines
+were generated using mosart1_0_40 in the context of ctsm5.1.dev027).
+
+===============================================================
+Tag name:  mosart1_0_40
+Originator(s): mvertens, jedwards
+Date: March 16, 2021
+One-line Summary: Addition of flux area correction factors
+
+Adds area flux correction factors as is done in CPL7. Remove some debug
+writes of coupler fields. And remove state_getfldptr as it was unused.
+
+Also sets the number of OpenMP threads according to the coupler namelist
+rather than env variables.
+
+Testing:
+SMS_D_Ld5_Vnuopc.f10_f10_mg37.I2000Clm50BgcCrop.cheyenne_intel.mosart-default
+in the context of CESM's nuopc_dev branch. (No baseline comparisons done
+for full set of changes.)
+
+===============================================================
+Tag name:  mosart1_0_39
+Originator(s): jedwards
+Date: December 22, 2020
+One-line Summary: Remove nuopc_cap_share from build
+
+nuopc_cap_share is now included in the share library.
+
+Testing: mosart test suite on cheyenne & izumi, in the context of
+ctsm5.1.dev019. All tests passed and were bit-for-bit with baselines.
+
+
+===============================================================
+Tag name:  mosart1_0_38
+Originator(s): sacks
+Date: November 01, 2020
+One-line Summary: Change compset in test
+
+In an upcoming CTSM tag, the compset I2000Clm50BgcCropGs will be renamed
+to I2000Clm50BgcCrop (while keeping the same meaning as before). This
+tag changes a test to use the new alias, to keep MOSART compatible with
+this upcoming CTSM tag.
+
+Note that this change will require the upcoming CTSM tag (probably
+ctsm5.1.dev011) in order to run this test from the mosart test list.
+
+===============================================================
 Tag name:  mosart1_0_37
 Originator(s): mvertens, erik, jedwards
 Date: August 06, 2020

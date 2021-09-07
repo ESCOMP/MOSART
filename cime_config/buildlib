@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Build the mosart component library
 """
@@ -41,8 +41,6 @@ def _build_mosart():
             paths = [ os.path.join(caseroot,"SourceMods","src.mosart"),
                       os.path.join(srcroot,"components","mosart","src","riverroute"),
                       os.path.join(srcroot,"components","mosart","src","cpl",driver)]
-            if driver == 'nuopc':
-                paths.append(os.path.join(srcroot,"cime","src","drivers","nuopc","nuopc_cap_share"))
 
             with open(filepath_file, "w") as filepath:
                 filepath.write("\n".join(paths))
