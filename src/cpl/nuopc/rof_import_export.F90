@@ -44,6 +44,7 @@ module rof_import_export
   real(r8), allocatable :: mod2med_areacor(:)
   real(r8), allocatable :: med2mod_areacor(:)
 
+  integer     ,parameter :: debug = 0 ! internal debug level
   character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
@@ -416,10 +417,10 @@ contains
     call state_setexport(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, rc=rc)
+    call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, rc=rc)
+    call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
