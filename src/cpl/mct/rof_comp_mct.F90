@@ -18,7 +18,7 @@ module rof_comp_mct
                                 seq_infodata_start_type_start, seq_infodata_start_type_cont,   &
                                 seq_infodata_start_type_brnch
   use seq_comm_mct     , only : seq_comm_suffix, seq_comm_inst, seq_comm_name
-  use RunoffMod        , only : rtmCTL, TRunoff, Tunit
+  use RunoffMod        , only : rtmCTL, TRunoff
   use RtmVar           , only : rtmlon, rtmlat, ice_runoff, iulog, &
                                 nsrStartup, nsrContinue, nsrBranch, & 
                                 inst_index, inst_suffix, inst_name, RtmVarSet, &
@@ -27,6 +27,7 @@ module rof_comp_mct
   use RtmMod           , only : Rtmini, Rtmrun
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep 
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
+
   use mosart_import_export, only : mosart_import, mosart_export
   use mosart_cpl_indices  , only : mosart_cpl_indices_set
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi

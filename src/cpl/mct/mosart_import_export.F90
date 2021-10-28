@@ -8,8 +8,7 @@ module mosart_import_export
   use mosart_cpl_indices  , only : index_r2x_Forr_rofl, index_r2x_Forr_rofi
   use mosart_cpl_indices  , only : index_r2x_Flrr_flood
   use mosart_cpl_indices  , only : index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
-  use mosart_cpl_indices  , only : index_r2x_Sr_tdepth,index_r2x_Sr_tdepth_max
-  use RunoffMod           , only : rtmCTL, TRunoff, Tunit
+  use RunoffMod           , only : rtmCTL, TRunoff
   use RtmVar              , only : iulog, ice_runoff, nt_rtm, rtm_tracers
   use RtmSpmd             , only : masterproc, iam
   use RtmTimeManager      , only : get_nstep
@@ -176,9 +175,6 @@ contains
 
        r2x(index_r2x_Flrr_volr,ni)    = rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
        r2x(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
-       r2x(index_r2x_Sr_tdepth,ni)    = Trunoff%yt(n,nliq)
-       ! assume height to width ratio is the same for tributaries and main channel
-       r2x(index_r2x_Sr_tdepth_max,ni)= max(Tunit%twidth0(n),0._r8)*(Tunit%rdepth(n)/Tunit%rwidth(n))
     end do
 
     if (debug > 0 .and. masterproc .and. get_nstep() <  5) then

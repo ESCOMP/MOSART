@@ -28,8 +28,6 @@ module mosart_cpl_indices
   integer, public :: index_r2x_Flrr_flood   = 0 ! rof->lnd flood runoff (>fthresh) back to land
   integer, public :: index_r2x_Flrr_volr    = 0 ! rof->lnd volr total volume back to land
   integer, public :: index_r2x_Flrr_volrmch = 0 ! rof->lnd volr main channel back to land
-  integer, public :: index_r2x_Sr_tdepth    = 0 ! rof->lnd tributary water depth back to land
-  integer, public :: index_r2x_Sr_tdepth_max = 0! rof->lnd tributary water depth back to land
   integer, public :: nflds_r2x              = 0
 
 !=======================================================================
@@ -83,8 +81,6 @@ contains
     index_r2x_Flrr_flood   = mct_avect_indexra(avtmp,'Flrr_flood')
     index_r2x_Flrr_volr    = mct_avect_indexra(avtmp,'Flrr_volr')
     index_r2x_Flrr_volrmch = mct_avect_indexra(avtmp,'Flrr_volrmch')
-    index_r2x_Sr_tdepth    = mct_avect_indexra(avtmp,'Sr_tdepth')
-    index_r2x_Sr_tdepth_max= mct_avect_indexra(avtmp,'Sr_tdepth_max')
 
     nflds_r2x = mct_avect_nRattr(avtmp)
 
