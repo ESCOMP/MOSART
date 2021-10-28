@@ -37,6 +37,7 @@ module rof_import_export
   integer, parameter     :: fldsMax = 100
   integer                :: fldsToRof_num = 0
   integer                :: fldsFrRof_num = 0
+  logical                :: flds_r2l_stream_channel_depths = .false.   ! If should pass the channel depth fields needed for the hillslope model
   type (fld_list_type)   :: fldsToRof(fldsMax)
   type (fld_list_type)   :: fldsFrRof(fldsMax)
 
@@ -66,7 +67,9 @@ contains
     type(ESMF_State)       :: importState
     type(ESMF_State)       :: exportState
     character(ESMF_MAXSTR) :: stdname
-    character(ESMF_MAXSTR) :: cvalue
+    character(ESMF_MAXSTR) :: cvalue          ! Character string read from driver attribute
+    logical                :: isPresent       ! Atribute is present
+    logical                :: isSet           ! Atribute is set
     integer                :: n, num
     character(len=128)     :: fldname
     character(len=*), parameter :: subname='(rof_import_export:advertise_fields)'
@@ -82,14 +85,20 @@ contains
     !--------------------------------
 
     if (do_rtm) then
+       call NUOPC_CompAttributeGet(gcomp, name="flds_r2l_stream_channel_depths", value=cvalue, &
+            isPresent=isPresent, isSet=isSet, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
        call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
+       if ( flds_r2l_stream_channel_depths )then
+          call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
+          call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
+       end if
     end if
 
     do n = 1,fldsFrRof_num
@@ -363,8 +372,10 @@ contains
     allocate(flood(begr:endr))
     allocate(volr(begr:endr))
     allocate(volrmch(begr:endr))
-    allocate(tdepth(begr:endr))
-    allocate(tdepth_max(begr:endr))
+    if ( flds_r2l_stream_channel_depths )then
+       allocate(tdepth(begr:endr))
+       allocate(tdepth_max(begr:endr))
+    end if
 
     if ( ice_runoff )then
        ! separate liquid and ice runoff
@@ -397,9 +408,11 @@ contains
        flood(n)   = -rtmCTL%flood(n)    / (rtmCTL%area(n)*0.001_r8)
        volr(n)    =  rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
        volrmch(n) =  Trunoff%wr(n,nliq) / rtmCTL%area(n)
-       tdepth(n)  = Trunoff%yt(n,nliq)
-       ! assume height to width ratio is the same for tributaries and main channel
-       tdepth_max(n) = max(TUnit%twidth0(n),0._r8)*(TUnit%rdepth(n)/TUnit%rwidth(n))
+       if ( flds_r2l_stream_channel_depths )then
+          tdepth(n)  = Trunoff%yt(n,nliq)
+          ! assume height to width ratio is the same for tributaries and main channel
+          tdepth_max(n) = max(TUnit%twidth0(n),0._r8)*(TUnit%rdepth(n)/TUnit%rwidth(n))
+        end if
     end do
 
     call state_setexport(exportState, 'Forr_rofl', begr, endr, input=rofl, do_area_correction=.true., rc=rc)
@@ -417,11 +430,13 @@ contains
     call state_setexport(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if ( flds_r2l_stream_channel_depths ) then
+       call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
        do n = begr,endr
@@ -433,7 +448,10 @@ contains
        end do
     end if
 
-    deallocate(rofl, rofi, flood, volr, volrmch, tdepth, tdepth_max)
+    deallocate(rofl, rofi, flood, volr, volrmch)
+    if ( flds_r2l_stream_channel_depths ) then
+       deallocate(tdepth, tdepth_max)
+    end if
 
   end subroutine export_fields
 
