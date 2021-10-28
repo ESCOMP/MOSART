@@ -48,13 +48,13 @@
       <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
     </options>
   </test>
-  <test name="SMS_D_Ld5_Vnuopc" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/default">
+  <test name="SMS_D_Ld5_Vmct" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/default">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Smoke test with DEBUG and NUOPC driver</option>
+      <option name="comment"  >Smoke test with DEBUG and MCT driver</option>
     </options>
   </test>
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
