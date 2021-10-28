@@ -116,7 +116,6 @@ contains
        call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
        call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
        call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdto')
        call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
        call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
     end if
