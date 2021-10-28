@@ -66,6 +66,15 @@
       <option name="comment"  >decompOpts are not bit for bit on PE layout change</option>
     </options>
   </test>
+  <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/pass_channel_depths">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Pass channel depths needed for hillslope model (will fail until you use a version of CMEPS with this)</option>
+    </options>
+  </test>
   <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
