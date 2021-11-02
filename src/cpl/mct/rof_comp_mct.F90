@@ -75,7 +75,7 @@ contains
     character(len=*), optional, intent(in)    :: NLFilename ! Namelist filename to read
     !
     ! !LOCAL VARIABLES:
-    logical :: rof_prognostic                        ! flag
+    logical :: rof_prognostic = .true.               ! flag
     logical :: flood_present                         ! flag
     integer :: mpicom_loc                            ! mpi communicator
     type(mct_gsMap),         pointer :: gsMap_rof    ! runoff model MCT GS map
@@ -188,7 +188,7 @@ contains
                    hostname_in=hostname, username_in=username)
 
     ! Read namelist, grid and surface data
-    call Rtmini(rtm_active=rof_prognostic,flood_active=flood_present)
+    call Rtmini(flood_active=flood_present)
 
     if (rof_prognostic) then
        ! Initialize memory for input state

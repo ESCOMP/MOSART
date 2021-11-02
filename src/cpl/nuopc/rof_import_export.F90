@@ -54,12 +54,11 @@ module rof_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtm, do_rtmflood, rc)
+  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    logical          , intent(in)  :: do_rtm
     logical          , intent(in)  :: do_rtmflood
     integer          , intent(out) :: rc
 
@@ -84,21 +83,19 @@ contains
     ! Advertise export fields
     !--------------------------------
 
-    if (do_rtm) then
-       call NUOPC_CompAttributeGet(gcomp, name="flds_r2l_stream_channel_depths", value=cvalue, &
-            isPresent=isPresent, isSet=isSet, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
-       call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
-       if ( flds_r2l_stream_channel_depths )then
-          call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
-          call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
-       end if
+    call NUOPC_CompAttributeGet(gcomp, name="flds_r2l_stream_channel_depths", value=cvalue, &
+         isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
+    call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+    if ( flds_r2l_stream_channel_depths )then
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
     end if
 
     do n = 1,fldsFrRof_num
@@ -111,14 +108,12 @@ contains
     ! Advertise import fields
     !--------------------------------
 
-    if (do_rtm) then
-       call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
-    end if
+    call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &

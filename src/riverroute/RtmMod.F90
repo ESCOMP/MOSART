@@ -95,7 +95,6 @@ module RtmMod
   real(r8),pointer :: rlone(:)    ! longitude of 1d east grid cell edge (deg)
 
   logical :: do_rtmflood
-  logical :: do_rtm
 
   character(len=256) :: nlfilename_rof = 'mosart_in' 
 !
@@ -110,7 +109,7 @@ contains
 ! !IROUTINE: Rtmini
 !
 ! !INTERFACE:
-  subroutine Rtmini(rtm_active,flood_active)
+  subroutine Rtmini(flood_active)
 !
 ! !DESCRIPTION:
 ! Initialize MOSART grid, mask, decomp
@@ -119,7 +118,6 @@ contains
 !
 ! !ARGUMENTS:
     implicit none
-    logical, intent(out) :: rtm_active
     logical, intent(out) :: flood_active
 !
 ! !CALLED FROM:
@@ -198,7 +196,7 @@ contains
     ! Read in mosart namelist
     !-------------------------------------------------------
 
-    namelist /mosart_inparm / ice_runoff, do_rtm, do_rtmflood, &
+    namelist /mosart_inparm / ice_runoff, do_rtmflood, &
          frivinp_rtm, finidat_rtm, nrevsn_rtm, coupling_period, &
          rtmhist_ndens, rtmhist_mfilt, rtmhist_nhtfrq, &
          rtmhist_fincl1,  rtmhist_fincl2, rtmhist_fincl3, &
@@ -208,7 +206,6 @@ contains
          smat_option, delt_mosart
 
     ! Preset values
-    do_rtm      = .true.
     do_rtmflood = .false.
     ice_runoff  = .true.
     finidat_rtm = ' '
@@ -251,7 +248,6 @@ contains
     call mpi_bcast (smat_option  , len(smat_option)  , MPI_CHARACTER, 0, mpicom_rof, ier)
     call mpi_bcast (bypass_routing_option, len(bypass_routing_option), MPI_CHARACTER, 0, mpicom_rof, ier)
     call mpi_bcast (qgwl_runoff_option, len(qgwl_runoff_option), MPI_CHARACTER, 0, mpicom_rof, ier)
-    call mpi_bcast (do_rtm,      1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (do_rtmflood, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (ice_runoff,  1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
@@ -290,22 +286,14 @@ contains
        end if
     endif
 
-    rtm_active = do_rtm
     flood_active = do_rtmflood
     
-    if (do_rtm) then
-       if (frivinp_rtm == ' ') then
-          call shr_sys_abort( subname//' ERROR: do_rtm TRUE, but frivinp_rtm NOT set' )
-       else
-          if (masterproc) then
-             write(iulog,*) '   MOSART river data       = ',trim(frivinp_rtm)
-          endif
-       end if
+    if (frivinp_rtm == ' ') then
+       call shr_sys_abort( subname//' ERROR: frivinp_rtm NOT set' )
     else
        if (masterproc) then
-          write(iulog,*)'MOSART will not be active '
+          write(iulog,*) '   MOSART river data       = ',trim(frivinp_rtm)
        endif
-       RETURN
     end if
 
     if (coupling_period <= 0) then
