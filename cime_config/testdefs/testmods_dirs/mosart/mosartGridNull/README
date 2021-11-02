@@ -1,0 +1,3 @@
+Test for a case when the MOSART grid is NULL and hence MOSART should be turned off
+Since this happens at create_newcase this should be done for a grid where the ROF_GRID
+is already NULL, so for example a single point case.
