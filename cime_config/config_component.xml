@@ -47,10 +47,10 @@
     <desc>mode for mosart flood feature, NULL means mosart flood is turned off</desc>
   </entry>
 
-  <entry id="MOSART_SIMYR">
+  <entry id="MOSART_SIM_YEAR">
     <type>char</type>
     <valid_values></valid_values>
-    <default_value>-simyr 2000</default_value>
+    <default_value>2000</default_value>
     <values>
       <value compset="1850.*_MOSART">1850</value>
       <value compset="HIST.*_MOSART">1850</value>
@@ -59,7 +59,7 @@
     </values>
     <group>run_component_mosart</group>
     <file>env_run.xml</file>
-    <desc>MOSART build-namelist options</desc>
+    <desc>Simulation year to start from -- build-namelist options (currently not used)</desc>
   </entry>
   <help>
     =========================================

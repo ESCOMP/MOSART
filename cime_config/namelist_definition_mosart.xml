@@ -8,26 +8,6 @@
   <!-- MOSART Namelist -->
   <!-- ========================================================================================  -->
 
-  <entry id="do_rtm" >
-    <type>logical</type>
-    <category>mosart</category>
-    <group>mosart_inparm</group>
-    <desc>
-      If .true., turn on mosart river routing
-      If the value of the xml variable ROF GRID in env_build.xml is set to 'null', then
-      the MOSART build-namelist will set do_mosart to .false.
-      If do_mosart is set to .false., then MOSART will send a flag of rof_prognostic = .false.
-      back to the coupler on initialization.
-    </desc>
-    <values>
-      <value>.true.</value>
-      <value mosart_mode="ACTIVE" clm_accelerated_spinup="off">.true.</value>
-      <value clm_accelerated_spinup="on">.false.</value>
-      <value mosart_mode="NULL">.false.</value>
-      <value rof_grid="null">.false.</value>
-    </values>
-  </entry>
-
   <entry id="do_rtmflood" modify_via_xml="MOSART_FLOOD_MODE">
     <type>logical</type>
     <category>mosart</category>
