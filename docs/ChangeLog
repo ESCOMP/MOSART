@@ -2,7 +2,7 @@
 Tag name:  mosart1_0_44
 Originator(s): erik
 Date: Nov 02, 2021
-One-line Summary: 
+One-line Summary: Nuopc now the default driver, pass channel depth fields, remove do_rtm namelist
 
 Assume nuopc is the default driver now, so switch testlist for special driver tests
 to be mct rather than nuopc. Pass channel depth fields if flds_r2l_stream_channel_depths
@@ -13,6 +13,11 @@ Fixes #45 -- frivinp_rtm is still required even if MOSART is turned off
 Fixes #44 -- Remove reference to Flrl_rofdto 
 Fixes #36 -- pass water depths to LND
 Fixes #20 -- MOSART_SIMYR not setup correctly
+
+This test fails in the build unless there is an appropriate verison of CMEPS:
+
+SMS_D.f10_f10_mg37.I1850Clm50Bgc.cheyenne_intel.mosart-passChannelDepths
+   SHARED_BUILD -- FAIL
 
 ===============================================================
 Tag name:  mosart1_0_43
