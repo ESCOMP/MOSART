@@ -42,8 +42,9 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
     config['mosart_mode'] = case.get_value("MOSART_MODE")
     config['clm_accel'] = case.get_value("CLM_ACCELERATED_SPINUP")
     if ( config['clm_accel'] != "off" ):
-       config['mosart_mode'] = "NULL"
-       case.set_value( "MOSART_MODE", config['mosart_mode'] )
+       if ( config['mosart_mode'] != "NULL" ):
+           expect(False, "CLM_ACCELERATED_SPINUP is not off, but MOSART_MODE is not NULL, " + \
+                  "normally you should switch it off to save computer time")
 
     config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
     config['rof_grid'] = case.get_value("ROF_GRID")
