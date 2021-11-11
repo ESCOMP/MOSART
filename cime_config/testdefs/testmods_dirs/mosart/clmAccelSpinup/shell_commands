@@ -1,1 +1,2 @@
 ./xmlchange CLM_ACCELERATED_SPINUP=on
+./xmlchange MOSART_IGNORE_WARNINGS=TRUE
