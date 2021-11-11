@@ -181,7 +181,7 @@ contains
     character(len=256):: locfn                ! local file name
     character(len=16384) :: rList             ! list of fields for SM multiply
     integer           :: unitn                ! unit for namelist file
-#ifndef NDEBUG
+#ifdef NDEBUG
     integer,parameter :: dbug = 0             ! 0 = none, 1=normal, 2=much, 3=max
 #else
     integer,parameter :: dbug = 3             ! 0 = none, 1=normal, 2=much, 3=max
