@@ -1,4 +1,18 @@
 ===============================================================
+Tag name:  mosart1_0_45
+Originator(s): erik
+Date: Nov 12, 2021
+One-line Summary: Handle CLM_ACCELERATED_SPINUP option differently
+
+Handle CLM_ACCELERATED_SPINUP option differently so it doesn't change 
+MOSART_MODE, but dies (unless the new xml variable MOSART_IGNORE_WARNINGS 
+is set to TRUE). Also only output information about decomposition from all 
+PE's only if running with DEBUG compiler options set.
+
+Fixes #48 -- Remove setting of MOSART_MODE from buildnml
+Fixes #49 -- Reduce MOSART output to cesm.log
+
+===============================================================
 Tag name:  mosart1_0_44
 Originator(s): erik
 Date: Nov 02, 2021

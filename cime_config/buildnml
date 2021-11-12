@@ -40,10 +40,17 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
     #----------------------------------------------------
     config = {}
     config['mosart_mode'] = case.get_value("MOSART_MODE")
+    config['ignore_warn'] = case.get_value("MOSART_IGNORE_WARNINGS")
     config['clm_accel'] = case.get_value("CLM_ACCELERATED_SPINUP")
+    ignore_msg = "\n (Set MOSART_IGNORE_WARNINGS to TRUE with xmlchange in your case to ignore this message and continue anyway)"
     if ( config['clm_accel'] != "off" ):
-       config['mosart_mode'] = "NULL"
-       case.set_value( "MOSART_MODE", config['mosart_mode'] )
+       if ( config['mosart_mode'] != "NULL" ):
+           message = "CLM_ACCELERATED_SPINUP is not off, but MOSART_MODE is not NULL, " + \
+                      "normally you should switch it off to save computer time"
+           if ( not config['ignore_warn'] ):
+               expect(False, message+ignore_msg )
+           else:
+               logger.warning( "WARNING::"+message )
 
     config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
     config['rof_grid'] = case.get_value("ROF_GRID")

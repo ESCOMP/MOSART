@@ -35,6 +35,15 @@
     <desc>mode for mosart model, NULL means mosart is turned off</desc>
   </entry>
 
+  <entry id="MOSART_IGNORE_WARNINGS">
+    <type>logical</type>
+    <valid_values>TRUE,FALSE</valid_values>
+    <default_value>FALSE</default_value>
+    <group>run_component_mosart</group>
+    <file>env_run.xml</file>
+    <desc>If warnings in namelist setttings from buildnml should be ignored or not</desc>
+  </entry>
+
   <entry id="MOSART_FLOOD_MODE">
     <type>char</type>
     <valid_values>ACTIVE,NULL</valid_values>

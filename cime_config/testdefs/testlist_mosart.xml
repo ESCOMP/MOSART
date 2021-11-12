@@ -47,13 +47,13 @@
       <option name="comment"  >Test with MCT and MOSART off</option>
     </options>
   </test>
-  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm51Sp" testmods="mosart/clmAccelSpinup">
+  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm51Sp" testmods="mosart/clmAccelSpinupIgnoreWarn">
     <machines>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Test with CLM accelerated spinup, which should turn MOSART off</option>
+      <option name="comment"  >Test with CLM accelerated spinup, but ignore warnigns so it will send a warning but still run</option>
     </options>
   </test>
   <test name="SMS_Lh3" grid="1x1_brazil" compset="I2000Clm50Sp" testmods="mosart/mosartGridNull">
