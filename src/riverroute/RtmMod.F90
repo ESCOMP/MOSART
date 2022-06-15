@@ -107,13 +107,13 @@ contains
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Rtmini
+! !IROUTINE: Rtminit_namelist
 !
 ! !INTERFACE:
   subroutine Rtminit_namelist(flood_active)
 !
 ! !DESCRIPTION:
-! Initialize MOSART grid, mask, decomp
+! Read and distribute mosart namelist
 !
 ! !USES:
 !
@@ -127,27 +127,14 @@ contains
 ! !REVISION HISTORY:
 ! Author: Sam Levis
 ! Update: T Craig, Dec 2006
+! Update: J Edwards, Jun 2022
 !
 !
 ! !LOCAL VARIABLES:
 !EOP
-    integer  :: i,j,k,n,ng,g,n2,nt,nn         ! loop indices
-    integer  :: i1,j1,i2,j2
-    integer  :: im1,ip1,jm1,jp1,ir,jr,nr      ! neighbor indices
+    integer  :: i
     integer  :: ier                           ! error code
-    integer  :: mon                           ! month (1, ..., 12)
-    integer  :: day                           ! day of month (1, ..., 31)
-    real(r8) :: dtover,dtovermax              ! ts calc temporaries
-    integer  :: nroflnd                       ! local number of land runoff 
-    integer  :: nrofocn                       ! local number of ocn runoff
-    integer  :: na,nb,ns                      ! mct sizes
-    integer  :: ni,no,go                      ! tmps
     integer           :: unitn                ! unit for namelist file
-#ifdef NDEBUG
-    integer,parameter :: dbug = 0             ! 0 = none, 1=normal, 2=much, 3=max
-#else
-    integer,parameter :: dbug = 3             ! 0 = none, 1=normal, 2=much, 3=max
-#endif
     logical :: lexist                         ! File exists
     character(len= 7) :: runtyp(4)            ! run type
     character(len=*),parameter :: subname = '(Rtminit_namelist) '
@@ -275,8 +262,34 @@ contains
        endif
     end do
   end subroutine Rtminit_namelist
-
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Rtmini
+!
+! !INTERFACE:
   subroutine Rtmini
+
+!
+! !DESCRIPTION:
+! Initialize MOSART grid, mask, decomp
+!
+! !USES:
+!
+! !ARGUMENTS:
+    implicit none
+!
+! !CALLED FROM:
+! subroutine initialize in module initializeMod
+!
+! !REVISION HISTORY:
+! Author: Sam Levis
+! Update: T Craig, Dec 2006
+! Update: J Edwards, Jun 2022
+!
+!
+! !LOCAL VARIABLES:
+
     real(r8) :: effvel0 = 10.0_r8             ! default velocity (m/s)
     real(r8) :: effvel(nt_rtm)                ! downstream velocity (m/s)
     integer ,pointer  :: rgdc2glo(:)          ! temporary for initialization
@@ -1260,40 +1273,6 @@ contains
     !-------------------------------------------------------
     ! Compute timestep and subcycling number
     !-------------------------------------------------------
-
-! tcraig, old code based on cfl
-!    dtover = 0._r8
-!    dtovermax = 0._r8
-!!    write(iulog,*) "tcx ddist ",minval(ddist),maxval(ddist)
-!!    write(iulog,*) "tcx evel  ",minval(evel),maxval(evel)
-!    do nt=1,nt_rtm
-!       do nr=rtmCTL%begr,rtmCTL%endr
-!          if (ddist(nr) /= 0._r8) then
-!             dtover = evel(nr,nt)/ddist(nr)
-!          else
-!             dtover = 0._r8
-!          endif
-!          dtovermax = max(dtovermax,dtover)
-!       enddo
-!    enddo
-!    dtover = dtovermax
-!    call mpi_allreduce(dtover,dtovermax,1,MPI_REAL8,MPI_MAX,mpicom_rof,ier)
-!
-!    write(iulog,*) "tcx dtover ",dtover,dtovermax
-!
-!    if (dtovermax > 0._r8) then
-!       delt_mosart = (1.0_r8/dtovermax)*cfl_scale
-!    else
-!       write(iulog,*) subname,' ERROR in delt_mosart ',delt_mosart,dtover
-!       call shr_sys_abort(subname//' ERROR delt_mosart')
-!    endif
-!
-!    if (masterproc) write(iulog,*) 'mosart max timestep = ',delt_mosart,' (sec) for cfl_scale = ',cfl_scale
-!    if (masterproc) call shr_sys_flush(iulog)
-!
-!    delt_mosart = 600._r8  ! here set the time interval for routing as 10 mins, which is sufficient for 1/8th degree resolution and coarser.
-!    if (masterproc) write(iulog,*) 'mosart max timestep hardwired to = ',delt_mosart
-!    if (masterproc) call shr_sys_flush(iulog)
 
     call t_stopf('mosarti_vars')
 
