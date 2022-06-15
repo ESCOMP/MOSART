@@ -23,7 +23,7 @@ module rof_comp_nuopc
   use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
   use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
   use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : Rtmini, Rtmrun
+  use RtmMod                , only : Rtminit_namelist, Rtmini, Rtmrun
   use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
@@ -414,7 +414,7 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    call Rtmini(do_rtmflood)
+    call Rtminit_namelist(do_rtmflood)
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
@@ -495,7 +495,7 @@ contains
        call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
     endif
 #endif
-
+    call Rtmini()
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------

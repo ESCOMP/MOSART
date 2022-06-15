@@ -24,7 +24,7 @@ module rof_comp_mct
                                 inst_index, inst_suffix, inst_name, RtmVarSet, &
                                 nt_rtm, rtm_tracers
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
-  use RtmMod           , only : Rtmini, Rtmrun
+  use RtmMod           , only : Rtmini, Rtmrun, Rtminit_namelist
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep 
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
 
@@ -188,7 +188,8 @@ contains
                    hostname_in=hostname, username_in=username)
 
     ! Read namelist, grid and surface data
-    call Rtmini(flood_active=flood_present)
+    call Rtminit_namelist(flood_active=flood_present)
+    call Rtmini()
 
     if (rof_prognostic) then
        ! Initialize memory for input state
@@ -202,11 +203,11 @@ contains
        lsize = mct_gsMap_lsize(gsMap_rof, mpicom_rof)
        call rof_domain_mct( lsize, gsMap_rof, dom_r )
        
-       ! Initialize lnd -> mosart attribute vector		
+       ! Initialize lnd -> mosart attribute vector              
        call mct_aVect_init(x2r_r, rList=seq_flds_x2r_fields, lsize=lsize)
        call mct_aVect_zero(x2r_r)
        
-       ! Initialize mosart -> ocn attribute vector		
+       ! Initialize mosart -> ocn attribute vector              
        call mct_aVect_init(r2x_r, rList=seq_flds_r2x_fields, lsize=lsize)
        call mct_aVect_zero(r2x_r) 
        

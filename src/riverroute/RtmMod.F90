@@ -51,8 +51,9 @@ module RtmMod
   private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public Rtmini          ! Initialize MOSART grid
-  public Rtmrun          ! River routing model
+  public Rtminit_namelist ! Initialize MOSART grid
+  public Rtmini           ! Initialize MOSART grid
+  public Rtmrun           ! River routing model
 !
 ! !REVISION HISTORY:
 ! Author: Sam Levis
@@ -106,13 +107,13 @@ contains
 !-----------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: Rtmini
+! !IROUTINE: Rtminit_namelist
 !
 ! !INTERFACE:
-  subroutine Rtmini(flood_active)
+  subroutine Rtminit_namelist(flood_active)
 !
 ! !DESCRIPTION:
-! Initialize MOSART grid, mask, decomp
+! Read and distribute mosart namelist
 !
 ! !USES:
 !
@@ -126,74 +127,17 @@ contains
 ! !REVISION HISTORY:
 ! Author: Sam Levis
 ! Update: T Craig, Dec 2006
+! Update: J Edwards, Jun 2022
 !
 !
 ! !LOCAL VARIABLES:
 !EOP
-    real(r8) :: effvel0 = 10.0_r8             ! default velocity (m/s)
-    real(r8) :: effvel(nt_rtm)                ! downstream velocity (m/s)
-    real(r8) :: edgen                         ! North edge of the direction file
-    real(r8) :: edgee                         ! East edge of the direction file
-    real(r8) :: edges                         ! South edge of the direction file
-    real(r8) :: edgew                         ! West edge of the direction file
-    integer  :: i,j,k,n,ng,g,n2,nt,nn         ! loop indices
-    integer  :: i1,j1,i2,j2
-    integer  :: im1,ip1,jm1,jp1,ir,jr,nr      ! neighbor indices
-    real(r8) :: deg2rad                       ! pi/180
-    real(r8) :: dx,dx1,dx2,dx3                ! lon dist. betn grid cells (m)
-    real(r8) :: dy                            ! lat dist. betn grid cells (m)
-    real(r8) :: lrtmarea                      ! tmp local sum of area
-    real(r8),allocatable :: tempr(:,:)        ! temporary buffer
-    integer ,allocatable :: itempr(:,:)       ! temporary buffer
-    integer ,allocatable :: idxocn(:)         ! downstream ocean outlet cell
-    integer ,allocatable :: nupstrm(:)        ! number of upstream cells including own cell
-    integer ,allocatable :: pocn(:)           ! pe number assigned to basin
-    integer ,allocatable :: nop(:)            ! number of gridcells on a pe
-    integer ,allocatable :: nba(:)            ! number of basins on each pe
-    integer ,allocatable :: nrs(:)            ! begr on each pe
-    integer ,allocatable :: basin(:)          ! basin to mosart mapping
-    integer  :: nmos,nmos_chk                 ! number of mosart points
-    integer  :: nout,nout_chk                 ! number of basin with outlets
-    integer  :: nbas,nbas_chk                 ! number of basin/ocean points
-    integer  :: nrof,nrof_chk                 ! num of active mosart points
-    integer  :: baspe                         ! pe with min number of mosart cells
-    integer  :: maxrtm                        ! max num of rtms per pe for decomp
-    integer  :: minbas,maxbas                 ! used for decomp search
-    integer  :: nl,nloops                     ! used for decomp search
+    integer  :: i
     integer  :: ier                           ! error code
-    integer  :: mon                           ! month (1, ..., 12)
-    integer  :: day                           ! day of month (1, ..., 31)
-    integer  :: numr                          ! tot num of roff pts on all pes
-    real(r8) :: dtover,dtovermax              ! ts calc temporaries
-    type(file_desc_t) :: ncid                 ! netcdf file id
-    integer  :: dimid                         ! netcdf dimension identifier
-    integer  :: nroflnd                       ! local number of land runoff 
-    integer  :: nrofocn                       ! local number of ocn runoff
-    integer  :: pid,np,npmin,npmax,npint      ! log loop control
-    integer  :: na,nb,ns                      ! mct sizes
-    integer  :: ni,no,go                      ! tmps
-    integer ,pointer  :: rgdc2glo(:)          ! temporary for initialization
-    integer ,pointer  :: rglo2gdc(:)          ! temporary for initialization
-    integer ,pointer  :: gmask(:)             ! global mask
-    logical           :: found                ! flag
-    character(len=256):: fnamer               ! name of netcdf restart file 
-    character(len=256):: pnamer               ! full pathname of netcdf restart file
-    character(len=256):: locfn                ! local file name
-    character(len=16384) :: rList             ! list of fields for SM multiply
     integer           :: unitn                ! unit for namelist file
-#ifdef NDEBUG
-    integer,parameter :: dbug = 0             ! 0 = none, 1=normal, 2=much, 3=max
-#else
-    integer,parameter :: dbug = 3             ! 0 = none, 1=normal, 2=much, 3=max
-#endif
     logical :: lexist                         ! File exists
     character(len= 7) :: runtyp(4)            ! run type
-    integer ,allocatable :: gindex(:)         ! global index
-    integer           :: cnt, lsize, gsize    ! counter
-    integer           :: igrow,igcol,iwgt     ! mct field indices
-    type(mct_avect)   :: avtmp, avtmpG        ! temporary avects
-    type(mct_sMat)    :: sMat                 ! temporary sparse matrix, needed for sMatP
-    character(len=*),parameter :: subname = '(Rtmini) '
+    character(len=*),parameter :: subname = '(Rtminit_namelist) '
 !-----------------------------------------------------------------------
 
     !-------------------------------------------------------
@@ -317,7 +261,88 @@ contains
           rtmhist_nhtfrq(i) = nint(-rtmhist_nhtfrq(i)*SHR_CONST_CDAY/(24._r8*coupling_period))
        endif
     end do
+  end subroutine Rtminit_namelist
+!-----------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: Rtmini
+!
+! !INTERFACE:
+  subroutine Rtmini
 
+!
+! !DESCRIPTION:
+! Initialize MOSART grid, mask, decomp
+!
+! !USES:
+!
+! !ARGUMENTS:
+    implicit none
+!
+! !CALLED FROM:
+! subroutine initialize in module initializeMod
+!
+! !REVISION HISTORY:
+! Author: Sam Levis
+! Update: T Craig, Dec 2006
+! Update: J Edwards, Jun 2022
+!
+!
+! !LOCAL VARIABLES:
+
+    real(r8) :: effvel0 = 10.0_r8             ! default velocity (m/s)
+    real(r8) :: effvel(nt_rtm)                ! downstream velocity (m/s)
+    integer ,pointer  :: rgdc2glo(:)          ! temporary for initialization
+    integer ,pointer  :: rglo2gdc(:)          ! temporary for initialization
+    type(file_desc_t) :: ncid                 ! netcdf file id
+    integer  :: dimid                         ! netcdf dimension identifier
+    real(r8) :: lrtmarea                      ! tmp local sum of area
+    integer           :: cnt, lsize, gsize    ! counter
+
+    real(r8)          :: deg2rad              ! pi/180    
+    integer           :: g, n, i, j, nr, nt      ! iterators
+    integer  :: nl,nloops                     ! used for decomp search
+    character(len=256):: fnamer               ! name of netcdf restart file 
+    character(len=256):: pnamer               ! full pathname of netcdf restart file
+    character(len=256):: locfn                ! local file name
+    integer           :: ier
+    real(r8),allocatable :: tempr(:,:)        ! temporary buffer
+    integer ,allocatable :: itempr(:,:)       ! temporary buffer
+    logical           :: found                ! flag
+    integer  :: numr                          ! tot num of roff pts on all pes
+    integer  :: pid,np,npmin,npmax,npint      ! log loop control
+    integer  :: nmos,nmos_chk                 ! number of mosart points
+    integer  :: nout,nout_chk                 ! number of basin with outlets
+    integer  :: nbas,nbas_chk                 ! number of basin/ocean points
+    integer  :: nrof,nrof_chk                 ! num of active mosart points
+    integer  :: maxrtm                        ! max num of rtms per pe for decomp
+    integer  :: minbas,maxbas                 ! used for decomp search
+    real(r8) :: edgen                         ! North edge of the direction file
+    real(r8) :: edgee                         ! East edge of the direction file
+    real(r8) :: edges                         ! South edge of the direction file
+    real(r8) :: edgew                         ! West edge of the direction file
+    real(r8) :: dx,dx1,dx2,dx3                ! lon dist. betn grid cells (m)
+    real(r8) :: dy                            ! lat dist. betn grid cells (m)
+    integer           :: igrow,igcol,iwgt     ! mct field indices
+    type(mct_avect)   :: avtmp, avtmpG        ! temporary avects
+    type(mct_sMat)    :: sMat                 ! temporary sparse matrix, needed for sMatP
+    character(len=16384) :: rList             ! list of fields for SM multiply
+    integer  :: baspe                         ! pe with min number of mosart cells
+    integer ,pointer  :: gmask(:)             ! global mask
+    integer ,allocatable :: idxocn(:)         ! downstream ocean outlet cell
+    integer ,allocatable :: nupstrm(:)        ! number of upstream cells including own cell
+    integer ,allocatable :: pocn(:)           ! pe number assigned to basin
+    integer ,allocatable :: nop(:)            ! number of gridcells on a pe
+    integer ,allocatable :: nba(:)            ! number of basins on each pe
+    integer ,allocatable :: nrs(:)            ! begr on each pe
+    integer ,allocatable :: basin(:)          ! basin to mosart mapping
+    integer ,allocatable :: gindex(:)         ! global index
+#ifdef NDEBUG
+    integer,parameter :: dbug = 0             ! 0 = none, 1=normal, 2=much, 3=max
+#else
+    integer,parameter :: dbug = 3             ! 0 = none, 1=normal, 2=much, 3=max
+#endif
+    character(len=*),parameter :: subname = '(Rtmini) '
     !-------------------------------------------------------
     ! Initialize MOSART time manager 
     !-------------------------------------------------------
@@ -1248,40 +1273,6 @@ contains
     !-------------------------------------------------------
     ! Compute timestep and subcycling number
     !-------------------------------------------------------
-
-! tcraig, old code based on cfl
-!    dtover = 0._r8
-!    dtovermax = 0._r8
-!!    write(iulog,*) "tcx ddist ",minval(ddist),maxval(ddist)
-!!    write(iulog,*) "tcx evel  ",minval(evel),maxval(evel)
-!    do nt=1,nt_rtm
-!       do nr=rtmCTL%begr,rtmCTL%endr
-!          if (ddist(nr) /= 0._r8) then
-!             dtover = evel(nr,nt)/ddist(nr)
-!          else
-!             dtover = 0._r8
-!          endif
-!          dtovermax = max(dtovermax,dtover)
-!       enddo
-!    enddo
-!    dtover = dtovermax
-!    call mpi_allreduce(dtover,dtovermax,1,MPI_REAL8,MPI_MAX,mpicom_rof,ier)
-!
-!    write(iulog,*) "tcx dtover ",dtover,dtovermax
-!
-!    if (dtovermax > 0._r8) then
-!       delt_mosart = (1.0_r8/dtovermax)*cfl_scale
-!    else
-!       write(iulog,*) subname,' ERROR in delt_mosart ',delt_mosart,dtover
-!       call shr_sys_abort(subname//' ERROR delt_mosart')
-!    endif
-!
-!    if (masterproc) write(iulog,*) 'mosart max timestep = ',delt_mosart,' (sec) for cfl_scale = ',cfl_scale
-!    if (masterproc) call shr_sys_flush(iulog)
-!
-!    delt_mosart = 600._r8  ! here set the time interval for routing as 10 mins, which is sufficient for 1/8th degree resolution and coarser.
-!    if (masterproc) write(iulog,*) 'mosart max timestep hardwired to = ',delt_mosart
-!    if (masterproc) call shr_sys_flush(iulog)
 
     call t_stopf('mosarti_vars')
 
