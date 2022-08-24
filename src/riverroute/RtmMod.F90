@@ -1634,7 +1634,7 @@ contains
        cnt = 0
        do nr = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
-          rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
+          rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + avdst_direct%rAttr(nt,cnt)
        enddo
     endif
 
@@ -1748,7 +1748,7 @@ contains
        do nr = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
           do nt = 1,nt_rtm
-             rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
+             rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + avdst_direct%rAttr(nt,cnt)
           enddo
        enddo
     endif
