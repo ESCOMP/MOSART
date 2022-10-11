@@ -24,7 +24,7 @@ module RtmMod
                                barrier_timers
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date
-  use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet 
+  use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet
   use RtmHistFile     , only : RtmHistUpdateHbuf, RtmHistHtapesWrapup, RtmHistHtapesBuild, &
                                rtmhist_ndens, rtmhist_mfilt, rtmhist_nhtfrq,     &
                                rtmhist_avgflag_pertape, rtmhist_avgflag_pertape, & 
@@ -37,7 +37,9 @@ module RtmMod
                                gsmap_r, &
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_direct, avsrc_direct, avdst_direct, &
-                               SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
+                               SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp, &
+                               sMatP_domRUp, avsrc_domRUp, avdst_domRUp, &
+                               Tdom
   use MOSART_physics_mod, only : Euler
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel
@@ -1812,6 +1814,7 @@ contains
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
+       Tdom%domSource(nr,nt) = 1000._r8
     enddo
     enddo
 
@@ -2538,6 +2541,28 @@ contains
      allocate (TPara%c_twid(begr:endr))
      TPara%c_twid = 1.0_r8
 
+     !Initialize dom flux variables
+     allocate (Tdom%domSource(begr:endr,nt_rtm))
+     Tdom%domSource = 0._r8
+     allocate (Tdom%domH(begr:endr,nt_rtm))
+     Tdom%domH = 0._r8
+     allocate (Tdom%domT(begr:endr,nt_rtm))
+     Tdom%domT = 0._r8
+     allocate (Tdom%domR(begr:endr,nt_rtm))
+     Tdom%domR = 0._r8
+     allocate (Tdom%domRout(begr:endr,nt_rtm))
+     Tdom%domRout = 0._r8
+     allocate (Tdom%domRin(begr:endr,nt_rtm))
+     Tdom%domRin = 0._r8
+     allocate (Tdom%domRUp(begr:endr,nt_rtm))
+     Tdom%domRUp = 0._r8
+     allocate (Tdom%dom(begr:endr,nt_rtm))
+     Tdom%dom = 0._r8
+     !allocate (Tdom%doc(begr:endr))
+     !Tdom%doc = 0._r8
+     !allocate (Tdom%don(begr:endr))
+     !Tdom%don = 0._r8
+
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)
      call pio_closefile(ncid)
@@ -2640,6 +2665,7 @@ contains
         enddo
 
         call mct_sMatP_Init(sMatP_eroutUp, sMat, gsMap_r, gsMap_r, 0, mpicom_rof, ROFID)
+        call mct_sMatP_Init(sMatP_domRUp, sMat, gsMap_r, gsMap_r, 0, mpicom_rof, ROFID)
 
      elseif (smat_option == 'Xonly' .or. smat_option == 'Yonly') then
         ! root initialization
@@ -2681,6 +2707,7 @@ contains
         call mct_avect_clean(avtmp)
 
         call mct_sMatP_Init(sMatP_eroutUp, sMat, gsMap_r, gsMap_r, smat_option, 0, mpicom_rof, ROFID)
+        call mct_sMatP_Init(sMatP_domRUp, sMat, gsMap_r, gsMap_r, smat_option, 0, mpicom_rof, ROFID)
 
      else
 
@@ -2697,8 +2724,11 @@ contains
      if ( masterproc ) write(iulog,*) trim(subname),' MOSART initialize avect ',trim(rList)
      call mct_aVect_init(avsrc_eroutUp,rList=rList,lsize=rtmCTL%lnumr)
      call mct_aVect_init(avdst_eroutUp,rList=rList,lsize=rtmCTL%lnumr)
+     call mct_aVect_init(avsrc_domRUp,rList=rList,lsize=rtmCTL%lnumr)
+     call mct_aVect_init(avdst_domRUp,rList=rList,lsize=rtmCTL%lnumr)
 
      lsize = mct_smat_gNumEl(sMatP_eroutUp%Matrix,mpicom_rof)
+     lsize = mct_smat_gNumEl(sMatP_domRUp%Matrix,mpicom_rof)
      if (masterproc) write(iulog,*) subname," Done initializing SmatP_eroutUp, nElements = ",lsize
 
      ! keep only sMatP
@@ -2720,6 +2750,7 @@ contains
      cnt = cnt + 1
      avdst_eroutUp%rAttr(1,cnt) = rtmCTL%area(nr)
      Tunit%areatotal2(nr) = avdst_eroutUp%rAttr(1,cnt)
+     avdst_domRUp%rAttr(1,cnt) = rtmCTL%area(nr)
   enddo
 
   tcnt = 0
@@ -2732,14 +2763,20 @@ contains
      ! copy avdst to avsrc for next downstream step
      cnt = 0
      call mct_avect_zero(avsrc_eroutUp)
+     call mct_avect_zero(avsrc_domRUp)
+
      do nr = rtmCTL%begr,rtmCTL%endr
         cnt = cnt + 1
         avsrc_eroutUp%rAttr(1,cnt) = avdst_eroutUp%rAttr(1,cnt)
+        avsrc_domRUp%rAttr(1,cnt) = avdst_domRUp%rAttr(1,cnt)
      enddo
 
      call mct_avect_zero(avdst_eroutUp)
+     call mct_avect_zero(avdst_domRUp)
 
      call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
+     call mct_sMat_avMult(avsrc_domRUp, sMatP_domRUp, avdst_domRUp)
+     
 
      ! add avdst to areatot and compute new global sum
      cnt = 0

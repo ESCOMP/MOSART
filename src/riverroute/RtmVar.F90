@@ -8,8 +8,8 @@ module RtmVar
   implicit none
 
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
-  integer, parameter, public :: nt_rtm = 2    ! number of tracers
-  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE'/)
+  integer, parameter, public :: nt_rtm = 4    ! number of tracers
+  character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE','DOC','DON'/)
 
   ! Constants
   integer, parameter, private ::  iundef = -9999999
