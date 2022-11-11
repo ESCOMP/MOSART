@@ -1,4 +1,15 @@
 ===============================================================
+Tag name:  mosart1_0_46
+Originator(s): jedwards
+Date: Jun 12, 2022
+One-line Summary: PIO ascynchronus changes
+
+Currently mosart initializes and try's to use IO in the advertise phase, but asyncio requires that this is not done until the
+realize phase. This PR splits the mosart initialization so that the namelist is still read in the advertise phase but IO waits until
+the realize phase. Tested with cesm prealpha tests on cheyenne, a modification was also required in the mct driver to handle the new
+initialize subroutine.
+
+===============================================================
 Tag name:  mosart1_0_45
 Originator(s): erik
 Date: Nov 12, 2021
