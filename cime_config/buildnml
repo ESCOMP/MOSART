@@ -14,7 +14,7 @@ import os, shutil, sys
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
     raise SystemExit("ERROR: must set CIMEROOT environment variable")
-sys.path.append(os.path.join(CIMEROOT, "scripts", "Tools"))
+sys.path.append(os.path.join(CIMEROOT, "scripts", "CIME", "Tools"))
 
 from standard_script_setup import *
 from CIME.case import Case
@@ -133,6 +133,14 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
 
     if ( nmlgen.get_value("frivinp_rtm") == "UNSET" and config["mosart_mode"] != "NULL" ):
         raise SystemExit("ERROR: Direction file is NOT set and is required when MOSART is active: frivinp_rtm")
+
+    bypass_routing_option = nmlgen.get_value("bypass_routing_option")
+    qgwl_runoff_option    = nmlgen.get_value("qgwl_runoff_option")
+    if bypass_routing_option == "none" and qgwl_runoff_option != "all":
+        raise SystemExit("ERROR: When bypass_routing_option is none, qgwl_runoff_option can only be all")
+
+    if bypass_routing_option == "direct_to_outlet" and qgwl_runoff_option == "threshold":
+        raise SystemExit("ERROR: When bypass_routing_option is direct_to_outlet, qgwl_runoff_option can not be threshold")
 
     #----------------------------------------------------
     # Write output file

@@ -111,6 +111,7 @@
     </values>
     <desc>
       Method for handling of qgwl runoff inputs.
+      (threshold is only valid for bypass_routing_option=direct_in_place)
     </desc>
   </entry>
 

@@ -244,6 +244,16 @@ contains
        endif
     end if
 
+    if (trim(bypass_routing_option) == 'direct_to_outlet') then
+       if (trim(qgwl_runoff_option) == 'threshold') then
+          call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can NOT be threshold if bypass_routing_option==direct_to_outlet' )
+       end if
+    else if (trim(bypass_routing_option) == 'none') then
+       if (trim(qgwl_runoff_option) /= 'all') then
+          call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can only be all if bypass_routing_option==none' )
+       end if
+    end if
+
     if (coupling_period <= 0) then
        write(iulog,*) subname,' ERROR MOSART coupling_period invalid',coupling_period
        call shr_sys_abort( subname//' ERROR: coupling_period invalid' )
@@ -1634,7 +1644,7 @@ contains
        cnt = 0
        do nr = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
-          rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
+          rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + avdst_direct%rAttr(nt,cnt)
        enddo
     endif
 
@@ -1748,7 +1758,7 @@ contains
        do nr = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
           do nt = 1,nt_rtm
-             rtmCTL%direct(nr,nt) = avdst_direct%rAttr(nt,cnt)
+             rtmCTL%direct(nr,nt) = rtmCTL%direct(nr,nt) + avdst_direct%rAttr(nt,cnt)
           enddo
        enddo
     endif
