@@ -128,4 +128,5 @@
       <option name="wallclock">00:20:00</option>
       <option name="comment"  >Run without any bypass option</option>
     </options>
+  </test>
 </testlist>
