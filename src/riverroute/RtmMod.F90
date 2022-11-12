@@ -246,7 +246,11 @@ contains
 
     if (trim(bypass_routing_option) == 'direct_to_outlet') then
        if (trim(qgwl_runoff_option) == 'threshold') then
-          call shr_sys_abort( subname//' ERROR: bypass_routing_option can NOT be threshold if bypass_routing_option==direct_to_outlet' )
+          call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can NOT be threshold if bypass_routing_option==direct_to_outlet' )
+       end if
+    else if (trim(bypass_routing_option) == 'none') then
+       if (trim(qgwl_runoff_option) /= 'all') then
+          call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can only be all if bypass_routing_option==none' )
        end if
     end if
 
