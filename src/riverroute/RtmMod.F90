@@ -244,6 +244,12 @@ contains
        endif
     end if
 
+    if (trim(bypass_routing_option) == 'direct_to_outlet') then
+       if (trim(qgwl_runoff_option) == 'threshold') then
+          call shr_sys_abort( subname//' ERROR: bypass_routing_option can NOT be threshold if bypass_routing_option==direct_to_outlet' )
+       end if
+    end if
+
     if (coupling_period <= 0) then
        write(iulog,*) subname,' ERROR MOSART coupling_period invalid',coupling_period
        call shr_sys_abort( subname//' ERROR: coupling_period invalid' )
