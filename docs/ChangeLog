@@ -1,4 +1,15 @@
 ===============================================================
+Tag name:  mosart1_0_48
+Originator(s): erik
+Date: Nov 13, 2022
+One-line Summary: Change bypass_routing option to direct_to_outlet
+
+Change the bypass_routing option to negative flow is sent to
+the river outlets.
+
+Fixes #58 -- change bypass_routing default
+
+===============================================================
 Tag name:  mosart1_0_47
 Originator(s): erik
 Date: Nov 12, 2022

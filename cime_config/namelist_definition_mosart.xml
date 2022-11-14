@@ -94,7 +94,7 @@
     <group>mosart_inparm</group>
     <valid_values>direct_in_place,direct_to_outlet,none</valid_values>
     <values>
-      <value>direct_in_place</value>
+      <value>direct_to_outlet</value>
     </values>
     <desc>
       Method for bypassing routing model.
@@ -107,7 +107,7 @@
     <group>mosart_inparm</group>
     <valid_values>all,negative,threshold</valid_values>
     <values>
-      <value>threshold</value>
+      <value>negative</value>
     </values>
     <desc>
       Method for handling of qgwl runoff inputs.
