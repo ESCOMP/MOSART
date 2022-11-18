@@ -59,15 +59,17 @@ module RunoffMod
      !    - local
      real(r8), pointer :: runofflnd(:,:)   ! runoff masked for land (m3 H2O/s)
      real(r8), pointer :: runoffocn(:,:)   ! runoff masked for ocn  (m3 H2O/s)
+     real(r8), pointer :: runoffocndom(:,:)! DOM runoff masked for ocn  (gC/s)
+     real(r8), pointer :: runofflnddom(:,:)! DOM runoff masked for lnd  (gC/s)
      real(r8), pointer :: runofftot(:,:)   ! total runoff masked for ocn  (m3 H2O/s)
      real(r8), pointer :: dvolrdt(:,:)     ! RTM change in storage (mm/s)
      real(r8), pointer :: dvolrdtlnd(:,:)  ! dvolrdt masked for land (mm/s)
      real(r8), pointer :: dvolrdtocn(:,:)  ! dvolrdt masked for ocn  (mm/s)
      real(r8), pointer :: volr(:,:)        ! RTM storage (m3)
+     real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (gC)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
-     real(r8), pointer :: domlnd(:,:)      ! dom amsked for land (mgC/L)
      !    - restarts
-     real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
+     real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m3)
      real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m3)
      real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m3)
      real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m3/s)
@@ -76,6 +78,7 @@ module RunoffMod
      real(r8), pointer :: qsur(:,:)        ! coupler surface forcing [m3/s]
      real(r8), pointer :: qsub(:,:)        ! coupler subsurface forcing [m3/s]
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
+     real(r8), pointer :: domsur(:,:)      ! dom amsked for land (gC/s)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -107,8 +110,10 @@ module RunoffMod
      real(r8), pointer :: qsub_nt2(:)
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
-     real(r8), pointer :: dom_nt3(:)
-     real(r8), pointer :: dom_nt4(:)
+     real(r8), pointer :: domsur_ntdom1(:)
+     real(r8), pointer :: dommas_ntdom1(:)
+     real(r8), pointer :: runoffocndom_ntdom1(:)
+     real(r8), pointer :: runofflnddom_ntdom1(:)
 
   end type runoff_flow
 
@@ -281,22 +286,16 @@ module RunoffMod
   ! DOM status and flux variables
   public :: Domflux
   type Domflux
-     !dom source generated from CLM soil carbon
-     real(r8), pointer :: domSource(:,:)  ! dom production from soil organic matter (mgC/L/day)
+     real(r8), pointer :: domsur(:,:)  ! flow to downstream grid cells (gC/s)
      !hillslope
-     real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (mgC/L)
+     real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (gC/m3)
      !sub-network
-     real(r8), pointer :: domT(:,:)    ! dom discharge from sub-network into main reach (mgC/L)
+     real(r8), pointer :: domT(:,:)    ! dom discharge from sub-network into main reach (gC/m3)
      !main channel upstream interactions
-     real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (mgC/L)
-     real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (mgC/L)
-     real(r8), pointer :: domRout(:,:) ! flow from upstream grids (mgC/L)
-     real(r8), pointer :: domRin(:,:)  ! flow to downstream grid cells (mgC/L)
-     !out flow from the outlet
-     real(r8), pointer :: dom(:,:)     ! dom outflow from main channel to ocean (mgC/L) 
-     !history fields
-     real(r8), pointer :: doc(:)       ! dissolved organic carbon (mgC/L) from dom
-     real(r8), pointer :: don(:)       ! dissolved organic nitrogen (mgN/L) from dom
+     real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (gC/m3)
+     real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (gC/m3)
+     real(r8), pointer :: domRout(:,:) ! flow from upstream grids (gC/m3)
+     real(r8), pointer :: domRin(:,:)  ! flow to downstream grid cells (gC/m3)
   end type Domflux 
   
   !== Hongyi
@@ -322,7 +321,6 @@ contains
     allocate(rtmCTL%runoff(begr:endr,nt_rtm),     &
              rtmCTL%dvolrdt(begr:endr,nt_rtm),    &
              rtmCTL%runofflnd(begr:endr,nt_rtm),  &
-             rtmCTL%domlnd(begr:endr,nt_rtm),     &
              rtmCTL%dvolrdtlnd(begr:endr,nt_rtm), &
              rtmCTL%runoffocn(begr:endr,nt_rtm),  &
              rtmCTL%dvolrdtocn(begr:endr,nt_rtm), &
@@ -368,8 +366,10 @@ contains
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
              rtmCTL%qirrig(begr:endr),            &
              rtmCTL%qirrig_actual(begr:endr),     &
-             rtmCTL%dom_nt3(begr:endr),           &
-             rtmCTL%dom_nt4(begr:endr),           &
+             rtmCTL%runofflnddom(begr:endr,nt_rtm_dom),  &
+             rtmCTL%runoffocndom(begr:endr,nt_rtm_dom),  &
+             rtmCTL%domsur(begr:endr,nt_rtm_dom), &
+             rtmCTL%dommas(begr:endr,nt_rtm_dom), &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -378,7 +378,6 @@ contains
 
     rtmCTL%runoff(:,:)     = 0._r8
     rtmCTL%runofflnd(:,:)  = spval
-    rtmCTL%domlnd(:,:)     = spval
     rtmCTL%runoffocn(:,:)  = spval
     rtmCTL%runofftot(:,:)  = spval
     rtmCTL%dvolrdt(:,:)    = 0._r8
@@ -394,6 +393,11 @@ contains
     rtmCTL%qsur(:,:)       = 0._r8
     rtmCTL%qsub(:,:)       = 0._r8
     rtmCTL%qgwl(:,:)       = 0._r8
+
+    rtmCTL%runofflnddom(:,:)=spval
+    rtmCTL%runoffocndom(:,:)=spval
+    rtmCTL%domsur(:,:)      =0._r8
+    rtmCTL%dommas(:,:)      =0._r8
 
   end subroutine RunoffInit
 

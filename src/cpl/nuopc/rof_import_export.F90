@@ -11,7 +11,7 @@ module rof_import_export
   use shr_sys_mod     , only : shr_sys_abort
   use nuopc_shr_methods , only : chkerr
   use RunoffMod       , only : rtmCTL, TRunoff, TUnit
-  use RtmVar          , only : iulog, nt_rtm, rtm_tracers
+  use RtmVar          , only : iulog, nt_rtm, rtm_tracers,nt_rtm_dom,rtm_tracers_dom
   use RtmSpmd         , only : masterproc, mpicom_rof
   use RtmTimeManager  , only : get_nstep
   use nuopc_shr_methods , only : chkerr
@@ -110,6 +110,7 @@ contains
 
     call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdoc')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
@@ -242,9 +243,9 @@ contains
 
     ! Local variables
     type(ESMF_State) :: importState
-    integer          :: n,nt
+    integer          :: n,nt,ntdom
     integer          :: begr, endr
-    integer          :: nliq, nfrz
+    integer          :: nliq, nfrz, ndoc
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
 
@@ -267,6 +268,15 @@ contains
        call shr_sys_abort()
     endif
 
+    ndoc = 0
+    do ntdom = 1,nt_rtm_dom
+       if (trim(rtm_tracers_dom()) == 'DOC') ndoc = ntdom
+    enddo
+    if (ndoc == 0) then
+       write(iulog,*) trim(subname),': ERROR in rtm_tracers_dom DOC ',ndoc,rtm_tracers_dom
+       call shr_sys_abort()
+    endif
+
     begr = rtmCTL%begr
     endr = rtmCTL%endr
 
@@ -274,6 +284,10 @@ contains
     ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
 
     call state_getimport(importState, 'Flrl_rofsur', begr, endr, rtmCTL%area, output=rtmCTL%qsur(:,nliq), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_rofdoc', begr, endr, rtmCTL%area, output=rtmCTL%domsur(:,ndoc), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 

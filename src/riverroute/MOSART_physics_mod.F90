@@ -13,7 +13,7 @@ MODULE MOSART_physics_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers
+  use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers, nt_rtm_dom, rtm_tracers_dom
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL,Tdom
   use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
   use RunoffMod     , only : SMatP_domRUp, avsrc_domRUp, avdst_domRUp
@@ -26,7 +26,7 @@ MODULE MOSART_physics_mod
   private
 
   real(r8), parameter :: TINYVALUE = 1.0e-14_r8  ! double precision variable has a significance of about 16 decimal digits
-    integer  :: nt               ! loop indices
+    integer  :: nt, ntdom               ! loop indices
   real(r8), parameter :: SLOPE1def = 0.1_r8        ! here give it a small value in order to avoid the abrupt change of hydraulic radidus etc.
   real(r8) :: sinatanSLOPE1defr   ! 1.0/sin(atan(slope1))
 
@@ -65,9 +65,11 @@ MODULE MOSART_physics_mod
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
-          if (TRunoff%wh(iunit, nt) > 0._r8 ) then
-             call hillslopeRoutingDOM(iunit,nt,Tctl%DeltaT)
-          endif !wh
+          if (TRunoff%wh(iunit, nt) > 0._r8 .and. nt==1) then ! if LIQ tracer and there is water
+            do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+             call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT)
+            end do
+          endif
        endif
     end do
     endif
@@ -106,9 +108,11 @@ MODULE MOSART_physics_mod
                 TRunoff%wt(iunit,nt) = TRunoff%wt(iunit,nt) + TRunoff%dwt(iunit,nt) * localDeltaT
                 call UpdateState_subnetwork(iunit,nt)
                 TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt)-TRunoff%etout(iunit,nt)
-                if (TRunoff%wt(iunit,nt) > 0._r8) then
-                   call subnetworkRoutingDOM(iunit,nt,localDeltaT)
-                endif !wt
+                if (TRunoff%wt(iunit,nt) > 0._r8 .and. nt==1) then
+                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+                   call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                  end do
+                endif
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
           endif
@@ -147,8 +151,10 @@ MODULE MOSART_physics_mod
           cnt = cnt + 1
           do nt = 1,nt_rtm
              avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
-             avsrc_domRUp%rAttr(nt,cnt) = Tdom%domR(iunit,nt)
           enddo
+          do ntdom = 1,nt_rtm_dom
+             avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)
+          end do
        enddo
        call mct_avect_zero(avdst_eroutUp)
        call mct_avect_zero(avdst_domRUp)
@@ -184,7 +190,7 @@ MODULE MOSART_physics_mod
              do k=1,TUnit%numDT_r(iunit)
                 call mainchannelRouting(iunit,nt,localDeltaT)    
                 TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
-                call mainchannelRoutingDOM(iunit,nt,localDeltaT)
+                call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
 ! check for negative channel storage
 !                if(TRunoff%wr(iunit,1) < -1.e-10) then
 !                   write(iulog,*) 'Negative channel storage! ', iunit, TRunoff%wr(iunit,1)

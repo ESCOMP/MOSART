@@ -12,7 +12,7 @@ module RtmMod
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_flush
   use shr_const_mod   , only : SHR_CONST_PI, SHR_CONST_CDAY
-  use RtmVar          , only : nt_rtm, rtm_tracers 
+  use RtmVar          , only : nt_rtm, rtm_tracers, nt_rtm_dom, rtm_tracers_dom 
   use RtmSpmd         , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
                                MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
   use RtmVar          , only : re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
@@ -138,7 +138,7 @@ contains
     real(r8) :: edgee                         ! East edge of the direction file
     real(r8) :: edges                         ! South edge of the direction file
     real(r8) :: edgew                         ! West edge of the direction file
-    integer  :: i,j,k,n,ng,g,n2,nt,nn         ! loop indices
+    integer  :: i,j,k,n,ng,g,n2,nt,nn,ntdom   ! loop indices
     integer  :: i1,j1,i2,j2
     integer  :: im1,ip1,jm1,jp1,ir,jr,nr      ! neighbor indices
     real(r8) :: deg2rad                       ! pi/180
@@ -351,6 +351,14 @@ contains
     enddo
     if (masterproc) then
        write(iulog,*)'MOSART tracers = ',nt_rtm,trim(rtm_trstr)
+    end if
+
+    rtm_trstr = trim(rtm_tracers_dom(1))
+    do n = 2,nt_rtm_dom
+       rtm_trstr = trim(rtm_trstr)//':'//trim(rtm_tracers_dom(n))
+    enddo
+    if (masterproc) then
+       write(iulog,*)'MOSART tracers dom = ',nt_rtm_dom,trim(rtm_trstr)
     end if
 
     !-------------------------------------------------------
@@ -1391,7 +1399,7 @@ contains
 !
 ! !LOCAL VARIABLES:
 !EOP
-    integer  :: i, j, n, nr, ns, nt, n2, nf ! indices
+    integer  :: i, j, n, nr, ns, nt, ntdom, n2, nf ! indices
     real(r8) :: budget_terms(30,nt_rtm)     ! BUDGET terms
         ! BUDGET terms 1-10 are for volumes (m3)
         ! BUDGET terms 11-30 are for flows (m3/s)
@@ -1492,6 +1500,12 @@ contains
        TRunoff%qsur(nr,nt) = rtmCTL%qsur(nr,nt)
        TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
        TRunoff%qgwl(nr,nt) = rtmCTL%qgwl(nr,nt)
+    enddo
+    enddo
+    
+    do nr = rtmCTL%begr,rtmCTL%endr
+      do ntdom = 1,nt_rtm_dom
+         TRunoff%surdom(nr,nt) = rtmCTL%surdom(nr,ntdom)
     enddo
     enddo
 
@@ -1814,7 +1828,6 @@ contains
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
-       Tdom%domSource(nr,nt) = 1000._r8
     enddo
     enddo
 
@@ -2101,7 +2114,7 @@ contains
     real(r8) , pointer :: rslope(:)   
     real(r8) , pointer :: max_volr(:)
     integer, pointer   :: compdof(:) ! computational degrees of freedom for pio 
-    integer :: nt,n,cnt              ! indices
+    integer :: nt,ntdom,n,cnt              ! indices
     logical :: readvar               ! read variable in or not
     integer :: ier                   ! status variable
     integer :: dids(2)               ! variable dimension ids 
@@ -2198,7 +2211,7 @@ contains
   integer :: dids(2)               ! variable dimension ids 
   integer :: dsizes(2)             ! variable dimension lengths
   integer :: ier                  ! error code
-  integer :: begr, endr, iunit, nn, n, cnt, nr, nt
+  integer :: begr, endr, iunit, nn, n, cnt, nr, nt, ntdom
   integer :: numDT_r, numDT_t
   integer :: lsize, gsize
   integer :: igrow, igcol, iwgt
@@ -2542,26 +2555,20 @@ contains
      TPara%c_twid = 1.0_r8
 
      !Initialize dom flux variables
-     allocate (Tdom%domSource(begr:endr,nt_rtm))
-     Tdom%domSource = 0._r8
-     allocate (Tdom%domH(begr:endr,nt_rtm))
+     allocate (Tdom%domH(begr:endr,nt_rtm_dom))
      Tdom%domH = 0._r8
-     allocate (Tdom%domT(begr:endr,nt_rtm))
+     allocate (Tdom%domT(begr:endr,nt_rtm_dom))
      Tdom%domT = 0._r8
-     allocate (Tdom%domR(begr:endr,nt_rtm))
+     allocate (Tdom%domR(begr:endr,nt_rtm_dom))
      Tdom%domR = 0._r8
-     allocate (Tdom%domRout(begr:endr,nt_rtm))
+     allocate (Tdom%domRout(begr:endr,nt_rtm_dom))
      Tdom%domRout = 0._r8
-     allocate (Tdom%domRin(begr:endr,nt_rtm))
+     allocate (Tdom%domRin(begr:endr,nt_rtm_dom))
      Tdom%domRin = 0._r8
-     allocate (Tdom%domRUp(begr:endr,nt_rtm))
+     allocate (Tdom%domRUp(begr:endr,nt_rtm_dom))
      Tdom%domRUp = 0._r8
-     allocate (Tdom%dom(begr:endr,nt_rtm))
-     Tdom%dom = 0._r8
-     !allocate (Tdom%doc(begr:endr))
-     !Tdom%doc = 0._r8
-     !allocate (Tdom%don(begr:endr))
-     !Tdom%don = 0._r8
+     allocate (Tdom%domsur(begr:endr,nt_rtm_dom))
+     Tdom%domsur = 0._r8
 
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)

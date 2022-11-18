@@ -6,7 +6,7 @@ MODULE DommasbMod
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RunoffMod     , only : TRunoff, Tdom
+  use RunoffMod     , only : TRunoff, Tdom, rtmCTL
 
   implicit none
 
@@ -19,34 +19,32 @@ MODULE DommasbMod
   contains
 
   !----------------------------------------------------------------------
-    subroutine hillslopeRoutingDOM(iunit,nt,theDeltaT)
+    subroutine hillslopeRoutingDOM(iunit,nt,ntdom,theDeltaT)
       ! ! DESCRIPTION: solve the ODEs with Euler algorithm for hillslope routing
       implicit none
-      integer,  intent(in) :: iunit, nt
+      integer,  intent(in) :: iunit, nt, ntdom
       real(r8), intent(in) :: theDeltaT
       ! assume no chemical reaction in the water hence sink term is zero implies domH ~= domHout
-      Tdom%domH(iunit,nt) = Tdom%domH(iunit,nt) + (-TRunoff%ehout(iunit,nt) * Tdom%domH(iunit,nt) + Tdom%domSource(iunit,nt)) * theDeltaT/TRunoff%wh(iunit,nt)
+      Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (-TRunoff%ehout(iunit,nt) * Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom)) * theDeltaT/TRunoff%wh(iunit,nt)
     end subroutine hillslopeRoutingDOM
 
-    subroutine subnetworkRoutingDOM(iunit,nt,theDeltaT)
+    subroutine subnetworkRoutingDOM(iunit,nt,ntdom,theDeltaT)
       ! solve the ODEs with Euler algorithm for subnetwork routing
       implicit none
-      integer, intent(in) :: iunit,nt
+      integer, intent(in) :: iunit, nt, ntdom
       real(r8), intent(in) :: theDeltaT
-      Tdom%domT(iunit,nt) = Tdom%domT(iunit,nt) + (TRunoff%etin(iunit,nt) * Tdom%domH(iunit,nt) - TRunoff%etout(iunit,nt) * Tdom%domT(iunit,nt)) * theDeltaT/TRunoff%wt(iunit,nt)
+      Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + (TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom) - TRunoff%etout(iunit,nt) * Tdom%domT(iunit,ntdom)) * theDeltaT/TRunoff%wt(iunit,nt)
     end subroutine subnetworkRoutingDOM
 
-    subroutine mainchannelRoutingDOM(iunit,nt,theDeltaT)
+    subroutine mainchannelRoutingDOM(iunit,nt,ntdom,theDeltaT)
       ! solve the ODE with Euler algorithm for main-channel routing
       implicit none
-      integer, intent(in) :: iunit, nt
+      integer, intent(in) :: iunit, nt, ntdom
       real(r8), intent(in) :: theDeltaT
       real(r8)  :: mainchinT, mainchinUp
-      real(r8)  :: mainchout
       mainchinT  = TRunoff%etout(iunit,nt) - TRunoff%erlateral(iunit,nt) !input to main channel from Tributaries
       mainchinUp = TRunoff%eroutUp(iunit,nt)   !inflow to main channel from Upstream grid cells of main channel
-      mainchout = TRunoff%flow(iunit,nt)     ! flow to the outlet of the reach in the main channel
-      Tdom%domR(iunit,nt) = Tdom%domR(iunit,nt) + ( (mainchinT*Tdom%domT(iunit,nt) + mainchinUp*Tdom%domRout(iunit,nt)) - TRunoff%flow(iunit,nt) * Tdom%domR(iunit,nt))*theDeltaT/TRunoff%wr(iunit,nt)
+      Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + ( (mainchinT*Tdom%domT(iunit,ntdom) + mainchinUp*Tdom%domRout(iunit,ntdom)) - TRunoff%flow(iunit,nt) * Tdom%domR(iunit,ntdom))*theDeltaT/TRunoff%wr(iunit,nt)
     end subroutine mainchannelRoutingDOM
 !-------------------------------------------------------------------------
 end MODULE DommasbMod
