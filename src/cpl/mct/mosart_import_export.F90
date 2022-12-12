@@ -5,6 +5,11 @@ module mosart_import_export
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub
   use mosart_cpl_indices  , only : index_x2r_Flrl_irrig
+  use mosart_cpl_indices  , only : index_x2r_Flrl_dom_withd, index_x2r_Flrl_dom_rf 
+  use mosart_cpl_indices  , only : index_x2r_Flrl_liv_withd, index_x2r_Flrl_liv_rf 
+  use mosart_cpl_indices  , only : index_x2r_Flrl_elec_withd, index_x2r_Flrl_elec_rf
+  use mosart_cpl_indices  , only : index_x2r_Flrl_mfc_withd, index_x2r_Flrl_mfc_rf 
+  use mosart_cpl_indices  , only : index_x2r_Flrl_min_withd, index_x2r_Flrl_min_rf
   use mosart_cpl_indices  , only : index_r2x_Forr_rofl, index_r2x_Forr_rofi
   use mosart_cpl_indices  , only : index_r2x_Flrr_flood
   use mosart_cpl_indices  , only : index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
@@ -69,6 +74,17 @@ contains
 
        rtmCTL%qsur(n,nfrz) = x2r(index_x2r_Flrl_rofi ,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qirrig(n)    = x2r(index_x2r_Flrl_irrig,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qdom_withd(n) = x2r(index_x2r_Flrl_dom_withd,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qdom_rf(n) = x2r(index_x2r_Flrl_dom_rf,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qliv_withd(n) = x2r(index_x2r_Flrl_liv_withd,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qliv_rf(n) = x2r(index_x2r_Flrl_liv_rf,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qelec_withd(n) = x2r(index_x2r_Flrl_elec_withd,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qelec_rf(n) = x2r(index_x2r_Flrl_elec_rf,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qmfc_withd(n) = x2r(index_x2r_Flrl_mfc_withd,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qmfc_rf(n) = x2r(index_x2r_Flrl_mfc_rf,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qmin_withd(n) = x2r(index_x2r_Flrl_min_withd,n2) * (rtmCTL%area(n)*0.001_r8)
+       rtmCTL%qmin_rf(n) = x2r(index_x2r_Flrl_min_rf,n2) * (rtmCTL%area(n)*0.001_r8)
+
 
        rtmCTL%qsub(n,nfrz) = 0.0_r8
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
@@ -81,6 +97,16 @@ contains
           write(iulog,F01)'import: nstep, n, Flrl_rofgwl = ',get_nstep(),n,rtmCTL%qgwl(n,nliq)
           write(iulog,F01)'import: nstep, n, Flrl_rofi   = ',get_nstep(),n,rtmCTL%qsur(n,nfrz)
           write(iulog,F01)'import: nstep, n, Flrl_irrig  = ',get_nstep(),n,rtmCTL%qirrig(n)
+          write(iulog,F01)'import: nstep, n, Flrl_dom_withd  = ',get_nstep(),n,rtmCTL%qdom_withd(n)
+          write(iulog,F01)'import: nstep, n, Flrl_dom_rf  = ',get_nstep(),n,rtmCTL%qdom_rf(n)
+          write(iulog,F01)'import: nstep, n, Flrl_liv_withd  = ',get_nstep(),n,rtmCTL%qliv_withd(n)
+          write(iulog,F01)'import: nstep, n, Flrl_liv_rf  = ',get_nstep(),n,rtmCTL%qliv_rf(n)
+          write(iulog,F01)'import: nstep, n, Flrl_elec_withd  = ',get_nstep(),n,rtmCTL%qelec_withd(n)
+          write(iulog,F01)'import: nstep, n, Flrl_elec_rf  = ',get_nstep(),n,rtmCTL%qelec_rf(n)
+          write(iulog,F01)'import: nstep, n, Flrl_mfc_withd  = ',get_nstep(),n,rtmCTL%qmfc_withd(n)
+          write(iulog,F01)'import: nstep, n, Flrl_mfc_rf  = ',get_nstep(),n,rtmCTL%qmfc_rf(n)
+          write(iulog,F01)'import: nstep, n, Flrl_min_withd  = ',get_nstep(),n,rtmCTL%qmin_withd(n)
+          write(iulog,F01)'import: nstep, n, Flrl_min_rf  = ',get_nstep(),n,rtmCTL%qmin_rf(n)
        end do
     end if
 
