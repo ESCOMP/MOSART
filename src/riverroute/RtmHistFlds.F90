@@ -126,9 +126,89 @@ contains
          avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
          ptr_rof=rtmCTL%qirrig, default='inactive')
 
+    call RtmHistAddfld (fname='QDOM_WITHD_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water withdrew for domestic usage', &
+          ptr_rof=rtmCTL%qdom_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QDOM_RF_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water returned from domestic usage', &
+          ptr_rof=rtmCTL%qdom_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QLIV_WITHD_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water withdrew for livestock usage', &
+          ptr_rof=rtmCTL%qliv_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QLIV_RF_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water returned from livestock usage', &
+          ptr_rof=rtmCTL%qliv_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QELEC_WITHD_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water withdrew for thermoelectric usage', &
+          ptr_rof=rtmCTL%qelec_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QELEC_RF_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water returned from thermoelectric usage', &
+          ptr_rof=rtmCTL%qelec_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QMFC_WITHD_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water withdrew for manufacturing usage', &
+          ptr_rof=rtmCTL%qmfc_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QMFC_RF_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water returned from manufacturing usage', &
+          ptr_rof=rtmCTL%qmfc_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QMIN_WITHD_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water withdrew for mining usage', &
+          ptr_rof=rtmCTL%qmin_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QMIN_RF_FROM_COUPLER', units='m3/s',  &
+          avgflag='A', long_name='Amount of water returned from mining usage', &
+          ptr_rof=rtmCTL%qmin_rf, default='inactive')
+     
     call RtmHistAddfld (fname='QIRRIG_ACTUAL', units='m3/s',  &
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
          ptr_rof=rtmCTL%qirrig_actual, default='inactive')
+
+    call RtmHistAddfld (fname='QDOM_ACTUAL_WITHD', units='m3/s',  &
+          avgflag='A', long_name='Actual domestic withdrawal (if limited by river storage)', &
+          ptr_rof=rtmCTL%qdom_actual_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QELEC_ACTUAL_WITHD', units='m3/s',  &
+          avgflag='A', long_name='Actual thermoelectric withdrawal (if limited by river storage)', &
+          ptr_rof=rtmCTL%qelec_actual_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QLIV_ACTUAL_WITHD', units='m3/s',  &
+          avgflag='A', long_name='Actual livestock withdrawal (if limited by river storage)', &
+          ptr_rof=rtmCTL%qliv_actual_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QMFC_ACTUAL_WITHD', units='m3/s',  &
+          avgflag='A', long_name='Actual manufacturing withdrawal (if limited by river storage)', &
+          ptr_rof=rtmCTL%qmfc_actual_withd, default='inactive')
+     
+    call RtmHistAddfld (fname='QMIN_ACTUAL_WITHD', units='m3/s',  &
+          avgflag='A', long_name='Actual mining withdrawal (if limited by river storage)', &
+          ptr_rof=rtmCTL%qmin_actual_withd, default='inactive')
+
+    call RtmHistAddfld (fname='QDOM_ACTUAL_RF', units='m3/s',  &
+          avgflag='A', long_name='Actual domestic return flow (if limited by river storage)', &
+          ptr_rof=rtmCTL%qdom_actual_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QELEC_ACTUAL_RF', units='m3/s',  &
+          avgflag='A', long_name='Actual thermoelectric return flow (if limited by river storage)', &
+          ptr_rof=rtmCTL%qelec_actual_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QLIV_ACTUAL_RF', units='m3/s',  &
+          avgflag='A', long_name='Actual livestock return flow (if limited by river storage)', &
+          ptr_rof=rtmCTL%qliv_actual_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QMFC_ACTUAL_RF', units='m3/s',  &
+          avgflag='A', long_name='Actual manufacturing return flow (if limited by river storage)', &
+          ptr_rof=rtmCTL%qmfc_actual_rf, default='inactive')
+     
+    call RtmHistAddfld (fname='QMIN_ACTUAL_RF', units='m3/s',  &
+          avgflag='A', long_name='Actual mining return flow (if limited by river storage)', &
+          ptr_rof=rtmCTL%qmin_actual_rf, default='inactive')
 
     ! Print masterlist of history fields
 
