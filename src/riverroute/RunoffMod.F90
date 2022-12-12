@@ -80,6 +80,27 @@ module RunoffMod
 
      real(r8), pointer :: qirrig(:)        ! coupler irrigation [m3/s]
      real(r8), pointer :: qirrig_actual(:) ! minimum of irrigation and available main channel storage
+     real(r8), pointer :: qdom_withd(:)    ! domestic withdrawal from the coupler
+     real(r8), pointer :: qdom_rf(:)       ! domestic return flow from the coupler
+     real(r8), pointer :: qliv_withd(:)    ! livestock withdrawal from the coupler
+     real(r8), pointer :: qliv_rf(:)       ! livestock return flow from the coupler
+     real(r8), pointer :: qelec_withd(:)   ! thermoelectric withdrawal from the coupler
+     real(r8), pointer :: qelec_rf(:)      ! thermoelectric return flow from the coupler
+     real(r8), pointer :: qmfc_withd(:)    ! manufactured withdrawal from the coupler
+     real(r8), pointer :: qmfc_rf(:)       ! manufactured return flow from the coupler
+     real(r8), pointer :: qmin_withd(:)    ! mining withdrawal from the coupler
+     real(r8), pointer :: qmin_rf(:)       ! mining return flow from the coupler
+     real(r8), pointer :: qdom_actual_withd(:)   ! actual domestic withdrawal based on available main channel storage
+     real(r8), pointer :: qliv_actual_withd(:)   ! actual livestock withdrawal based on available main channel storage
+     real(r8), pointer :: qelec_actual_withd(:)  ! actual thermoelectric withdrawal based on available main channel storage
+     real(r8), pointer :: qmfc_actual_withd(:)   ! actual manufacturing withdrawal based on available main channel storage
+     real(r8), pointer :: qmin_actual_withd(:)   ! actual mining withdrawal based on available main channel storage
+     real(r8), pointer :: qdom_actual_rf(:)      ! actual domestic return flow based on available main channel storage
+     real(r8), pointer :: qliv_actual_rf(:)      ! actual livestock return flow based on available main channel storage
+     real(r8), pointer :: qelec_actual_rf(:)     ! actual thermoelectric return flow based on available main channel storage
+     real(r8), pointer :: qmfc_actual_rf(:)      ! actual manufacturing return flow based on available main channel storage
+     real(r8), pointer :: qmin_actual_rf(:)      ! actual mining return flow based on available main channel storage
+
 
      !    - history (currently needed)
      real(r8), pointer :: runofflnd_nt1(:)
@@ -291,54 +312,74 @@ contains
 
     integer :: ier
 
-    allocate(rtmCTL%runoff(begr:endr,nt_rtm),     &
-             rtmCTL%dvolrdt(begr:endr,nt_rtm),    &
-             rtmCTL%runofflnd(begr:endr,nt_rtm),  &
-             rtmCTL%dvolrdtlnd(begr:endr,nt_rtm), &
-             rtmCTL%runoffocn(begr:endr,nt_rtm),  &
-             rtmCTL%dvolrdtocn(begr:endr,nt_rtm), &
-             rtmCTL%runofftot(begr:endr,nt_rtm),  &
-             rtmCTL%area(begr:endr),              &
-             rtmCTL%volr(begr:endr,nt_rtm),       &
-             rtmCTL%lonc(begr:endr),              &
-             rtmCTL%latc(begr:endr),              &
-             rtmCTL%dsig(begr:endr),              &
-             rtmCTL%outletg(begr:endr),           &
-             rtmCTL%runofflnd_nt1(begr:endr),     &
-             rtmCTL%runofflnd_nt2(begr:endr),     &
-             rtmCTL%runoffocn_nt1(begr:endr),     &
-             rtmCTL%runoffocn_nt2(begr:endr),     &
-             rtmCTL%runofftot_nt1(begr:endr),     &
-             rtmCTL%runofftot_nt2(begr:endr),     &
-             rtmCTL%runoffdir_nt1(begr:endr),     &
-             rtmCTL%runoffdir_nt2(begr:endr),     &
-             rtmCTL%volr_nt1(begr:endr),          &
-             rtmCTL%volr_nt2(begr:endr),          &
-             rtmCTL%volr_mch(begr:endr),          &
-             rtmCTL%dvolrdtlnd_nt1(begr:endr),    &
-             rtmCTL%dvolrdtlnd_nt2(begr:endr),    &
-             rtmCTL%dvolrdtocn_nt1(begr:endr),    &
-             rtmCTL%dvolrdtocn_nt2(begr:endr),    &
-             rtmCTL%qsur_nt1(begr:endr),          &
-             rtmCTL%qsur_nt2(begr:endr),          &
-             rtmCTL%qsub_nt1(begr:endr),          &
-             rtmCTL%qsub_nt2(begr:endr),          &
-             rtmCTL%qgwl_nt1(begr:endr),          &
-             rtmCTL%qgwl_nt2(begr:endr),          &
-             rtmCTL%mask(begr:endr),              &
-             rtmCTL%gindex(begr:endr),            &
-             rtmCTL%fthresh(begr:endr),           &
-             rtmCTL%flood(begr:endr),             &
-             rtmCTL%direct(begr:endr,nt_rtm),     &
-             rtmCTL%wh(begr:endr,nt_rtm),         &
-             rtmCTL%wt(begr:endr,nt_rtm),         &
-             rtmCTL%wr(begr:endr,nt_rtm),         &
-             rtmCTL%erout(begr:endr,nt_rtm),      &
-             rtmCTL%qsur(begr:endr,nt_rtm),       & 
-             rtmCTL%qsub(begr:endr,nt_rtm),       &
-             rtmCTL%qgwl(begr:endr,nt_rtm),       &
-             rtmCTL%qirrig(begr:endr),            &
-             rtmCTL%qirrig_actual(begr:endr),     &
+    allocate(rtmCTL%runoff(begr:endr,nt_rtm),      &
+             rtmCTL%dvolrdt(begr:endr,nt_rtm),     &
+             rtmCTL%runofflnd(begr:endr,nt_rtm),   &
+             rtmCTL%dvolrdtlnd(begr:endr,nt_rtm),  &
+             rtmCTL%runoffocn(begr:endr,nt_rtm),   &
+             rtmCTL%dvolrdtocn(begr:endr,nt_rtm),  &
+             rtmCTL%runofftot(begr:endr,nt_rtm),   &
+             rtmCTL%area(begr:endr),               &
+             rtmCTL%volr(begr:endr,nt_rtm),        &
+             rtmCTL%lonc(begr:endr),               &
+             rtmCTL%latc(begr:endr),               &
+             rtmCTL%dsig(begr:endr),               &
+             rtmCTL%outletg(begr:endr),            &
+             rtmCTL%runofflnd_nt1(begr:endr),      &
+             rtmCTL%runofflnd_nt2(begr:endr),      &
+             rtmCTL%runoffocn_nt1(begr:endr),      &
+             rtmCTL%runoffocn_nt2(begr:endr),      &
+             rtmCTL%runofftot_nt1(begr:endr),      &
+             rtmCTL%runofftot_nt2(begr:endr),      &
+             rtmCTL%runoffdir_nt1(begr:endr),      &
+             rtmCTL%runoffdir_nt2(begr:endr),      &
+             rtmCTL%volr_nt1(begr:endr),           &
+             rtmCTL%volr_nt2(begr:endr),           &
+             rtmCTL%volr_mch(begr:endr),           &
+             rtmCTL%dvolrdtlnd_nt1(begr:endr),     &
+             rtmCTL%dvolrdtlnd_nt2(begr:endr),     &
+             rtmCTL%dvolrdtocn_nt1(begr:endr),     &
+             rtmCTL%dvolrdtocn_nt2(begr:endr),     &
+             rtmCTL%qsur_nt1(begr:endr),           &
+             rtmCTL%qsur_nt2(begr:endr),           &
+             rtmCTL%qsub_nt1(begr:endr),           &
+             rtmCTL%qsub_nt2(begr:endr),           &
+             rtmCTL%qgwl_nt1(begr:endr),           &
+             rtmCTL%qgwl_nt2(begr:endr),           &
+             rtmCTL%mask(begr:endr),               &
+             rtmCTL%gindex(begr:endr),             &
+             rtmCTL%fthresh(begr:endr),            &
+             rtmCTL%flood(begr:endr),              &
+             rtmCTL%direct(begr:endr,nt_rtm),      &
+             rtmCTL%wh(begr:endr,nt_rtm),          &
+             rtmCTL%wt(begr:endr,nt_rtm),          &
+             rtmCTL%wr(begr:endr,nt_rtm),          &
+             rtmCTL%erout(begr:endr,nt_rtm),       &
+             rtmCTL%qsur(begr:endr,nt_rtm),        & 
+             rtmCTL%qsub(begr:endr,nt_rtm),        &
+             rtmCTL%qgwl(begr:endr,nt_rtm),        &
+             rtmCTL%qirrig(begr:endr),             &
+             rtmCTL%qdom_withd(begr:endr),         &
+             rtmCTL%qdom_rf(begr:endr),            &
+             rtmCTL%qdom_actual_withd(begr:endr),  &
+             rtmCTL%qdom_actual_rf(begr:endr),     &
+             rtmCTL%qliv_withd(begr:endr),         &
+             rtmCTL%qliv_rf(begr:endr),            &
+             rtmCTL%qliv_actual_withd(begr:endr),  &
+             rtmCTL%qliv_actual_rf(begr:endr),     &
+             rtmCTL%qelec_withd(begr:endr),        &
+             rtmCTL%qelec_rf(begr:endr),           &
+             rtmCTL%qelec_actual_withd(begr:endr), &
+             rtmCTL%qelec_actual_rf(begr:endr),    &
+             rtmCTL%qmfc_withd(begr:endr),         &
+             rtmCTL%qmfc_rf(begr:endr),            &
+             rtmCTL%qmfc_actual_withd(begr:endr),  &
+             rtmCTL%qmfc_actual_rf(begr:endr),     &
+             rtmCTL%qmin_withd(begr:endr),         &
+             rtmCTL%qmin_rf(begr:endr),            &
+             rtmCTL%qmin_actual_withd(begr:endr),  &
+             rtmCTL%qmin_actual_rf(begr:endr),     &
+             rtmCTL%qirrig_actual(begr:endr),      &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -356,6 +397,26 @@ contains
     rtmCTL%flood(:)        = 0._r8
     rtmCTL%direct(:,:)     = 0._r8
     rtmCTL%qirrig(:)       = 0._r8
+    rtmCTL%qdom_withd(:)   = 0._r8
+    rtmCTL%qdom_rf(:)      = 0._r8
+    rtmCTL%qdom_actual_withd(:)  = 0._r8
+    rtmCTL%qdom_actual_rf(:)     = 0._r8
+    rtmCTL%qliv_withd(:)         = 0._r8
+    rtmCTL%qliv_rf(:)            = 0._r8
+    rtmCTL%qliv_actual_withd(:)  = 0._r8
+    rtmCTL%qliv_actual_rf(:)     = 0._r8
+    rtmCTL%qelec_withd(:)        = 0._r8
+    rtmCTL%qelec_rf(:)           = 0._r8
+    rtmCTL%qelec_actual_withd(:) = 0._r8
+    rtmCTL%qelec_actual_rf(:)    = 0._r8
+    rtmCTL%qmfc_withd(:)         = 0._r8
+    rtmCTL%qmfc_rf(:)            = 0._r8
+    rtmCTL%qmfc_actual_withd(:)  = 0._r8
+    rtmCTL%qmfc_actual_rf(:)     = 0._r8
+    rtmCTL%qmin_withd(:)         = 0._r8
+    rtmCTL%qmin_rf(:)            = 0._r8
+    rtmCTL%qmin_actual_withd(:)  = 0._r8
+    rtmCTL%qmin_actual_rf(:)     = 0._r8
     rtmCTL%qirrig_actual(:)= 0._r8
     rtmCTL%volr_mch(:)     = 0._r8
 
