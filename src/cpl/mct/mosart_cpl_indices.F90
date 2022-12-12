@@ -20,6 +20,17 @@ module mosart_cpl_indices
   integer, public :: index_x2r_Flrl_rofdto = 0 ! lnd->rof liquid direct to ocean runoff
   integer, public :: index_x2r_Flrl_rofi   = 0 ! lnd->rof ice runoff forcing from land
   integer, public :: index_x2r_Flrl_irrig  = 0 ! lnd->rof fraction of volr to be removed for irrigation
+  integer, public :: index_x2r_Flrl_dom_withd = 0  ! lnd->rof fraction of volr to be removed for domestic usage
+  integer, public :: index_x2r_Flrl_dom_rf = 0     ! lnd->rof fraction of volr to be  returned after domestic usage
+  integer, public :: index_x2r_Flrl_liv_withd = 0  ! lnd->rof fraction of volr to be removed for livestock usage
+  integer, public :: index_x2r_Flrl_liv_rf = 0     ! lnd->rof fraction of volr to be  returned after livestock usage
+  integer, public :: index_x2r_Flrl_elec_withd = 0 ! lnd->rof fraction of volr to be removed for thermoelectric usage
+  integer, public :: index_x2r_Flrl_elec_rf = 0    ! lnd->rof fraction of volr to be  returned after thermoelectric usage
+  integer, public :: index_x2r_Flrl_mfc_withd = 0  ! lnd->rof fraction of volr to be removed for  manufacturing usage
+  integer, public :: index_x2r_Flrl_mfc_rf = 0     ! lnd->rof fraction of volr to be  returned after  manufacturing usage
+  integer, public :: index_x2r_Flrl_min_withd = 0  ! lnd->rof fraction of volr to be removed for mining usage
+  integer, public ::  index_x2r_Flrl_min_rf = 0    ! lnd->rof fraction of volr to be  returned after mining usage
+
   integer, public :: nflds_x2r             = 0
 
   ! roff to driver (part of land for now) (optional if ROF is off)
@@ -65,6 +76,16 @@ contains
     index_x2r_Flrl_rofdto = mct_avect_indexra(avtmp,'Flrl_rofdto')
     index_x2r_Flrl_rofi   = mct_avect_indexra(avtmp,'Flrl_rofi')
     index_x2r_Flrl_irrig  = mct_avect_indexra(avtmp,'Flrl_irrig')
+    index_x2r_Flrl_dom_withd = mct_avect_indexra(avtmp,'Flrl_dom_withd') 
+    index_x2r_Flrl_dom_rf = mct_avect_indexra(avtmp,'Flrl_dom_rf')
+    index_x2r_Flrl_liv_withd = mct_avect_indexra(avtmp,'Flrl_liv_withd')
+    index_x2r_Flrl_liv_rf = mct_avect_indexra(avtmp,'Flrl_liv_rf')
+    index_x2r_Flrl_elec_withd = mct_avect_indexra(avtmp,'Flrl_elec_withd')
+    index_x2r_Flrl_elec_rf = mct_avect_indexra(avtmp,'Flrl_elec_rf') 
+    index_x2r_Flrl_mfc_withd = mct_avect_indexra(avtmp,'Flrl_mfc_withd')
+    index_x2r_Flrl_mfc_rf = mct_avect_indexra(avtmp,'Flrl_mfc_rf')
+    index_x2r_Flrl_min_withd =  mct_avect_indexra(avtmp,'Flrl_min_withd')
+    index_x2r_Flrl_min_rf = mct_avect_indexra(avtmp,'Flrl_min_rf')
 
     nflds_x2r = mct_avect_nRattr(avtmp)
 
