@@ -1694,7 +1694,7 @@ contains
           rtmCTL%qliv_actual_withd(nr)   = - liv_withd_volume / coupling_period
           rtmCTL%qmfc_actual_withd(nr)   = - mfc_withd_volume / coupling_period
           rtmCTL%qmin_actual_withd(nr)   = - min_withd_volume / coupling_period
-          rtmCTL%qirrig_actual_withd(nr) = - irrig_volume / coupling_period
+          rtmCTL%qirrig_actual(nr) = - irrig_volume / coupling_period
 
           ! update the actual return flow rates for all sectors (except irrigation)
           rtmCTL%qdom_actual_rf(nr)  = dom_rf_volume / coupling_period
