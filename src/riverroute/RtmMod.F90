@@ -1399,7 +1399,7 @@ contains
 !
 ! !LOCAL VARIABLES:
 !EOP
-    integer  :: i, j, n, nr, ns, nt, ntdom, n2, nf ! indices
+    integer  :: i, j, n, nr, ns, nt, n2, nf, ntdom! indices
     real(r8) :: budget_terms(30,nt_rtm)     ! BUDGET terms
         ! BUDGET terms 1-10 are for volumes (m3)
         ! BUDGET terms 11-30 are for flows (m3/s)
@@ -1504,8 +1504,8 @@ contains
     enddo
     
     do nr = rtmCTL%begr,rtmCTL%endr
-      do ntdom = 1,nt_rtm_dom
-         TRunoff%surdom(nr,nt) = rtmCTL%surdom(nr,ntdom)
+      do nt = 1,nt_rtm_dom
+         Tdom%domsur(nr,nt) = rtmCTL%domsur(nr,nt)
     enddo
     enddo
 
@@ -1912,6 +1912,14 @@ contains
        volr_init = rtmCTL%volr(nr,nt)
        rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + &
                              TRunoff%wh(nr,nt)*rtmCTL%area(nr))
+       if (nt==1) then
+         do ntdom = 1,nt_rtm_dom
+            rtmCTL%dommas(nr,ntdom)=TRunoff%wh(nr,nt)*Tdom%domH(nr,ntdom)*rtmCTL%area(nr) + &
+                                    TRunoff%wt(nr,nt)*Tdom%domt(nr,ntdom) + &
+                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom)
+         enddo   
+       end if     
+      
        rtmCTL%dvolrdt(nr,nt) = (rtmCTL%volr(nr,nt) - volr_init) / delt_coupling
        rtmCTL%runoff(nr,nt) = flow(nr,nt)
 
@@ -1919,10 +1927,24 @@ contains
        if (rtmCTL%mask(nr) == 1) then
           rtmCTL%runofflnd(nr,nt) = rtmCTL%runoff(nr,nt)
           rtmCTL%dvolrdtlnd(nr,nt)= rtmCTL%dvolrdt(nr,nt)
+
+          if (nt==1) then
+            do ntdom = 1,nt_rtm_dom
+               rtmCTL%runofflnddom(nr,ntdom)=rtmCTL%runoff(nr,nt) * Tdom%domR(nr,ntdom)
+            enddo   
+          end if     
+
        elseif (rtmCTL%mask(nr) >= 2) then
           rtmCTL%runoffocn(nr,nt) = rtmCTL%runoff(nr,nt)
           rtmCTL%runofftot(nr,nt) = rtmCTL%runofftot(nr,nt) + rtmCTL%runoff(nr,nt)
           rtmCTL%dvolrdtocn(nr,nt)= rtmCTL%dvolrdt(nr,nt)
+
+          if (nt==1) then
+            do ntdom = 1,nt_rtm_dom
+               rtmCTL%runoffocndom(nr,ntdom)=rtmCTL%runoff(nr,nt) * Tdom%domR(nr,ntdom)
+            enddo   
+          end if   
+
        endif
     enddo
     enddo

@@ -69,7 +69,7 @@ module RunoffMod
      real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (gC)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      !    - restarts
-     real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m3)
+     real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
      real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m3)
      real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m3)
      real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m3/s)
@@ -368,8 +368,12 @@ contains
              rtmCTL%qirrig_actual(begr:endr),     &
              rtmCTL%runofflnddom(begr:endr,nt_rtm_dom),  &
              rtmCTL%runoffocndom(begr:endr,nt_rtm_dom),  &
-             rtmCTL%domsur(begr:endr,nt_rtm_dom), &
-             rtmCTL%dommas(begr:endr,nt_rtm_dom), &
+             rtmCTL%domsur(begr:endr,nt_rtm_dom),        &
+             rtmCTL%dommas(begr:endr,nt_rtm_dom),        &
+             rtmCTL%runofflnddom_ntdom1(begr:endr),      &
+             rtmCTL%runoffocndom_ntdom1(begr:endr),      &
+             rtmCTL%domsur_ntdom1(begr:endr),            &
+             rtmCTL%dommas_ntdom1(begr:endr),            &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'

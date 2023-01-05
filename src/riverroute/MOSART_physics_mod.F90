@@ -145,7 +145,7 @@ MODULE MOSART_physics_mod
 #else
        !--- copy erout into avsrc_eroutUp ---
        call mct_avect_zero(avsrc_eroutUp)
-       call mct_avect_zero(avsrc_eroutUp)
+       call mct_avect_zero(avsrc_domRUp)
        cnt = 0
        do iunit = rtmCTL%begr,rtmCTL%endr
           cnt = cnt + 1
@@ -169,6 +169,9 @@ MODULE MOSART_physics_mod
           do nt = 1,nt_rtm
              TRunoff%eroutUp(iunit,nt) = avdst_eroutUp%rAttr(nt,cnt)
           enddo
+          do ntdom = 1,nt_rtm_dom
+             Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)
+         end do
        enddo
 #endif
        call t_stopf('mosartr_SMeroutUp')    
@@ -190,7 +193,11 @@ MODULE MOSART_physics_mod
              do k=1,TUnit%numDT_r(iunit)
                 call mainchannelRouting(iunit,nt,localDeltaT)    
                 TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
-                call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                if (TRunoff%wr(iunit,nt) > 0._r8 .and. nt==1) then
+                   do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+                      call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                   end do
+                end if
 ! check for negative channel storage
 !                if(TRunoff%wr(iunit,1) < -1.e-10) then
 !                   write(iulog,*) 'Negative channel storage! ', iunit, TRunoff%wr(iunit,1)

@@ -11,7 +11,7 @@ module RtmHistFlds
   use shr_kind_mod , only : r8 => shr_kind_r8
   use RunoffMod    , only : rtmCTL, Tdom
   use RtmHistFile  , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar       , only : nt_rtm, rtm_tracers  
+  use RtmVar       , only : nt_rtm, rtm_tracers, nt_rtm_dom, rtm_tracers_dom
 
   implicit none
 !
@@ -130,13 +130,21 @@ contains
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
          ptr_rof=rtmCTL%qirrig_actual, default='inactive')
 
-    call RtmHistAddfld (fname='DOC'//'_'//trim(rtm_tracers(3)), units='mgC/L',  &
-         avgflag='A', long_name='Dissolved Organic Carbon: '//trim(rtm_tracers(3)), &
-         ptr_rof=rtmCTL%dom_nt3, default='active')
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+         avgflag='A', long_name='MOSART DOM basin flow: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%runofflnddom_nt1, default='active')
 
-    call RtmHistAddfld (fname='DON'//'_'//trim(rtm_tracers(4)), units='mgC/L',  &
-         avgflag='A', long_name='Dissolved Organic Nitrogen: '//trim(rtm_tracers(4)), &
-         ptr_rof=rtmCTL%dom_nt4, default='active')
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+         avgflag='A', long_name='MOSART DOM discharge into ocean: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%runoffocndom_nt1, default='active')
+
+    call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+         avgflag='A', long_name='MOSART input surface DOM: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domsur_nt1, default='active')
+
+    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='gC',  &
+         avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%dommas_nt1, default='active')
 
     ! Print masterlist of history fields
 
@@ -159,9 +167,6 @@ contains
 
     rtmCTL%runofflnd_nt1(:)  = rtmCTL%runofflnd(:,1)
     rtmCTL%runofflnd_nt2(:)  = rtmCTL%runofflnd(:,2)
-
-    rtmCTL%dom_nt3(:)        = Tdom%domR(:,3)
-    rtmCTL%dom_nt4(:)        = Tdom%domR(:,4)
 
     rtmCTL%runoffocn_nt1(:)  = rtmCTL%runoffocn(:,1)
     rtmCTL%runoffocn_nt2(:)  = rtmCTL%runoffocn(:,2)
@@ -190,6 +195,11 @@ contains
 
     rtmCTL%qgwl_nt1(:)       = rtmCTL%qgwl(:,1)
     rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
+
+    rtmCTL%domsur_ntdom1(:)  = rtmCTL%domsur(:,1)
+    rtmCTL%dommas_ntdom1(:)  = rtmCTL%dommas(:,1)
+    rtmCTL%runoffocndom_ntdom1(:) = rtmCTL%runoffocndom(:,1)
+    rtmCTL%runofflnddom_ntdom1(:) = rtmCTL%runofflnddom(:,1)
 
   end subroutine RtmHistFldsSet
 

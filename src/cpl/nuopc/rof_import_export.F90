@@ -243,7 +243,7 @@ contains
 
     ! Local variables
     type(ESMF_State) :: importState
-    integer          :: n,nt,ntdom
+    integer          :: n,nt,nt
     integer          :: begr, endr
     integer          :: nliq, nfrz, ndoc
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
@@ -269,8 +269,8 @@ contains
     endif
 
     ndoc = 0
-    do ntdom = 1,nt_rtm_dom
-       if (trim(rtm_tracers_dom()) == 'DOC') ndoc = ntdom
+    do nt = 1,nt_rtm_dom
+       if (trim(rtm_tracers_dom()) == 'DOC') ndoc = nt
     enddo
     if (ndoc == 0) then
        write(iulog,*) trim(subname),': ERROR in rtm_tracers_dom DOC ',ndoc,rtm_tracers_dom

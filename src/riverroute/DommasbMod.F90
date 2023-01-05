@@ -6,7 +6,7 @@ MODULE DommasbMod
   use shr_kind_mod  , only : r8 => shr_kind_r8
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RunoffMod     , only : TRunoff, Tdom, rtmCTL
+  use RunoffMod     , only : TRunoff, Tdom
 
   implicit none
 
@@ -44,7 +44,7 @@ MODULE DommasbMod
       real(r8)  :: mainchinT, mainchinUp
       mainchinT  = TRunoff%etout(iunit,nt) - TRunoff%erlateral(iunit,nt) !input to main channel from Tributaries
       mainchinUp = TRunoff%eroutUp(iunit,nt)   !inflow to main channel from Upstream grid cells of main channel
-      Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + ( (mainchinT*Tdom%domT(iunit,ntdom) + mainchinUp*Tdom%domRout(iunit,ntdom)) - TRunoff%flow(iunit,nt) * Tdom%domR(iunit,ntdom))*theDeltaT/TRunoff%wr(iunit,nt)
+      Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + ( (mainchinT*Tdom%domT(iunit,ntdom) + mainchinUp*Tdom%domRout(iunit,ntdom)) - TRunoff%flow(iunit,nt)*Tdom%domR(iunit,ntdom))*theDeltaT/TRunoff%wr(iunit,nt)
     end subroutine mainchannelRoutingDOM
 !-------------------------------------------------------------------------
 end MODULE DommasbMod
