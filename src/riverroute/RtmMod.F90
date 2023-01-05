@@ -2583,10 +2583,6 @@ contains
      Tdom%domT = 0._r8
      allocate (Tdom%domR(begr:endr,nt_rtm_dom))
      Tdom%domR = 0._r8
-     allocate (Tdom%domRout(begr:endr,nt_rtm_dom))
-     Tdom%domRout = 0._r8
-     allocate (Tdom%domRin(begr:endr,nt_rtm_dom))
-     Tdom%domRin = 0._r8
      allocate (Tdom%domRUp(begr:endr,nt_rtm_dom))
      Tdom%domRUp = 0._r8
      allocate (Tdom%domsur(begr:endr,nt_rtm_dom))

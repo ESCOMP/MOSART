@@ -30,9 +30,9 @@ module RunoffMod
   type(mct_sMatP),public :: sMatP_eroutUp ! sparse matrix plus for eroutUp calc
   type(mct_avect),public :: avsrc_eroutUp ! src avect for SM mult eroutUp calc
   type(mct_avect),public :: avdst_eroutUp ! dst avect for SM mult eroutUp calc
-  type(mct_sMatP),public :: sMatP_domRUp ! sparse matrix plus for domRoutUp calc
-  type(mct_avect),public :: avsrc_domRUp ! src avect for SM mult domRoutUp calc
-  type(mct_avect),public :: avdst_domRUp ! dst avect for SM mult domRoutUp calc
+  type(mct_sMatP),public :: sMatP_domRUp ! sparse matrix plus for domRUp calc
+  type(mct_avect),public :: avsrc_domRUp ! src avect for SM mult domRUp calc
+  type(mct_avect),public :: avdst_domRUp ! dst avect for SM mult domRUp calc
   
 
   public :: runoff_flow
@@ -294,8 +294,6 @@ module RunoffMod
      !main channel upstream interactions
      real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (gC/m3)
      real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (gC/m3)
-     real(r8), pointer :: domRout(:,:) ! flow from upstream grids (gC/m3)
-     real(r8), pointer :: domRin(:,:)  ! flow to downstream grid cells (gC/m3)
   end type Domflux 
   
   !== Hongyi

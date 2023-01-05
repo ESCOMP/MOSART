@@ -178,7 +178,6 @@ MODULE MOSART_physics_mod
 
        TRunoff%eroutup_avg = TRunoff%eroutup_avg + TRunoff%eroutUp
        TRunoff%erlat_avg   = TRunoff%erlat_avg   + TRunoff%erlateral
-       Tdom%domRout        = Tdom%domRout + Tdom%domRUp
        !------------------
        ! channel routing
        !------------------
