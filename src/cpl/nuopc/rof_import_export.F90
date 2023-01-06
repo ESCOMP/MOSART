@@ -243,7 +243,7 @@ contains
 
     ! Local variables
     type(ESMF_State) :: importState
-    integer          :: n,nt,nt
+    integer          :: n,nt
     integer          :: begr, endr
     integer          :: nliq, nfrz, ndoc
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
@@ -270,7 +270,7 @@ contains
 
     ndoc = 0
     do nt = 1,nt_rtm_dom
-       if (trim(rtm_tracers_dom()) == 'DOC') ndoc = nt
+       if (trim(rtm_tracers_dom(nt)) == 'DOC') ndoc = nt
     enddo
     if (ndoc == 0) then
        write(iulog,*) trim(subname),': ERROR in rtm_tracers_dom DOC ',ndoc,rtm_tracers_dom
@@ -622,6 +622,9 @@ contains
     end if
     do g = begr,endr
        output(g) = fldptr(g-begr+1) * area(g)*0.001_r8
+       if (fldname=='Flrl_rofdoc') then
+          output(g) = output(g)*1000._r8
+       end if
     end do
 
     ! check for nans

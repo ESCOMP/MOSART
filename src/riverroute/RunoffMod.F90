@@ -10,7 +10,7 @@ module RunoffMod
 !
 ! !USES:
   use shr_kind_mod, only : r8 => shr_kind_r8
-  use RtmVar      , only : iulog, spval, nt_rtm
+  use RtmVar      , only : iulog, spval, nt_rtm,nt_rtm_dom
   use mct_mod
 
 ! !PUBLIC TYPES:

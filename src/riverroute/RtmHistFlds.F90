@@ -132,19 +132,19 @@ contains
 
     call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
          avgflag='A', long_name='MOSART DOM basin flow: '//trim(rtm_tracers_dom(1)), &
-         ptr_rof=rtmCTL%runofflnddom_nt1, default='active')
+         ptr_rof=rtmCTL%runofflnddom_ntdom1, default='active')
 
     call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
          avgflag='A', long_name='MOSART DOM discharge into ocean: '//trim(rtm_tracers_dom(1)), &
-         ptr_rof=rtmCTL%runoffocndom_nt1, default='active')
+         ptr_rof=rtmCTL%runoffocndom_ntdom1, default='active')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
          avgflag='A', long_name='MOSART input surface DOM: '//trim(rtm_tracers_dom(1)), &
-         ptr_rof=rtmCTL%domsur_nt1, default='active')
+         ptr_rof=rtmCTL%domsur_ntdom1, default='active')
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='gC',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
-         ptr_rof=rtmCTL%dommas_nt1, default='active')
+         ptr_rof=rtmCTL%dommas_ntdom1, default='active')
 
     ! Print masterlist of history fields
 
