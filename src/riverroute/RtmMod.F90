@@ -1911,10 +1911,10 @@ contains
     do nr = rtmCTL%begr,rtmCTL%endr
        volr_init = rtmCTL%volr(nr,nt)
        rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + &
-                             TRunoff%wh(nr,nt)*rtmCTL%area(nr))
+                             TRunoff%wh(nr,nt)*rtmCTL%area(nr)) ! why times area ? wouldn t that become m^5
        if (nt==1) then
          do ntdom = 1,nt_rtm_dom
-            rtmCTL%dommas(nr,ntdom)=TRunoff%wh(nr,nt)*Tdom%domH(nr,ntdom)*rtmCTL%area(nr) + &
+            rtmCTL%dommas(nr,ntdom)=TRunoff%wh(nr,nt)*Tdom%domH(nr,ntdom) + &
                                     TRunoff%wt(nr,nt)*Tdom%domt(nr,ntdom) + &
                                     TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom)
          enddo   

@@ -130,19 +130,19 @@ contains
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
          ptr_rof=rtmCTL%qirrig_actual, default='inactive')
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM basin flow: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%runofflnddom_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM discharge into ocean: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%runoffocndom_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers_dom(1)), units='gC/s',  &
+    call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART input surface DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domsur_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='gC',  &
+    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%dommas_ntdom1, default='active')
 

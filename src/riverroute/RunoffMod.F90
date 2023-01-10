@@ -59,14 +59,14 @@ module RunoffMod
      !    - local
      real(r8), pointer :: runofflnd(:,:)   ! runoff masked for land (m3 H2O/s)
      real(r8), pointer :: runoffocn(:,:)   ! runoff masked for ocn  (m3 H2O/s)
-     real(r8), pointer :: runoffocndom(:,:)! DOM runoff masked for ocn  (gC/s)
-     real(r8), pointer :: runofflnddom(:,:)! DOM runoff masked for lnd  (gC/s)
+     real(r8), pointer :: runoffocndom(:,:)! DOM runoff masked for ocn  (kgC/s)
+     real(r8), pointer :: runofflnddom(:,:)! DOM runoff masked for lnd  (kgC/s)
      real(r8), pointer :: runofftot(:,:)   ! total runoff masked for ocn  (m3 H2O/s)
      real(r8), pointer :: dvolrdt(:,:)     ! RTM change in storage (mm/s)
      real(r8), pointer :: dvolrdtlnd(:,:)  ! dvolrdt masked for land (mm/s)
      real(r8), pointer :: dvolrdtocn(:,:)  ! dvolrdt masked for ocn  (mm/s)
      real(r8), pointer :: volr(:,:)        ! RTM storage (m3)
-     real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (gC)
+     real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (kgC)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      !    - restarts
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
@@ -78,7 +78,7 @@ module RunoffMod
      real(r8), pointer :: qsur(:,:)        ! coupler surface forcing [m3/s]
      real(r8), pointer :: qsub(:,:)        ! coupler subsurface forcing [m3/s]
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
-     real(r8), pointer :: domsur(:,:)      ! dom amsked for land (gC/s)
+     real(r8), pointer :: domsur(:,:)      ! dom amsked for land (kgC/s)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -286,14 +286,14 @@ module RunoffMod
   ! DOM status and flux variables
   public :: Domflux
   type Domflux
-     real(r8), pointer :: domsur(:,:)  ! flow to downstream grid cells (gC/s)
+     real(r8), pointer :: domsur(:,:)  ! flow to downstream grid cells (kgC/s)
      !hillslope
-     real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (gC/m3)
+     real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (kgC/m3)
      !sub-network
-     real(r8), pointer :: domT(:,:)    ! dom discharge from sub-network into main reach (gC/m3)
+     real(r8), pointer :: domT(:,:)    ! dom discharge from sub-network into main reach (kgC/m3)
      !main channel upstream interactions
-     real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (gC/m3)
-     real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (gC/m3)
+     real(r8), pointer :: domR(:,:)    ! dom discharge from outlfow into downstream links (kgC/m3)
+     real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (kgC/m3)
   end type Domflux 
   
   !== Hongyi
