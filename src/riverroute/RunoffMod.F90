@@ -67,6 +67,9 @@ module RunoffMod
      real(r8), pointer :: dvolrdtocn(:,:)  ! dvolrdt masked for ocn  (mm/s)
      real(r8), pointer :: volr(:,:)        ! RTM storage (m3)
      real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (kgC)
+     real(r8), pointer :: domH(:,:)        ! RTM DOM storage (kgC/m3)
+     real(r8), pointer :: domT(:,:)        ! RTM DOM storage (kgC/m3)
+     real(r8), pointer :: domR(:,:)        ! RTM DOM storage (kgC/m3)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      !    - restarts
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
@@ -114,6 +117,9 @@ module RunoffMod
      real(r8), pointer :: dommas_ntdom1(:)
      real(r8), pointer :: runoffocndom_ntdom1(:)
      real(r8), pointer :: runofflnddom_ntdom1(:)
+     real(r8), pointer :: domH_ntdom1(:)
+     real(r8), pointer :: domT_ntdom1(:)
+     real(r8), pointer :: domR_ntdom1(:)
 
   end type runoff_flow
 
@@ -372,6 +378,12 @@ contains
              rtmCTL%runoffocndom_ntdom1(begr:endr),      &
              rtmCTL%domsur_ntdom1(begr:endr),            &
              rtmCTL%dommas_ntdom1(begr:endr),            &
+             rtmCTL%domH_ntdom1(begr:endr),              &
+             rtmCTL%domH(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domT_ntdom1(begr:endr),              &
+             rtmCTL%domT(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domR_ntdom1(begr:endr),              &
+             rtmCTL%domR(begr:endr,nt_rtm_dom),          &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -400,6 +412,9 @@ contains
     rtmCTL%runoffocndom(:,:)=spval
     rtmCTL%domsur(:,:)      =0._r8
     rtmCTL%dommas(:,:)      =0._r8
+    rtmCTL%domH(:,:)        =0._r8
+    rtmCTL%domT(:,:)        =0._r8
+    rtmCTL%domR(:,:)        =0._r8
 
   end subroutine RunoffInit
 

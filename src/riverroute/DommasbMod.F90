@@ -19,13 +19,13 @@ MODULE DommasbMod
   contains
 
   !----------------------------------------------------------------------
-    subroutine hillslopeRoutingDOM(iunit,nt,ntdom,theDeltaT)
+    subroutine hillslopeRoutingDOM(iunit,nt,ntdom,theDeltaT,Darea,Dfrac)
       ! ! DESCRIPTION: solve the ODEs with Euler algorithm for hillslope routing
       implicit none
       integer,  intent(in) :: iunit, nt, ntdom
-      real(r8), intent(in) :: theDeltaT
+      real(r8), intent(in) :: theDeltaT, Darea, Dfrac
       ! assume no chemical reaction in the water hence sink term is zero implies domH ~= domHout
-      Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (-TRunoff%ehout(iunit,nt) * Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom)) * theDeltaT/TRunoff%wh(iunit,nt)
+      Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (-TRunoff%ehout(iunit,nt) * Darea * Dfrac * Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom)) * theDeltaT/(TRunoff%wh(iunit,nt)*Darea*Dfrac)
     end subroutine hillslopeRoutingDOM
 
     subroutine subnetworkRoutingDOM(iunit,nt,ntdom,theDeltaT)

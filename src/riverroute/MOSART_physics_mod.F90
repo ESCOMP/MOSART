@@ -67,7 +67,7 @@ MODULE MOSART_physics_mod
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
           if (TRunoff%wh(iunit, nt) > 0._r8 .and. nt==1) then ! if LIQ tracer and there is water
             do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-             call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT)
+             call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT,TUnit%area(iunit),TUnit%frac(iunit))
             end do
           endif
        endif
@@ -151,10 +151,10 @@ MODULE MOSART_physics_mod
           cnt = cnt + 1
           do nt = 1,nt_rtm
              avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
+             do ntdom = 1,nt_rtm_dom
+               avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)*TRunoff%erout(iunit,nt) ! we want to sum the mass of dom not the concentration
+             end do
           enddo
-          do ntdom = 1,nt_rtm_dom
-             avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)
-          end do
        enddo
        call mct_avect_zero(avdst_eroutUp)
        call mct_avect_zero(avdst_domRUp)
@@ -168,10 +168,10 @@ MODULE MOSART_physics_mod
           cnt = cnt + 1
           do nt = 1,nt_rtm
              TRunoff%eroutUp(iunit,nt) = avdst_eroutUp%rAttr(nt,cnt)
+             do ntdom = 1,nt_rtm_dom
+               Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)*avdst_eroutUp%rAttr(nt,cnt) ! convert DOM back to concentrations
+            end do
           enddo
-          do ntdom = 1,nt_rtm_dom
-             Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)
-         end do
        enddo
 #endif
        call t_stopf('mosartr_SMeroutUp')    
@@ -192,17 +192,17 @@ MODULE MOSART_physics_mod
              do k=1,TUnit%numDT_r(iunit)
                 call mainchannelRouting(iunit,nt,localDeltaT)    
                 TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
-                if (TRunoff%wr(iunit,nt) > 0._r8 .and. nt==1) then
-                   do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-                      call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
-                   end do
-                end if
 ! check for negative channel storage
 !                if(TRunoff%wr(iunit,1) < -1.e-10) then
 !                   write(iulog,*) 'Negative channel storage! ', iunit, TRunoff%wr(iunit,1)
 !                   call shr_sys_abort('mosart: negative channel storage')
 !                end if
                 call UpdateState_mainchannel(iunit,nt)
+                if (TRunoff%wr(iunit,nt) > 0._r8 .and. nt==1) then
+                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+                     call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                  end do
+                end if
                 temp_erout = temp_erout + TRunoff%erout(iunit,nt) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
              end do
              temp_erout = temp_erout / TUnit%numDT_r(iunit)
@@ -453,7 +453,7 @@ MODULE MOSART_physics_mod
 !-----------------------------------------------------------------------
     
   function CRVRMAN(slp_, n_, rr_) result(v_)
-  ! Function for calculating channel velocity according to Manning's equation.
+  ! Function for calculating channel velocity according to Manning's equation.vt
     implicit none
     real(r8), intent(in) :: slp_, n_, rr_ ! slope, manning's roughness coeff., hydraulic radius
     real(r8)             :: v_            ! v_ is  discharge

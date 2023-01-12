@@ -146,6 +146,18 @@ contains
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%dommas_ntdom1, default='active')
 
+    call RtmHistAddfld (fname='HILLS_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domH_ntdom1, default='active')
+
+    call RtmHistAddfld (fname='SUBN_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domT_ntdom1, default='active')
+
+    call RtmHistAddfld (fname='MAINC_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domR_ntdom1, default='active')
+
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()
@@ -200,6 +212,9 @@ contains
     rtmCTL%dommas_ntdom1(:)  = rtmCTL%dommas(:,1)
     rtmCTL%runoffocndom_ntdom1(:) = rtmCTL%runoffocndom(:,1)
     rtmCTL%runofflnddom_ntdom1(:) = rtmCTL%runofflnddom(:,1)
+    rtmCTL%domH_ntdom1(:) = rtmCTL%domH(:,1)
+    rtmCTL%domT_ntdom1(:) = rtmCTL%domT(:,1)
+    rtmCTL%domR_ntdom1(:) = rtmCTL%domR(:,1)
 
   end subroutine RtmHistFldsSet
 
