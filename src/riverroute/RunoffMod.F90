@@ -66,7 +66,7 @@ module RunoffMod
      real(r8), pointer :: dvolrdtlnd(:,:)  ! dvolrdt masked for land (mm/s)
      real(r8), pointer :: dvolrdtocn(:,:)  ! dvolrdt masked for ocn  (mm/s)
      real(r8), pointer :: volr(:,:)        ! RTM storage (m3)
-     real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (kgC)
+     real(r8), pointer :: dommas(:,:)      ! RTM DOM storage (kgC/m2)
      real(r8), pointer :: domH(:,:)        ! RTM DOM storage (kgC/m3)
      real(r8), pointer :: domT(:,:)        ! RTM DOM storage (kgC/m3)
      real(r8), pointer :: domR(:,:)        ! RTM DOM storage (kgC/m3)

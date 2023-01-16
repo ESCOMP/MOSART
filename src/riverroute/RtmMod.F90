@@ -1914,9 +1914,9 @@ contains
                              TRunoff%wh(nr,nt)*rtmCTL%area(nr))
        if (nt==1) then
          do ntdom = 1,nt_rtm_dom
-            rtmCTL%dommas(nr,ntdom)=TRunoff%wh(nr,nt)*rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
+            rtmCTL%dommas(nr,ntdom)=(TRunoff%wh(nr,nt)*rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
                                     TRunoff%wt(nr,nt)*Tdom%domT(nr,ntdom) + &
-                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom)
+                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom))/rtmCTL%area(nr)
             rtmCTL%domH(nr,ntdom)=Tdom%domH(nr,ntdom)
             rtmCTL%domT(nr,ntdom)=Tdom%domT(nr,ntdom)
             rtmCTL%domR(nr,ntdom)=Tdom%domR(nr,ntdom)
@@ -2778,7 +2778,6 @@ contains
      cnt = cnt + 1
      avdst_eroutUp%rAttr(1,cnt) = rtmCTL%area(nr)
      Tunit%areatotal2(nr) = avdst_eroutUp%rAttr(1,cnt)
-     avdst_domRUp%rAttr(1,cnt) = rtmCTL%area(nr)
   enddo
 
   tcnt = 0
@@ -2791,19 +2790,14 @@ contains
      ! copy avdst to avsrc for next downstream step
      cnt = 0
      call mct_avect_zero(avsrc_eroutUp)
-     call mct_avect_zero(avsrc_domRUp)
 
      do nr = rtmCTL%begr,rtmCTL%endr
         cnt = cnt + 1
         avsrc_eroutUp%rAttr(1,cnt) = avdst_eroutUp%rAttr(1,cnt)
-        avsrc_domRUp%rAttr(1,cnt) = avdst_domRUp%rAttr(1,cnt)
      enddo
 
      call mct_avect_zero(avdst_eroutUp)
-     call mct_avect_zero(avdst_domRUp)
-
      call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
-     call mct_sMat_avMult(avsrc_domRUp, sMatP_domRUp, avdst_domRUp)
      
 
      ! add avdst to areatot and compute new global sum

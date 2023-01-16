@@ -133,6 +133,7 @@ MODULE MOSART_physics_mod
 
        call t_startf('mosartr_SMeroutUp')    
        TRunoff%eroutUp = 0._r8
+       Tdom%domRUp = 0._r8
 #ifdef NO_MCT
        do iunit=rtmCTL%begr,rtmCTL%endr
        do k=1,TUnit%nUp(iunit)
@@ -152,7 +153,7 @@ MODULE MOSART_physics_mod
           do nt = 1,nt_rtm
              avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
              do ntdom = 1,nt_rtm_dom
-               avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)*TRunoff%erout(iunit,nt) ! we want to sum the mass of dom not the concentration
+               avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)*TRunoff%erout(iunit,nt) !kg/m3 * m3/s we want to sum the mass of dom not the concentration
              end do
           enddo
        enddo
@@ -169,7 +170,7 @@ MODULE MOSART_physics_mod
           do nt = 1,nt_rtm
              TRunoff%eroutUp(iunit,nt) = avdst_eroutUp%rAttr(nt,cnt)
              do ntdom = 1,nt_rtm_dom
-               Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)*avdst_eroutUp%rAttr(nt,cnt) ! convert DOM back to concentrations
+               Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)/TRunoff%eroutUp(iunit,nt) !kg/s / m3/s convert DOM back to concentrations
             end do
           enddo
        enddo
@@ -198,7 +199,7 @@ MODULE MOSART_physics_mod
 !                   call shr_sys_abort('mosart: negative channel storage')
 !                end if
                 call UpdateState_mainchannel(iunit,nt)
-                if (TRunoff%wr(iunit,nt) > 0._r8 .and. nt==1) then
+                if (nt==1) then
                   do ntdom=1,nt_rtm_dom ! loop over DOM tracers
                      call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
                   end do
@@ -220,7 +221,7 @@ MODULE MOSART_physics_mod
 ! check for negative channel storage
     if (negchan < -1.e-10) then
        write(iulog,*) 'Warning: Negative channel storage found! ',negchan
-!       call shr_sys_abort('mosart: negative channel storage')
+       call shr_sys_abort('mosart: negative channel storage')
     endif
     TRunoff%flow = TRunoff%flow / Tctl%DLevelH2R
     TRunoff%erout_prev = TRunoff%erout_prev / Tctl%DLevelH2R

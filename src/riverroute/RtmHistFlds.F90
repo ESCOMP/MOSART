@@ -142,19 +142,19 @@ contains
          avgflag='A', long_name='MOSART input surface DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domsur_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
+    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m2',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%dommas_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='HILLS_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+    call RtmHistAddfld (fname='CONC_HILLS'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
          avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domH_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='SUBN_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+    call RtmHistAddfld (fname='CONC_SUBN'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
          avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domT_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='MAINC_CONC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+    call RtmHistAddfld (fname='CONC_MAINC'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
          avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domR_ntdom1, default='active')
 
