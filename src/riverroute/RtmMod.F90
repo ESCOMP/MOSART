@@ -1920,7 +1920,10 @@ contains
             rtmCTL%domH(nr,ntdom)=Tdom%domH(nr,ntdom)
             rtmCTL%domT(nr,ntdom)=Tdom%domT(nr,ntdom)
             rtmCTL%domR(nr,ntdom)=Tdom%domR(nr,ntdom)
+            rtmCTL%domRUp(nr,ntdom)=Tdom%domRUp(nr,ntdom)
          enddo   
+         rtmCTL%erin(nr,nt)=TRunoff%erin(nr,nt)
+         rtmCTL%erlateral(nr,nt)=TRunoff%erlateral(nr,nt)
        end if     
       
        rtmCTL%dvolrdt(nr,nt) = (rtmCTL%volr(nr,nt) - volr_init) / delt_coupling

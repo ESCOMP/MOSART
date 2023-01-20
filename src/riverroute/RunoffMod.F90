@@ -70,6 +70,9 @@ module RunoffMod
      real(r8), pointer :: domH(:,:)        ! RTM DOM storage (kgC/m3)
      real(r8), pointer :: domT(:,:)        ! RTM DOM storage (kgC/m3)
      real(r8), pointer :: domR(:,:)        ! RTM DOM storage (kgC/m3)
+     real(r8), pointer :: domRUp(:,:)      ! RTM DOM storage (kgC/m3)
+     real(r8), pointer :: erin(:,:)        ! MOSART flow in main channel from upstream gridcells (m3/s)
+     real(r8), pointer :: erlateral(:,:)   ! MOSART flow in main channel from tributaries (m3/s)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      !    - restarts
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
@@ -81,7 +84,7 @@ module RunoffMod
      real(r8), pointer :: qsur(:,:)        ! coupler surface forcing [m3/s]
      real(r8), pointer :: qsub(:,:)        ! coupler subsurface forcing [m3/s]
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
-     real(r8), pointer :: domsur(:,:)      ! dom amsked for land (kgC/s)
+     real(r8), pointer :: domsur(:,:)      ! dom masked for land (kgC/s)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -120,6 +123,9 @@ module RunoffMod
      real(r8), pointer :: domH_ntdom1(:)
      real(r8), pointer :: domT_ntdom1(:)
      real(r8), pointer :: domR_ntdom1(:)
+     real(r8), pointer :: domRUp_ntdom1(:)
+     real(r8), pointer :: erin_nt1(:)
+     real(r8), pointer :: erlateral_nt1(:)
 
   end type runoff_flow
 
@@ -292,7 +298,7 @@ module RunoffMod
   ! DOM status and flux variables
   public :: Domflux
   type Domflux
-     real(r8), pointer :: domsur(:,:)  ! flow to downstream grid cells (kgC/s)
+     real(r8), pointer :: domsur(:,:)  ! flow from land (kgC/s)
      !hillslope
      real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (kgC/m3)
      !sub-network
@@ -384,6 +390,12 @@ contains
              rtmCTL%domT(begr:endr,nt_rtm_dom),          &
              rtmCTL%domR_ntdom1(begr:endr),              &
              rtmCTL%domR(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domRUp_ntdom1(begr:endr),          &
+             rtmCTL%domRUp(begr:endr,nt_rtm_dom),          &
+             rtmCTL%erin_nt1(begr:endr),          &
+             rtmCTL%erin(begr:endr,nt_rtm),          &
+             rtmCTL%erlateral_nt1(begr:endr),          &
+             rtmCTL%erlateral(begr:endr,nt_rtm),          &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -415,6 +427,9 @@ contains
     rtmCTL%domH(:,:)        =0._r8
     rtmCTL%domT(:,:)        =0._r8
     rtmCTL%domR(:,:)        =0._r8
+    rtmCTL%domRUp(:,:)      =0._r8
+    rtmCTL%erin(:,:)        =0._r8
+    rtmCTL%erlateral(:,:)   =0._r8
 
   end subroutine RunoffInit
 

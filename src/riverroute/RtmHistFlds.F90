@@ -158,6 +158,18 @@ contains
          avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domR_ntdom1, default='active')
 
+    call RtmHistAddfld (fname='CONC_UPSTREAM'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m3',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domRUp_ntdom1, default='active')
+
+    call RtmHistAddfld (fname='ERIN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%erin_nt1, default='active')
+     
+    call RtmHistAddfld (fname='ERLATERAL'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART DOM concentration: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%erlateral_nt1, default='active')
+
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()
@@ -215,6 +227,9 @@ contains
     rtmCTL%domH_ntdom1(:) = rtmCTL%domH(:,1)
     rtmCTL%domT_ntdom1(:) = rtmCTL%domT(:,1)
     rtmCTL%domR_ntdom1(:) = rtmCTL%domR(:,1)
+    rtmCTL%domRUp_ntdom1(:) = rtmCTL%domRUp(:,1)
+    rtmCTL%erin_nt1(:) = rtmCTL%erin(:,1)
+    rtmCTL%erlateral_nt1(:) = rtmCTL%erlateral(:,1)
 
   end subroutine RtmHistFldsSet
 

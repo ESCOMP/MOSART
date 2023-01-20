@@ -108,13 +108,13 @@ MODULE MOSART_physics_mod
                 TRunoff%wt(iunit,nt) = TRunoff%wt(iunit,nt) + TRunoff%dwt(iunit,nt) * localDeltaT
                 call UpdateState_subnetwork(iunit,nt)
                 TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt)-TRunoff%etout(iunit,nt)
-                if (TRunoff%wt(iunit,nt) > 0._r8 .and. nt==1) then
-                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-                   call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
-                  end do
-                endif
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
+             if (TRunoff%wt(iunit,nt) > 0._r8 .and. nt==1) then
+               do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+                call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
+               end do
+             endif
           endif
        end do ! iunit
        endif  ! euler_calc
@@ -153,7 +153,7 @@ MODULE MOSART_physics_mod
           do nt = 1,nt_rtm
              avsrc_eroutUp%rAttr(nt,cnt) = TRunoff%erout(iunit,nt)
              do ntdom = 1,nt_rtm_dom
-               avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)*TRunoff%erout(iunit,nt) !kg/m3 * m3/s we want to sum the mass of dom not the concentration
+               avsrc_domRUp%rAttr(ntdom,cnt) = Tdom%domR(iunit,ntdom)*-1._r8*TRunoff%erout(iunit,nt) !kg/m3 * m3/s we want to sum the mass of dom not the concentration
              end do
           enddo
        enddo
@@ -161,7 +161,7 @@ MODULE MOSART_physics_mod
        call mct_avect_zero(avdst_domRUp)
 
        call mct_sMat_avMult(avsrc_eroutUp, sMatP_eroutUp, avdst_eroutUp)
-       call mct_sMat_avMult(avsrc_domRUp, sMatP_domRUp, avdst_domRUp)
+       call mct_sMat_avMult(avsrc_domRUp, sMatP_eroutUp, avdst_domRUp)
 
        !--- add mapped eroutUp to TRunoff ---
        cnt = 0
@@ -170,7 +170,7 @@ MODULE MOSART_physics_mod
           do nt = 1,nt_rtm
              TRunoff%eroutUp(iunit,nt) = avdst_eroutUp%rAttr(nt,cnt)
              do ntdom = 1,nt_rtm_dom
-               Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)/TRunoff%eroutUp(iunit,nt) !kg/s / m3/s convert DOM back to concentrations
+               Tdom%domRUp(iunit,ntdom) = avdst_domRUp%rAttr(ntdom,cnt)
             end do
           enddo
        enddo
@@ -199,16 +199,16 @@ MODULE MOSART_physics_mod
 !                   call shr_sys_abort('mosart: negative channel storage')
 !                end if
                 call UpdateState_mainchannel(iunit,nt)
-                if (nt==1) then
-                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-                     call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
-                  end do
-                end if
                 temp_erout = temp_erout + TRunoff%erout(iunit,nt) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
              end do
              temp_erout = temp_erout / TUnit%numDT_r(iunit)
              TRunoff%erout(iunit,nt) = temp_erout
              TRunoff%flow(iunit,nt) = TRunoff%flow(iunit,nt) - TRunoff%erout(iunit,nt)
+             if (nt==1) then
+               do ntdom=1,nt_rtm_dom ! loop over DOM tracers
+                  call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
+               end do
+             end if
           endif
        end do ! iunit
        endif  ! euler_calc

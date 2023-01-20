@@ -622,9 +622,6 @@ contains
     end if
     do g = begr,endr
        output(g) = fldptr(g-begr+1) * area(g)*0.001_r8
-       if (fldname=='Flrl_rofdoc') then
-          output(g) = output(g)*1000._r8 ! to keep in kg/s
-       end if
     end do
 
     ! check for nans
