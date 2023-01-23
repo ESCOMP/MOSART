@@ -1506,6 +1506,7 @@ contains
     do nr = rtmCTL%begr,rtmCTL%endr
       do nt = 1,nt_rtm_dom
          Tdom%domsur(nr,nt) = rtmCTL%domsur(nr,nt)
+         Tdom%domsub(nr,nt) = rtmCTL%domsub(nr,nt)
     enddo
     enddo
 
@@ -2593,6 +2594,8 @@ contains
      Tdom%domRUp = 0._r8
      allocate (Tdom%domsur(begr:endr,nt_rtm_dom))
      Tdom%domsur = 0._r8
+     allocate (Tdom%domsub(begr:endr,nt_rtm_dom))
+     Tdom%domsub = 0._r8
 
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)

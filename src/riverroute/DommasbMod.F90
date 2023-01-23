@@ -36,7 +36,7 @@ MODULE DommasbMod
       implicit none
       integer, intent(in) :: iunit, nt, ntdom
       real(r8), intent(in) :: theDeltaT
-      Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + (TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom) + TRunoff%etout(iunit,nt) * Tdom%domT(iunit,ntdom)) * theDeltaT/TRunoff%wt(iunit,nt)
+      Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + (Tdom%domsub(iunit,ntdom) + TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom) + TRunoff%etout(iunit,nt) * Tdom%domT(iunit,ntdom)) * theDeltaT/TRunoff%wt(iunit,nt)
     end subroutine subnetworkRoutingDOM
 
     subroutine mainchannelRoutingDOM(iunit,nt,ntdom,theDeltaT)

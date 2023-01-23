@@ -110,7 +110,8 @@ contains
 
     call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdoc')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_subdoc')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_surfdoc')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
@@ -287,7 +288,11 @@ contains
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_rofdoc', begr, endr, rtmCTL%area, output=rtmCTL%domsur(:,ndoc), &
+    call state_getimport(importState, 'Flrl_surfdoc', begr, endr, rtmCTL%area, output=rtmCTL%domsur(:,ndoc), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_subdoc', begr, endr, rtmCTL%area, output=rtmCTL%domsub(:,ndoc), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 

@@ -84,7 +84,8 @@ module RunoffMod
      real(r8), pointer :: qsur(:,:)        ! coupler surface forcing [m3/s]
      real(r8), pointer :: qsub(:,:)        ! coupler subsurface forcing [m3/s]
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
-     real(r8), pointer :: domsur(:,:)      ! dom masked for land (kgC/s)
+     real(r8), pointer :: domsur(:,:)      ! surface dom masked for land (kgC/s)
+     real(r8), pointer :: domsub(:,:)      ! subsurface dom masked for land (kgC/s)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -117,6 +118,7 @@ module RunoffMod
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
      real(r8), pointer :: domsur_ntdom1(:)
+     real(r8), pointer :: domsub_ntdom1(:)
      real(r8), pointer :: dommas_ntdom1(:)
      real(r8), pointer :: runoffocndom_ntdom1(:)
      real(r8), pointer :: runofflnddom_ntdom1(:)
@@ -298,7 +300,8 @@ module RunoffMod
   ! DOM status and flux variables
   public :: Domflux
   type Domflux
-     real(r8), pointer :: domsur(:,:)  ! flow from land (kgC/s)
+     real(r8), pointer :: domsur(:,:)  ! surface DOM flow from land (kgC/s)
+     real(r8), pointer :: domsub(:,:)  ! subsurface DOM flow from land (kgC/s)
      !hillslope
      real(r8), pointer :: domH(:,:)    ! dissolved organic matter generated from hillslope (kgC/m3)
      !sub-network
@@ -379,10 +382,12 @@ contains
              rtmCTL%runofflnddom(begr:endr,nt_rtm_dom),  &
              rtmCTL%runoffocndom(begr:endr,nt_rtm_dom),  &
              rtmCTL%domsur(begr:endr,nt_rtm_dom),        &
+             rtmCTL%domsub(begr:endr,nt_rtm_dom),        &
              rtmCTL%dommas(begr:endr,nt_rtm_dom),        &
              rtmCTL%runofflnddom_ntdom1(begr:endr),      &
              rtmCTL%runoffocndom_ntdom1(begr:endr),      &
              rtmCTL%domsur_ntdom1(begr:endr),            &
+             rtmCTL%domsub_ntdom1(begr:endr),            &
              rtmCTL%dommas_ntdom1(begr:endr),            &
              rtmCTL%domH_ntdom1(begr:endr),              &
              rtmCTL%domH(begr:endr,nt_rtm_dom),          &
@@ -423,6 +428,7 @@ contains
     rtmCTL%runofflnddom(:,:)=spval
     rtmCTL%runoffocndom(:,:)=spval
     rtmCTL%domsur(:,:)      =0._r8
+    rtmCTL%domsub(:,:)      =0._r8
     rtmCTL%dommas(:,:)      =0._r8
     rtmCTL%domH(:,:)        =0._r8
     rtmCTL%domT(:,:)        =0._r8
