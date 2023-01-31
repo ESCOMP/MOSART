@@ -100,7 +100,7 @@ contains
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsur_nt1, default='inactive')
+         ptr_rof=rtmCTL%qsur_nt1, default='active')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
@@ -108,7 +108,7 @@ contains
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsub_nt1, default='inactive')
+         ptr_rof=rtmCTL%qsub_nt1, default='active')
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(2)), &
@@ -141,6 +141,10 @@ contains
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART input surface DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domsur_ntdom1, default='active')
+
+    call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
+         avgflag='A', long_name='MOSART input subsurface DOM: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domsub_ntdom1, default='active')
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m2',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
@@ -221,6 +225,7 @@ contains
     rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
 
     rtmCTL%domsur_ntdom1(:)  = rtmCTL%domsur(:,1)
+    rtmCTL%domsub_ntdom1(:)  = rtmCTL%domsub(:,1)
     rtmCTL%dommas_ntdom1(:)  = rtmCTL%dommas(:,1)
     rtmCTL%runoffocndom_ntdom1(:) = rtmCTL%runoffocndom(:,1)
     rtmCTL%runofflnddom_ntdom1(:) = rtmCTL%runofflnddom(:,1)

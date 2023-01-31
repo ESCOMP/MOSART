@@ -1507,7 +1507,11 @@ contains
       do nt = 1,nt_rtm_dom
          Tdom%domsur(nr,nt) = rtmCTL%domsur(nr,nt)
          Tdom%domsub(nr,nt) = rtmCTL%domsub(nr,nt)
-    enddo
+         write(iulog,*) 'MOSART CHECK',nr,nr,Tdom%domsur(nr,nt),Tdom%domsub(nr,nt)
+         if (Tdom%domsur(nr,nt)>140000) then
+            write(iulog,*) 'MOSART FUCK'
+         endif
+      enddo
     enddo
 
     !-----------------------------------

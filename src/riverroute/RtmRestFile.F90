@@ -17,7 +17,7 @@ module RtmRestFile
                              finidat_rtm, nrevsn_rtm, spval, &
                              nsrContinue, nsrBranch, nsrStartup, &
                              ctitle, version, username, hostname, conventions, source, &
-                             nt_rtm, nt_rtm, rtm_tracers 
+                             nt_rtm, nt_rtm, rtm_tracers, nt_rtm_dom
   use RtmHistFile   , only : RtmHistRestart
   use RtmFileUtils  , only : relavu, getavu, opnfil, getfil
   use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
@@ -373,7 +373,7 @@ contains
     character(len=*) , intent(in) :: flag   ! 'read' or 'write'
     ! LOCAL VARIABLES:
     logical :: readvar          ! determine if variable is on initial file
-    integer :: nt,nv,n          ! indices
+    integer :: nt,ntdom,nv,n          ! indices
     real(r8) , pointer :: dfld(:) ! temporary array
     character(len=32)  :: vname,uname
     character(len=255) :: lname
@@ -421,6 +421,7 @@ contains
           write(iulog,*) 'Rtm ERROR: illegal nv value a ',nv
           call shr_sys_abort()
        endif
+       
 
        if (flag == 'define') then
           call ncd_defvar(ncid=ncid, varname=trim(vname), &
@@ -440,6 +441,49 @@ contains
 
     enddo
     enddo
+    
+    
+    do nv = 8,10
+    do ntdom = 1,nt_rtm_dom
+      if (nv == 8) then
+         vname = 'RTM_DOMH_'//trim(rtm_tracers(ntdom))
+         lname = 'DOM storage at hillslope in cell'
+         uname = 'kg/m3'
+         dfld  => rtmCTL%domH(:,ntdom)
+      elseif (nv == 9) then
+         vname = 'RTM_DOMT_'//trim(rtm_tracers(ntdom))
+         lname = 'DOM storage in tributary channels in cell'
+         uname = 'kg/m3'
+          dfld  => rtmCTL%domT(:,ntdom)
+      elseif (nv == 10) then
+         vname = 'RTM_DOMR_'//trim(rtm_tracers(ntdom))
+          lname = 'DOM storage in main channel in cell'
+         uname = 'kg/m3'
+         dfld  => rtmCTL%domR(:,ntdom)
+      else
+         write(iulog,*) 'Rtm ERROR: illegal nv value a ',nv
+         call shr_sys_abort()
+      endif
+      
+
+      if (flag == 'define') then
+         call ncd_defvar(ncid=ncid, varname=trim(vname), &
+              xtype=ncd_double,  dim1name='rtmlon', dim2name='rtmlat', &
+              long_name=trim(lname), units=trim(uname), fill_value=spval)
+      else if (flag == 'read' .or. flag == 'write') then
+         call ncd_io(varname=trim(vname), data=dfld, dim1name='allrof', &
+              ncid=ncid, flag=flag, readvar=readvar)
+         if (flag=='read' .and. .not. readvar) then
+            if (nsrest == nsrContinue) then
+               call shr_sys_abort()
+            else
+               dfld = 0._r8
+            end if
+         end if
+      end if
+
+   enddo
+   enddo
 
     if (flag == 'read') then
        do n = rtmCTL%begr,rtmCTL%endr
@@ -451,6 +495,13 @@ contains
              if (abs(rtmCTL%wt(n,nt))      > 1.e30) rtmCTL%wt(n,nt) = 0.
              if (abs(rtmCTL%wr(n,nt))      > 1.e30) rtmCTL%wr(n,nt) = 0.
              if (abs(rtmCTL%erout(n,nt))   > 1.e30) rtmCTL%erout(n,nt) = 0.
+             if (nt==1) then
+               do ntdom = 1,nt_rtm_dom
+                  if (abs(rtmCTL%domH(n,ntdom))    > 1.e30) rtmCTL%domH(n,ntdom) = 0.
+                  if (abs(rtmCTL%domT(n,ntdom))    > 1.e30) rtmCTL%domT(n,ntdom) = 0.
+                  if (abs(rtmCTL%domR(n,ntdom))    > 1.e30) rtmCTL%domR(n,ntdom) = 0.
+               end do
+             endif
           end do
           if (rtmCTL%mask(n) == 1) then
              do nt = 1,nt_rtm
