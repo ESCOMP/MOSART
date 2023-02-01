@@ -1501,17 +1501,10 @@ contains
        TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
        TRunoff%qgwl(nr,nt) = rtmCTL%qgwl(nr,nt)
     enddo
+    do nt = 1,nt_rtm_dom
+       Tdom%domsur(nr,nt) = rtmCTL%domsur(nr,nt)
+       Tdom%domsub(nr,nt) = rtmCTL%domsub(nr,nt)
     enddo
-    
-    do nr = rtmCTL%begr,rtmCTL%endr
-      do nt = 1,nt_rtm_dom
-         Tdom%domsur(nr,nt) = rtmCTL%domsur(nr,nt)
-         Tdom%domsub(nr,nt) = rtmCTL%domsub(nr,nt)
-         write(iulog,*) 'MOSART CHECK',nr,nr,Tdom%domsur(nr,nt),Tdom%domsub(nr,nt)
-         if (Tdom%domsur(nr,nt)>140000) then
-            write(iulog,*) 'MOSART FUCK'
-         endif
-      enddo
     enddo
 
     !-----------------------------------
@@ -1833,6 +1826,9 @@ contains
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
+       if (nt==1) then
+       !write(iulog,*) 'MOSART CHECK',Tdom%domsur(nr,1),TRunoff%qsur(nr,1),Tdom%domsub(nr,1),TRunoff%qsub(nr,1)
+       endif 
     enddo
     enddo
 
@@ -1921,7 +1917,7 @@ contains
          do ntdom = 1,nt_rtm_dom
             rtmCTL%dommas(nr,ntdom)=(TRunoff%wh(nr,nt)*rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
                                     TRunoff%wt(nr,nt)*Tdom%domT(nr,ntdom) + &
-                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom))/rtmCTL%area(nr)
+                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom))
             rtmCTL%domH(nr,ntdom)=Tdom%domH(nr,ntdom)
             rtmCTL%domT(nr,ntdom)=Tdom%domT(nr,ntdom)
             rtmCTL%domR(nr,ntdom)=Tdom%domR(nr,ntdom)

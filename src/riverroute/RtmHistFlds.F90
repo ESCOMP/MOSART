@@ -72,7 +72,7 @@ contains
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%volr_nt1, default='inactive')
+         ptr_rof=rtmCTL%volr_nt1, default='active')
 
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(2)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(2)), &
@@ -124,11 +124,11 @@ contains
 
     call RtmHistAddfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
          avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
-         ptr_rof=rtmCTL%qirrig, default='inactive')
+         ptr_rof=rtmCTL%qirrig, default='active')
 
     call RtmHistAddfld (fname='QIRRIG_ACTUAL', units='m3/s',  &
          avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
-         ptr_rof=rtmCTL%qirrig_actual, default='inactive')
+         ptr_rof=rtmCTL%qirrig_actual, default='active')
 
     call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM basin flow: '//trim(rtm_tracers_dom(1)), &
@@ -146,7 +146,7 @@ contains
          avgflag='A', long_name='MOSART input subsurface DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domsub_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC/m2',  &
+    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%dommas_ntdom1, default='active')
 
