@@ -443,7 +443,7 @@ contains
     enddo
     
     
-    do nv = 8,10
+    do nv = 8,11
     do ntdom = 1,nt_rtm_dom
       if (nv == 8) then
          vname = 'RTM_DOMH_'//trim(rtm_tracers(ntdom))
@@ -457,9 +457,14 @@ contains
           dfld  => rtmCTL%domT(:,ntdom)
       elseif (nv == 10) then
          vname = 'RTM_DOMR_'//trim(rtm_tracers(ntdom))
-          lname = 'DOM storage in main channel in cell'
+         lname = 'DOM storage in main channel in cell'
          uname = 'kg/m3'
          dfld  => rtmCTL%domR(:,ntdom)
+      elseif (nv == 11) then
+         vname = 'RTM_DOMRUP_'//trim(rtm_tracers(ntdom))
+         lname = 'DOM storage in upstream main channels'
+         uname = 'kg/m3'
+         dfld  => rtmCTL%domRUp(:,ntdom)
       else
          write(iulog,*) 'Rtm ERROR: illegal nv value a ',nv
          call shr_sys_abort()
@@ -500,6 +505,7 @@ contains
                   if (abs(rtmCTL%domH(n,ntdom))    > 1.e30) rtmCTL%domH(n,ntdom) = 0.
                   if (abs(rtmCTL%domT(n,ntdom))    > 1.e30) rtmCTL%domT(n,ntdom) = 0.
                   if (abs(rtmCTL%domR(n,ntdom))    > 1.e30) rtmCTL%domR(n,ntdom) = 0.
+                  if (abs(rtmCTL%domRUp(n,ntdom))    > 1.e30) rtmCTL%domR(n,ntdom) = 0.
                end do
              endif
           end do

@@ -1327,6 +1327,11 @@ contains
        TRunoff%wt   = rtmCTL%wt
        TRunoff%wr   = rtmCTL%wr
        TRunoff%erout= rtmCTL%erout
+       Tdom%domH    = rtmCTL%domH
+       Tdom%domT    = rtmCTL%domT
+       Tdom%domR    = rtmCTL%domR
+       Tdom%domRUp  = rtmCTL%domRUp
+       write(iulog,*) 'UPDATED MARIUS'
     else
 !       do nt = 1,nt_rtm
 !       do nr = rtmCTL%begr,rtmCTL%endr
@@ -1821,14 +1826,16 @@ contains
        call t_stopf('mosartr_budget')
 !    endif
 
-    do nt = 1,nt_rtm
+
     do nr = rtmCTL%begr,rtmCTL%endr
+    do nt = 1,nt_rtm
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
-       if (nt==1) then
-       !write(iulog,*) 'MOSART CHECK',Tdom%domsur(nr,1),TRunoff%qsur(nr,1),Tdom%domsub(nr,1),TRunoff%qsub(nr,1)
-       endif 
+    enddo
+    do nt = 1,nt_rtm_dom
+      Tdom%domsur(nr,nt) = Tdom%domsur(nr,nt) / rtmCTL%area(nr)
+      Tdom%domsub(nr,nt) = Tdom%domsub(nr,nt) / rtmCTL%area(nr)
     enddo
     enddo
 
@@ -1907,6 +1914,10 @@ contains
     rtmCTL%wt      = TRunoff%wt
     rtmCTL%wr      = TRunoff%wr
     rtmCTL%erout   = TRunoff%erout
+    rtmCTL%domH    = Tdom%domH
+    rtmCTL%domT    = Tdom%domT
+    rtmCTL%domR    = Tdom%domR
+    rtmCTL%domRUp  = Tdom%domRUp
 
     do nt = 1,nt_rtm
     do nr = rtmCTL%begr,rtmCTL%endr
@@ -1918,10 +1929,6 @@ contains
             rtmCTL%dommas(nr,ntdom)=(TRunoff%wh(nr,nt)*rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
                                     TRunoff%wt(nr,nt)*Tdom%domT(nr,ntdom) + &
                                     TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom))
-            rtmCTL%domH(nr,ntdom)=Tdom%domH(nr,ntdom)
-            rtmCTL%domT(nr,ntdom)=Tdom%domT(nr,ntdom)
-            rtmCTL%domR(nr,ntdom)=Tdom%domR(nr,ntdom)
-            rtmCTL%domRUp(nr,ntdom)=Tdom%domRUp(nr,ntdom)
          enddo   
          rtmCTL%erin(nr,nt)=TRunoff%erin(nr,nt)
          rtmCTL%erlateral(nr,nt)=TRunoff%erlateral(nr,nt)

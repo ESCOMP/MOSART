@@ -20,32 +20,32 @@ MODULE DommasbMod
   contains
 
   !----------------------------------------------------------------------
-    subroutine hillslopeRoutingDOM(iunit,nt,ntdom,theDeltaT,Darea,Dfrac)
+    subroutine hillslopeRoutingDOM(iunit,nt,ntdom,theDeltaT,Pwh)
       ! ! DESCRIPTION: solve the ODEs with Euler algorithm for hillslope routing
       implicit none
       integer,  intent(in) :: iunit, nt, ntdom
-      real(r8), intent(in) :: theDeltaT, Darea, Dfrac
+      real(r8), intent(in) :: theDeltaT,Pwh
       ! assume no chemical reaction in the water hence sink term is zero implies domsur = domR*flow
       ! ehout is negative
-      Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (TRunoff%ehout(iunit,nt) * Darea * Dfrac * Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom)) * theDeltaT/(TRunoff%wh(iunit,nt)*Darea*Dfrac)
+      Tdom%domH(iunit,ntdom) = (Tdom%domH(iunit,ntdom)*Pwh + TRunoff%ehout(iunit,nt) * Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom)) * theDeltaT/TRunoff%wh(iunit,nt)
     end subroutine hillslopeRoutingDOM
 
-    subroutine subnetworkRoutingDOM(iunit,nt,ntdom,theDeltaT)
+    subroutine subnetworkRoutingDOM(iunit,nt,ntdom,theDeltaT,Pwt)
       ! solve the ODEs with Euler algorithm for subnetwork routing
       ! etin is positive and etout is negative
       implicit none
       integer, intent(in) :: iunit, nt, ntdom
-      real(r8), intent(in) :: theDeltaT
-      Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + (Tdom%domsub(iunit,ntdom) + TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom) + TRunoff%etout(iunit,nt) * Tdom%domT(iunit,ntdom)) * theDeltaT/TRunoff%wt(iunit,nt)
+      real(r8), intent(in) :: theDeltaT,Pwt
+      Tdom%domT(iunit,ntdom) = (Tdom%domT(iunit,ntdom)*Pwt + Tdom%domsub(iunit,ntdom) + TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom) + TRunoff%etout(iunit,nt) * Tdom%domT(iunit,ntdom)) * theDeltaT/TRunoff%wt(iunit,nt)
     end subroutine subnetworkRoutingDOM
 
-    subroutine mainchannelRoutingDOM(iunit,nt,ntdom,theDeltaT)
+    subroutine mainchannelRoutingDOM(iunit,nt,ntdom,theDeltaT,Pwr)
       ! solve the ODE with Euler algorithm for main-channel routing
       ! erout is negative, while erlateral and erin are positive
       implicit none
       integer, intent(in) :: iunit, nt, ntdom
-      real(r8), intent(in) :: theDeltaT
-      Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + (TRunoff%erlateral(iunit,nt)*Tdom%domT(iunit,ntdom) + Tdom%domRUp(iunit,ntdom) + TRunoff%erout(iunit,nt)*Tdom%domR(iunit,ntdom))*theDeltaT/TRunoff%wr(iunit,nt)
+      real(r8), intent(in) :: theDeltaT,Pwr
+      Tdom%domR(iunit,ntdom) = (Tdom%domR(iunit,ntdom)*Pwr + TRunoff%erlateral(iunit,nt)*Tdom%domT(iunit,ntdom) + Tdom%domRUp(iunit,ntdom) + TRunoff%erout(iunit,nt)*Tdom%domR(iunit,ntdom))*theDeltaT/TRunoff%wr(iunit,nt)
     end subroutine mainchannelRoutingDOM
 !-------------------------------------------------------------------------
 end MODULE DommasbMod
