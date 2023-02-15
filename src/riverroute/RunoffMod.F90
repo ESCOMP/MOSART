@@ -125,7 +125,6 @@ module RunoffMod
      real(r8), pointer :: domH_ntdom1(:)
      real(r8), pointer :: domT_ntdom1(:)
      real(r8), pointer :: domR_ntdom1(:)
-     real(r8), pointer :: domRUp_ntdom1(:)
      real(r8), pointer :: erin_nt1(:)
      real(r8), pointer :: erlateral_nt1(:)
 
@@ -395,7 +394,6 @@ contains
              rtmCTL%domT(begr:endr,nt_rtm_dom),          &
              rtmCTL%domR_ntdom1(begr:endr),              &
              rtmCTL%domR(begr:endr,nt_rtm_dom),          &
-             rtmCTL%domRUp_ntdom1(begr:endr),          &
              rtmCTL%domRUp(begr:endr,nt_rtm_dom),          &
              rtmCTL%erin_nt1(begr:endr),          &
              rtmCTL%erin(begr:endr,nt_rtm),          &

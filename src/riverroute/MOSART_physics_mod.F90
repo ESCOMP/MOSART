@@ -49,7 +49,7 @@ MODULE MOSART_physics_mod
     implicit none    
     
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
-    real(r8) :: temp_erout, localDeltaT,Pwh,Pwt,Pwr
+    real(r8) :: temp_erout, localDeltaT,temp_ehout
     real(r8) :: negchan
 
     !------------------
@@ -61,23 +61,33 @@ MODULE MOSART_physics_mod
     if (TUnit%euler_calc(nt)) then
     do iunit=rtmCTL%begr,rtmCTL%endr
        if(TUnit%mask(iunit) > 0) then
-          write(iulog,*) 'wh before',TRunoff%wh(iunit,nt)
-          Pwh=TRunoff%wh(iunit,nt)
           call hillslopeRouting(iunit,nt,Tctl%DeltaT)
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
-          if (nt==1) then ! if LIQ tracer
+          !-----------------------------------------------------------------------------------------------------------------
+          if (nt==1) then ! if LIQ tracer and there is water
             do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-              write(iulog,*) 'domsur',Tdom%domsur(iunit,ntdom),'wh',TRunoff%wh(iunit,nt),'ehout',TRunoff%ehout(iunit,nt),'qsur',TRunoff%qsur(iunit,nt),'domH',Tdom%domH(iunit,ntdom),'time',Tctl%DeltaT
-              call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT,Pwh)
-              Tdom%domsub(iunit,ntdom) = Tdom%domsub(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit)
-              write(iulog,*) 'after domH',Tdom%domH(iunit,ntdom), 'iunit',iunit
-              if (Tdom%domH(iunit,ntdom)>0.3 .or. TRunoff%wh(iunit,nt)<0._r8) then
-               write(iulog,*) 'SHIT'
-              end if
-            end do
+              Tdom%domsub(iunit,ntdom) = Tdom%domsub(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              if (TRunoff%wh(iunit,nt)>0._r8) then
+                 call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT)
+                 if (Tdom%domH(iunit,ntdom) > 0.3_r8) then
+                    !write(iulog,*) 'HILL EXCESS',iunit,'domH',Tdom%domH(iunit,ntdom),'domsur',Tdom%domsur(iunit,ntdom),'wh',TRunoff%wh(iunit,nt),'ehout',TRunoff%ehout(iunit,nt),'qsur',TRunoff%qsur(iunit,nt),'dwh',TRunoff%dwh(iunit,nt)
+                    !The excess should be moved to a variable, this happens because we start from negative water...
+                    Tdom%domH(iunit,ntdom)=min(0.3,Tdom%domH(iunit,ntdom))    
+                 else if (Tdom%domH(iunit,ntdom) < 0._r8) then  
+                    !can happen if more water leaves (ehout), than there was water in the hillslope (wh), becase negative water before or incoming water is directy sent out ?  
+                    Tdom%domH(iunit,ntdom)=0._r8
+                    !write(iulog,*) 'SHIT HILL',iunit,'domH',Tdom%domH(iunit,ntdom),'domsur',Tdom%domsur(iunit,ntdom),'wh',TRunoff%wh(iunit,nt),'ehout',TRunoff%ehout(iunit,nt),'qsur',TRunoff%qsur(iunit,nt),'dwh',TRunoff%dwh(iunit,nt)
+                 endif
+              else if (Tdom%domsur(iunit,ntdom)>1.e-30) then
+                 write(iulog,*) 'HILL EXCESS',iunit,TRunoff%wh(iunit,nt),Tdom%domsur(iunit,ntdom)
+                 Tdom%domH(iunit,ntdom)=0._r8
+                 !here also the excess should be sent back to ctsm
+              endif
+            enddo
           endif
+          !--------------------------------------------------------------------------------------------------------------------------
        endif
     end do
     endif
@@ -111,20 +121,32 @@ MODULE MOSART_physics_mod
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
              localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_t(iunit)
+             temp_ehout = - TRunoff%ehout(iunit,nt) * TUnit%area(iunit) * TUnit%frac(iunit) !needed to multiply with domH in subnetwork
              do k=1,TUnit%numDT_t(iunit)
-                Pwt=TRunoff%wt(iunit,nt)
                 call subnetworkRouting(iunit,nt,localDeltaT)
                 TRunoff%wt(iunit,nt) = TRunoff%wt(iunit,nt) + TRunoff%dwt(iunit,nt) * localDeltaT
                 call UpdateState_subnetwork(iunit,nt)
                 TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt)-TRunoff%etout(iunit,nt)
-                if (nt==1) then
+                !----------------------------------------------------------------------------------------------------
+                if (nt==1) then ! if liq tracer
                   do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-                   call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT,Pwt)
-                   if (Tdom%domT(iunit,ntdom) >0.3 .or. TRunoff%wt(iunit,nt)<0._r8) then
-                     write(iulog,*) 'SHIT',Tdom%domT(iunit,ntdom),TRunoff%wt(iunit,nt)
-                   end if
-                  end do
+                     if (TRunoff%wt(iunit,nt)>0._r8) then
+                       call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT,temp_ehout)
+                       if (Tdom%domT(iunit,ntdom) > 0.3) then
+                          !write(iulog,*) 'SUBN EXCESS',iunit,nt,'domT',Tdom%domT(iunit,ntdom),'domH',Tdom%domH(iunit,ntdom),'domsub',Tdom%domsub(iunit,ntdom),'wt',TRunoff%wt(iunit,nt),'etin',TRunoff%etin(iunit,nt),'etout',TRunoff%etout(iunit,nt),'dwt',TRunoff%dwt(iunit,nt),'time',localDeltaT
+                          !The excess should be moved to a variable, this happens because we start from negative water...
+                          Tdom%domT(iunit,ntdom)=min(0.3,Tdom%domT(iunit,ntdom)) 
+                       else if (Tdom%domT(iunit,ntdom)< 0._r8) then
+                          Tdom%domT(iunit,ntdom)=0._r8
+                          !write(iulog,*) 'SHIT SUBN',iunit,nt,'domT',Tdom%domT(iunit,ntdom)
+                       end if                       
+                     else if ((Tdom%domsub(iunit,ntdom)+TRunoff%etin(iunit,nt)*Tdom%domH(iunit,ntdom))>1.e-30) then !if liq tracer but there is negative water
+                       !write(iulog,*) 'SUBN EXCESS', TRunoff%wt(iunit,nt),Tdom%domsub(iunit,ntdom),TRunoff%etin(iunit,nt) * Tdom%domH(iunit,ntdom),'iunit',iunit
+                       Tdom%domT(iunit,ntdom)=0._r8
+                     endif
+                  enddo
                 endif
+                !-----------------------------------------------------------------------------------------------------
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
           endif
@@ -206,7 +228,6 @@ MODULE MOSART_physics_mod
              localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_r(iunit)
              temp_erout = 0._r8
              do k=1,TUnit%numDT_r(iunit)
-                Pwr=TRunoff%wr(iunit,nt)
                 call mainchannelRouting(iunit,nt,localDeltaT)    
                 TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
 ! check for negative channel storage
@@ -215,15 +236,27 @@ MODULE MOSART_physics_mod
 !                   call shr_sys_abort('mosart: negative channel storage')
 !                end if
                 call UpdateState_mainchannel(iunit,nt)
+                temp_erout = temp_erout + TRunoff%erout(iunit,nt) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
+                !-----------------------------------------------------------------------------------------------------------
                 if (nt==1) then
                   do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-                     call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT,Pwr)
-                     if (Tdom%domR(iunit,ntdom) >0.3 .or. TRunoff%wr(iunit,nt)<0._r8) then
-                        write(iulog,*) 'SHIT',Tdom%domR(iunit,ntdom),TRunoff%wr(iunit,nt)
+                    if (TRunoff%wr(iunit,nt)>0._r8) then
+                      call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                      if (Tdom%domR(iunit,ntdom) > 0.3) then
+                        Tdom%domR(iunit,ntdom)=min(0.3,Tdom%domR(iunit,ntdom)) 
+                        !DOM should be added to a variable and sent back to ctsm
+                        !write(iulog,*) 'SHIT MAIN','domRUp',Tdom%domRUp(iunit,ntdom),'wr',TRunoff%wr(iunit,nt),'erlateral',TRunoff%erlateral(iunit,nt),'eroutUp',TRunoff%eroutUp(iunit,nt),'dwr',TRunoff%dwr(iunit,nt),'domT',Tdom%domT(iunit,ntdom),'domR',Tdom%domR(iunit,ntdom),'time',localDeltaT
+                      else if (Tdom%domR(iunit,ntdom) < 0._r8) then
+                        !write(iulog,*) 'SHIT MAIN',iunit,'domR',Tdom%domR(iunit,ntdom)
+                        Tdom%domR(iunit,ntdom)=0._r8
                       end if
-                  end do
-                end if
-                temp_erout = temp_erout + TRunoff%erout(iunit,nt) ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
+                    else if ((TRunoff%erlateral(iunit,nt)*Tdom%domT(iunit,ntdom) + Tdom%domRUp(iunit,ntdom))>1.e-30) then
+                        !write(iulog,*) 'SHIT MAIN EXCESS', TRunoff%wr(iunit,nt),Tdom%domRUp(iunit,ntdom),TRunoff%erlateral(iunit,nt)*Tdom%domT(iunit,ntdom),'iunit',iunit
+                        Tdom%domR(iunit,ntdom)=0._r8
+                    endif
+                  enddo
+                endif
+                !----------------------------------------------------------------------------------------------------------------
              end do
              temp_erout = temp_erout / TUnit%numDT_r(iunit)
              TRunoff%erout(iunit,nt) = temp_erout

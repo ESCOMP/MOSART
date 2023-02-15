@@ -505,7 +505,7 @@ contains
                   if (abs(rtmCTL%domH(n,ntdom))    > 1.e30) rtmCTL%domH(n,ntdom) = 0.
                   if (abs(rtmCTL%domT(n,ntdom))    > 1.e30) rtmCTL%domT(n,ntdom) = 0.
                   if (abs(rtmCTL%domR(n,ntdom))    > 1.e30) rtmCTL%domR(n,ntdom) = 0.
-                  if (abs(rtmCTL%domRUp(n,ntdom))    > 1.e30) rtmCTL%domR(n,ntdom) = 0.
+                  if (abs(rtmCTL%domRUp(n,ntdom))    > 1.e30) rtmCTL%domRUp(n,ntdom) = 0.
                end do
              endif
           end do
