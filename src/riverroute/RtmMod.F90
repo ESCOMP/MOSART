@@ -84,6 +84,9 @@ module RtmMod
 !local (gdc)
   real(r8), save, pointer :: evel(:,:)       ! effective tracer velocity (m/s)
   real(r8), save, pointer :: flow(:,:)       ! mosart flow (m3/s)
+  real(r8), save, pointer :: flowdom(:,:)    ! mosart flow (kg/s)
+  real(r8), save, pointer :: Houtdom(:,:)    ! mosart flow (kg/s)
+  real(r8), save, pointer :: Toutdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: erout_prev(:,:) ! erout previous timestep (m3/s)
   real(r8), save, pointer :: eroutup_avg(:,:)! eroutup average over coupling period (m3/s)
   real(r8), save, pointer :: erlat_avg(:,:)  ! erlateral average over coupling period (m3/s)
@@ -930,6 +933,9 @@ contains
 
     allocate (evel    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               flow    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+              flowdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
+              Houtdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
+              Toutdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               eroutup_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               erlat_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
@@ -939,6 +945,9 @@ contains
        call shr_sys_abort(subname//' Allocationt ERROR flow')
     end if
     flow(:,:)    = 0._r8
+    flowdom(:,:)    = 0._r8
+    Houtdom(:,:)    = 0._r8
+    Toutdom(:,:)    = 0._r8
     erout_prev(:,:) = 0._r8
     eroutup_avg(:,:) = 0._r8
     erlat_avg(:,:) = 0._r8
@@ -1330,7 +1339,7 @@ contains
        Tdom%domH    = rtmCTL%domH
        Tdom%domT    = rtmCTL%domT
        Tdom%domR    = rtmCTL%domR
-       Tdom%domRUp  = rtmCTL%domRUp
+       Tdom%domRout = rtmCTL%domRout
        write(iulog,*) 'UPDATED MARIUS'
     else
 !       do nt = 1,nt_rtm
@@ -1461,6 +1470,9 @@ contains
     budget_terms = 0._r8
 
     flow = 0._r8
+    flowdom = 0._r8
+    Houtdom = 0._r8
+    Toutdom = 0._r8
     erout_prev = 0._r8
     eroutup_avg = 0._r8
     erlat_avg = 0._r8
@@ -1892,6 +1904,13 @@ contains
           erout_prev(nr,nt) = erout_prev(nr,nt) + TRunoff%erout_prev(nr,nt)
           eroutup_avg(nr,nt) = eroutup_avg(nr,nt) + TRunoff%eroutup_avg(nr,nt)
           erlat_avg(nr,nt) = erlat_avg(nr,nt) + TRunoff%erlat_avg(nr,nt)
+          if (nt==1) then
+            do ntdom = 1,nt_rtm_dom
+               flowdom(nr,ntdom) = flowdom(nr,ntdom) + Tdom%domRoutFlow(nr,ntdom)
+               Houtdom(nr,ntdom) = Houtdom(nr,ntdom) + Tdom%domHout(nr,ntdom)
+               Toutdom(nr,ntdom) = Toutdom(nr,ntdom) + Tdom%domToutLat2(nr,ntdom)
+            enddo
+         endif
        enddo
        enddo
 
@@ -1902,6 +1921,9 @@ contains
     !-----------------------------------
 
     flow        = flow        / float(nsub)
+    flowdom     = flowdom     / float(nsub)
+    Houtdom     = Houtdom     / float(nsub)
+    Toutdom     = Toutdom     / float(nsub)
     erout_prev  = erout_prev  / float(nsub)
     eroutup_avg = eroutup_avg / float(nsub)
     erlat_avg   = erlat_avg   / float(nsub)
@@ -1914,10 +1936,10 @@ contains
     rtmCTL%wt      = TRunoff%wt
     rtmCTL%wr      = TRunoff%wr
     rtmCTL%erout   = TRunoff%erout
-    rtmCTL%domH    = Tdom%domH
     rtmCTL%domT    = Tdom%domT
     rtmCTL%domR    = Tdom%domR
-    rtmCTL%domRUp  = Tdom%domRUp
+    rtmCTL%domRout = Tdom%domRout
+    rtmCTL%domRest = Tdom%domRest
 
     do nt = 1,nt_rtm
     do nr = rtmCTL%begr,rtmCTL%endr
@@ -1926,17 +1948,16 @@ contains
                              TRunoff%wh(nr,nt)*rtmCTL%area(nr))
        if (nt==1) then
          do ntdom = 1,nt_rtm_dom
-            rtmCTL%dommas(nr,ntdom)=(TRunoff%wh(nr,nt)*rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
-                                    TRunoff%wt(nr,nt)*Tdom%domT(nr,ntdom) + &
-                                    TRunoff%wr(nr,nt)*Tdom%domR(nr,ntdom))
+            rtmCTL%domH(nr,ntdom)    = Tdom%domH(nr,ntdom) * rtmCTL%area(nr)
+            rtmCTL%dommas(nr,ntdom)=(rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
+                                     Tdom%domT(nr,ntdom) + &
+                                     Tdom%domR(nr,ntdom))
          enddo   
-         rtmCTL%erin(nr,nt)=TRunoff%erin(nr,nt)
-         rtmCTL%erlateral(nr,nt)=TRunoff%erlateral(nr,nt)
        end if     
       
        rtmCTL%dvolrdt(nr,nt) = (rtmCTL%volr(nr,nt) - volr_init) / delt_coupling
        rtmCTL%runoff(nr,nt) = flow(nr,nt)
-
+     
        rtmCTL%runofftot(nr,nt) = rtmCTL%direct(nr,nt)
        if (rtmCTL%mask(nr) == 1) then
           rtmCTL%runofflnd(nr,nt) = rtmCTL%runoff(nr,nt)
@@ -1944,7 +1965,9 @@ contains
 
           if (nt==1) then
             do ntdom = 1,nt_rtm_dom
-               rtmCTL%runofflnddom(nr,ntdom)=rtmCTL%runoff(nr,nt) * Tdom%domR(nr,ntdom)
+               rtmCTL%runofflnddom(nr,ntdom)=flowdom(nr,ntdom)
+               rtmCTL%domHout(nr,ntdom)=Houtdom(nr,ntdom)
+               rtmCTL%domTout(nr,ntdom)=Toutdom(nr,ntdom)
             enddo   
           end if     
 
@@ -1955,7 +1978,7 @@ contains
 
           if (nt==1) then
             do ntdom = 1,nt_rtm_dom
-               rtmCTL%runoffocndom(nr,ntdom)=rtmCTL%runoff(nr,nt) * Tdom%domR(nr,ntdom)
+               rtmCTL%runoffocndom(nr,ntdom)=flowdom(nr,ntdom)
             enddo   
           end if   
 
@@ -2593,12 +2616,26 @@ contains
      !Initialize dom flux variables
      allocate (Tdom%domH(begr:endr,nt_rtm_dom))
      Tdom%domH = 0._r8
+     allocate (Tdom%domHout(begr:endr,nt_rtm_dom))
+     Tdom%domHout = 0._r8
      allocate (Tdom%domT(begr:endr,nt_rtm_dom))
      Tdom%domT = 0._r8
+     allocate (Tdom%domTout(begr:endr,nt_rtm_dom))
+     Tdom%domTout = 0._r8
+     allocate (Tdom%domToutLat(begr:endr,nt_rtm_dom))
+     Tdom%domToutLat = 0._r8
+     allocate (Tdom%domToutLat2(begr:endr,nt_rtm_dom))
+     Tdom%domToutLat2 = 0._r8
      allocate (Tdom%domR(begr:endr,nt_rtm_dom))
      Tdom%domR = 0._r8
+     allocate (Tdom%domRout(begr:endr,nt_rtm_dom))
+     Tdom%domRout = 0._r8
+     allocate (Tdom%domRoutFlow(begr:endr,nt_rtm_dom))
+     Tdom%domRoutFlow = 0._r8
      allocate (Tdom%domRUp(begr:endr,nt_rtm_dom))
      Tdom%domRUp = 0._r8
+     allocate (Tdom%domRest(begr:endr,nt_rtm_dom))
+     Tdom%domRest = 0._r8
      allocate (Tdom%domsur(begr:endr,nt_rtm_dom))
      Tdom%domsur = 0._r8
      allocate (Tdom%domsub(begr:endr,nt_rtm_dom))
