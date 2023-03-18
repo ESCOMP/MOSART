@@ -76,6 +76,9 @@ module RunoffMod
      real(r8), pointer :: domRout(:,:)     ! RTM DOM storage (kgC/s)
      real(r8), pointer :: domRest(:,:)     ! RTM DOM storage (kgC)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
+     real(r8), pointer :: etin(:,:)     
+     real(r8), pointer :: erlateral2(:,:)
+     
      !    - restarts
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
      real(r8), pointer :: wt(:,:)          ! MOSART sub-network water storage (m3)
@@ -133,6 +136,8 @@ module RunoffMod
      real(r8), pointer :: wh_nt1(:)
      real(r8), pointer :: wt_nt1(:)
      real(r8), pointer :: wr_nt1(:)
+     real(r8), pointer :: etin_nt1(:)
+     real(r8), pointer :: erlateral2_nt1(:)
 
   end type runoff_flow
 
@@ -272,6 +277,7 @@ module RunoffMod
      !! exchange fluxes
      real(r8), pointer :: erlg(:,:)    ! evaporation, [m/s]
      real(r8), pointer :: erlateral(:,:) ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
+     real(r8), pointer :: erlateral2(:,:) ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
      real(r8), pointer :: erin(:,:)    ! inflow from upstream links, [m3/s]
      real(r8), pointer :: erout(:,:)   ! outflow into downstream links, [m3/s]
      real(r8), pointer :: erout_prev(:,:) ! outflow into downstream links from previous timestep, [m3/s]
@@ -416,7 +422,11 @@ contains
              rtmCTL%domTout(begr:endr,nt_rtm_dom),          &
              rtmCTL%domR_ntdom1(begr:endr),              &
              rtmCTL%domR(begr:endr,nt_rtm_dom),          &
-             rtmCTL%domRout(begr:endr,nt_rtm),           &
+             rtmCTL%domRout(begr:endr,nt_rtm_dom),           &
+             rtmCTL%erlateral2(begr:endr,nt_rtm),           &
+             rtmCTL%erlateral2_nt1(begr:endr),              &
+             rtmCTL%etin(begr:endr,nt_rtm),           &
+             rtmCTL%etin_nt1(begr:endr),              &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -450,6 +460,8 @@ contains
     !rtmCTL%domT(:,:)        =0._r8
     !rtmCTL%domR(:,:)        =0._r8
     rtmCTL%domTout(:,:)     =0._r8
+    rtmCTL%erlateral2(:,:)     =0._r8
+    rtmCTL%etin(:,:)     =0._r8
     rtmCTL%domHout(:,:)     =0._r8
     rtmCTL%domRoutFlow(:,:) =0._r8
     rtmCTL%domRest(:,:)     =0._r8

@@ -84,6 +84,8 @@ module RtmMod
 !local (gdc)
   real(r8), save, pointer :: evel(:,:)       ! effective tracer velocity (m/s)
   real(r8), save, pointer :: flow(:,:)       ! mosart flow (m3/s)
+  real(r8), save, pointer :: erlateral2(:,:)       ! mosart flow (m3/s)
+  real(r8), save, pointer :: etin(:,:)       ! mosart flow (m3/s)
   real(r8), save, pointer :: flowdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: Houtdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: Toutdom(:,:)    ! mosart flow (kg/s)
@@ -934,6 +936,8 @@ contains
     allocate (evel    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               flow    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               flowdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
+              erlateral2    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+              etin    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               Houtdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               Toutdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
@@ -945,6 +949,8 @@ contains
        call shr_sys_abort(subname//' Allocationt ERROR flow')
     end if
     flow(:,:)    = 0._r8
+    erlateral2(:,:)    = 0._r8
+    etin(:,:)    = 0._r8
     flowdom(:,:)    = 0._r8
     Houtdom(:,:)    = 0._r8
     Toutdom(:,:)    = 0._r8
@@ -1470,6 +1476,8 @@ contains
     budget_terms = 0._r8
 
     flow = 0._r8
+    erlateral2 = 0._r8
+    etin = 0._r8
     flowdom = 0._r8
     Houtdom = 0._r8
     Toutdom = 0._r8
@@ -1901,6 +1909,8 @@ contains
        do nt = 1,nt_rtm
        do nr = rtmCTL%begr,rtmCTL%endr
           flow(nr,nt) = flow(nr,nt) + TRunoff%flow(nr,nt)
+          etin(nr,nt) = etin(nr,nt) + TRunoff%etin(nr,nt)
+          erlateral2(nr,nt)= erlateral2(nr,nt) + TRunoff%erlateral2(nr,nt)
           erout_prev(nr,nt) = erout_prev(nr,nt) + TRunoff%erout_prev(nr,nt)
           eroutup_avg(nr,nt) = eroutup_avg(nr,nt) + TRunoff%eroutup_avg(nr,nt)
           erlat_avg(nr,nt) = erlat_avg(nr,nt) + TRunoff%erlat_avg(nr,nt)
@@ -1919,7 +1929,8 @@ contains
     !-----------------------------------
     ! average flow over subcycling
     !-----------------------------------
-
+    erlateral2  = erlateral2  / float(nsub)
+    etin        = etin        / float(nsub)
     flow        = flow        / float(nsub)
     flowdom     = flowdom     / float(nsub)
     Houtdom     = Houtdom     / float(nsub)
@@ -1954,7 +1965,6 @@ contains
                                      Tdom%domR(nr,ntdom))
          enddo   
        end if     
-      
        rtmCTL%dvolrdt(nr,nt) = (rtmCTL%volr(nr,nt) - volr_init) / delt_coupling
        rtmCTL%runoff(nr,nt) = flow(nr,nt)
      
@@ -1962,7 +1972,8 @@ contains
        if (rtmCTL%mask(nr) == 1) then
           rtmCTL%runofflnd(nr,nt) = rtmCTL%runoff(nr,nt)
           rtmCTL%dvolrdtlnd(nr,nt)= rtmCTL%dvolrdt(nr,nt)
-
+          rtmCTL%erlateral2(nr,nt)=erlateral2(nr,nt)
+          rtmCTL%etin(nr,nt)=etin(nr,nt)
           if (nt==1) then
             do ntdom = 1,nt_rtm_dom
                rtmCTL%runofflnddom(nr,ntdom)=flowdom(nr,ntdom)

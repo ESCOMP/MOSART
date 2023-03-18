@@ -100,8 +100,8 @@ MODULE MOSART_physics_mod
                Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)+(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt)*Tctl%DeltaT
                Tdom%domsub(iunit,ntdom)=max(0._r8,Tdom%domsub(iunit,ntdom)-(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt))
               endif
-              Tdom%domsub(iunit,ntdom) = Tdom%domsub(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
-              Tdom%domHout(iunit,ntdom) = Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domsub(iunit,ntdom) = 0._r8 !Tdom%domsub(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domHout(iunit,ntdom) = TRunoff%etin(iunit,nt)*0.1_r8 !Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
             enddo
           endif
           !--------------------------------------------------------------------------------------------------------------------------
@@ -113,6 +113,7 @@ MODULE MOSART_physics_mod
     TRunoff%flow = 0._r8
     Tdom%domRoutflow = 0._r8
     Tdom%domToutLat2 = 0._r8
+    TRunoff%erlateral2 = 0._r8
     TRunoff%erout_prev = 0._r8
     TRunoff%eroutup_avg = 0._r8
     TRunoff%erlat_avg = 0._r8
@@ -175,15 +176,15 @@ MODULE MOSART_physics_mod
                   endif
                  enddo
                 endif
-                !-----------------------------------------------------------------------------------------------------
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
+             TRunoff%erlateral2(iunit,nt) = TRunoff%erlateral2(iunit,nt) + TRunoff%erlateral(iunit,nt)
              if (nt==1) then
-               do ntdom=1,nt_rtm_dom 
+               do ntdom=1,nt_rtm_dom
                   Tdom%domToutLat(iunit,ntdom)   = Tdom%domToutLat(iunit,ntdom)   / TUnit%numDT_t(iunit)
-                  Tdom%domToutLat2(iunit,ntdom)   = Tdom%domToutLat2(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom)
+                  Tdom%domToutLat2(iunit,ntdom)  = Tdom%domToutLat2(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom)
                   Tdom%domRest(iunit,ntdom)      = Tdom%domRest(iunit,ntdom) +  Rest_T(ntdom)
-               enddo
+               end do
              endif
           endif
        end do ! iunit
@@ -199,7 +200,7 @@ MODULE MOSART_physics_mod
           call t_startf('mosartr_SMeroutUp_barrier')    
           call mpi_barrier(mpicom_rof,ier)
           call t_stopf('mosartr_SMeroutUp_barrier')    
-       endif
+       endif      
 
        call t_startf('mosartr_SMeroutUp')    
        TRunoff%eroutUp = 0._r8
@@ -323,6 +324,7 @@ MODULE MOSART_physics_mod
     endif
     Tdom%domRoutFlow = Tdom%domRoutFlow / Tctl%DLevelH2R
     Tdom%domToutLat2   = Tdom%domToutLat2 / Tctl%DLevelH2R
+    TRunoff%erlateral2= TRunoff%erlateral2/ Tctl%DLevelH2R
     TRunoff%flow = TRunoff%flow / Tctl%DLevelH2R
     TRunoff%erout_prev = TRunoff%erout_prev / Tctl%DLevelH2R
     TRunoff%eroutup_avg = TRunoff%eroutup_avg / Tctl%DLevelH2R

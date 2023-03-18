@@ -169,6 +169,14 @@ contains
     call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domHout_ntdom1, default='active')
+
+    call RtmHistAddfld (fname='OUT_SUBN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%erlateral2_nt1, default='active')
+
+    call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%etin_nt1, default='active')
      
     call RtmHistAddfld (fname='OUT_SUBN'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
@@ -250,6 +258,8 @@ contains
     rtmCTL%wr_nt1(:) = rtmCTL%wr(:,1)
     rtmCTL%wt_nt1(:) = rtmCTL%wt(:,1)
     rtmCTL%wh_nt1(:) = rtmCTL%wh(:,1)
+    rtmCTL%etin_nt1(:) = rtmCTL%etin(:,1)
+    rtmCTL%erlateral2_nt1(:) = rtmCTL%erlateral2(:,1)
 
   end subroutine RtmHistFldsSet
 
