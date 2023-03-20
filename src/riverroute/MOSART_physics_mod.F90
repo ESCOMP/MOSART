@@ -61,7 +61,7 @@ MODULE MOSART_physics_mod
     do nt=1,nt_rtm
     if (TUnit%euler_calc(nt)) then
     do iunit=rtmCTL%begr,rtmCTL%endr
-       if(TUnit%mask(iunit) > 0) then
+       if (TUnit%mask(iunit) > 0) then
           call hillslopeRouting(iunit,nt,Tctl%DeltaT)
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
@@ -136,7 +136,7 @@ MODULE MOSART_physics_mod
        TRunoff%erlateral(:,:) = 0._r8
        Tdom%domToutLat(:,:) = 0._r8
        do nt=1,nt_rtm
-       if (TUnit%euler_calc(nt)) then
+       if (TUnit%mask(iunit) > 0) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
             Rest_T(:) = 0._r8
@@ -179,13 +179,12 @@ MODULE MOSART_physics_mod
              end do ! numDT_t
              TRunoff%erlateral(iunit,nt) = TRunoff%erlateral(iunit,nt) / TUnit%numDT_t(iunit)
              TRunoff%erlateral2(iunit,nt) = TRunoff%erlateral2(iunit,nt) + TRunoff%erlateral(iunit,nt)
-             if (nt==1) then
-               do ntdom=1,nt_rtm_dom
+             if (nt==1) then ! if LIQ tracer and there is water
+             do ntdom=1,nt_rtm_dom
                   Tdom%domToutLat(iunit,ntdom)   = Tdom%domToutLat(iunit,ntdom)   / TUnit%numDT_t(iunit)
                   Tdom%domToutLat2(iunit,ntdom)  = Tdom%domToutLat2(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom)
-                  Tdom%domRest(iunit,ntdom)      = Tdom%domRest(iunit,ntdom) +  Rest_T(ntdom)
-               end do
-             endif
+             end do
+             end if
           endif
        end do ! iunit
        endif  ! euler_calc
@@ -322,9 +321,9 @@ MODULE MOSART_physics_mod
        write(iulog,*) 'Warning: Negative channel storage found! ',negchan
        call shr_sys_abort('mosart: negative channel storage')
     endif
+    TRunoff%erlateral2= TRunoff%erlateral2/ Tctl%DLevelH2R
     Tdom%domRoutFlow = Tdom%domRoutFlow / Tctl%DLevelH2R
     Tdom%domToutLat2   = Tdom%domToutLat2 / Tctl%DLevelH2R
-    TRunoff%erlateral2= TRunoff%erlateral2/ Tctl%DLevelH2R
     TRunoff%flow = TRunoff%flow / Tctl%DLevelH2R
     TRunoff%erout_prev = TRunoff%erout_prev / Tctl%DLevelH2R
     TRunoff%eroutup_avg = TRunoff%eroutup_avg / Tctl%DLevelH2R

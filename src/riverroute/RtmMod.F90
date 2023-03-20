@@ -84,7 +84,7 @@ module RtmMod
 !local (gdc)
   real(r8), save, pointer :: evel(:,:)       ! effective tracer velocity (m/s)
   real(r8), save, pointer :: flow(:,:)       ! mosart flow (m3/s)
-  real(r8), save, pointer :: erlateral2(:,:)       ! mosart flow (m3/s)
+  real(r8), save, pointer :: erlateral2(:,:) ! mosart flow (m3/s)
   real(r8), save, pointer :: etin(:,:)       ! mosart flow (m3/s)
   real(r8), save, pointer :: flowdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: Houtdom(:,:)    ! mosart flow (kg/s)
@@ -937,7 +937,7 @@ contains
               flow    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               flowdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erlateral2    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-              etin    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+              etin          (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               Houtdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               Toutdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
@@ -1910,7 +1910,7 @@ contains
        do nr = rtmCTL%begr,rtmCTL%endr
           flow(nr,nt) = flow(nr,nt) + TRunoff%flow(nr,nt)
           etin(nr,nt) = etin(nr,nt) + TRunoff%etin(nr,nt)
-          erlateral2(nr,nt)= erlateral2(nr,nt) + TRunoff%erlateral2(nr,nt)
+          erlateral2(nr,nt) = erlateral2(nr,nt) + TRunoff%erlateral2(nr,nt)
           erout_prev(nr,nt) = erout_prev(nr,nt) + TRunoff%erout_prev(nr,nt)
           eroutup_avg(nr,nt) = eroutup_avg(nr,nt) + TRunoff%eroutup_avg(nr,nt)
           erlat_avg(nr,nt) = erlat_avg(nr,nt) + TRunoff%erlat_avg(nr,nt)
@@ -2596,6 +2596,9 @@ contains
 
      allocate (TRunoff%erlateral(begr:endr,nt_rtm))
      TRunoff%erlateral = 0._r8
+
+     allocate (TRunoff%erlateral2(begr:endr,nt_rtm))
+     TRunoff%erlateral2 = 0._r8
 
      allocate (TRunoff%erin(begr:endr,nt_rtm))
      TRunoff%erin = 0._r8
