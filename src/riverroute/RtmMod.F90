@@ -1391,14 +1391,14 @@ contains
 ! !LOCAL VARIABLES:
 !EOP
     integer  :: i, j, n, nr, ns, nt, n2, nf ! indices
-    real(r8) :: budget_terms(30,nt_rtm)     ! BUDGET terms
+    real(r8) :: budget_terms(40,nt_rtm)     ! BUDGET terms
         ! BUDGET terms 1-10 are for volumes (m3)
-        ! BUDGET terms 11-30 are for flows (m3/s)
+        ! BUDGET terms 11-40 are for flows (m3/s)
     real(r8) :: budget_input, budget_output, budget_volume, budget_total, &
                 budget_euler, budget_eroutlag
     real(r8),save :: budget_accum(nt_rtm)   ! BUDGET accumulator over run
     integer ,save :: budget_accum_cnt       ! counter for budget_accum
-    real(r8) :: budget_global(30,nt_rtm)    ! global budget sum
+    real(r8) :: budget_global(40,nt_rtm)    ! global budget sum
     logical  :: budget_check                ! do global budget check
     real(r8) :: volr_init                   ! temporary storage to compute dvolrdt
     real(r8),parameter :: budget_tolerance = 1.0e-6   ! budget tolerance, m3/day
@@ -1419,6 +1419,16 @@ contains
     real(r8) :: river_volume_minimum        ! gridcell area multiplied by average river_depth_minimum [m3]
     real(r8) :: qgwl_volume                 ! volume of runoff during time step [m3]
     real(r8) :: irrig_volume                ! volume of irrigation demand during time step [m3]
+    real(r8) :: dom_withd_volume            ! volume of domestic withdrawal during time step [m3]
+    real(r8) :: liv_withd_volume            ! volume of livestock withdrawal during time step [m3]
+    real(r8) :: elec_withd_volume           ! volume of thermoelectric withdrawal during time step [m3]
+    real(r8) :: mfc_withd_volume            ! volume of manufacturing withdrawal during time step [m3]
+    real(r8) :: min_withd_volume            ! volume of mining withdrawal during time step [m3]
+    real(r8) :: dom_rf_volume               ! volume of domestic return flow during time step [m3]
+    real(r8) :: liv_rf_volume               ! volume of livestock return flow during time step [m3]
+    real(r8) :: elec_rf_volume              ! volume of thermoelectric return flow during time step [m3]
+    real(r8) :: mfc_rf_volume               ! volume of manufacturing return flow time step [m3]
+    real(r8) :: min_rf_volume               ! volume of mining return flow during time step [m3]
 
     character(len=*),parameter :: subname = '(Rtmrun) '
 !-----------------------------------------------------------------------
@@ -1454,6 +1464,16 @@ contains
     rtmCTL%direct = 0._r8
     rtmCTL%flood = 0._r8
     rtmCTL%qirrig_actual = 0._r8
+    rtmCTL%qdom_actual_withd  = 0._r8
+    rtmCTL%qliv_actual_withd  = 0._r8
+    rtmCTL%qelec_actual_withd = 0._r8
+    rtmCTL%qmfc_actual_withd  = 0._r8
+    rtmCTL%qmin_actual_withd  = 0._r8
+    rtmCTL%qdom_actual_rf     = 0._r8
+    rtmCTL%qliv_actual_rf     = 0._r8
+    rtmCTL%qelec_actual_rf    = 0._r8
+    rtmCTL%qmfc_actual_rf     = 0._r8
+    rtmCTL%qmin_actual_rf     = 0._r8
     rtmCTL%runofflnd = spval
     rtmCTL%runoffocn = spval
     rtmCTL%dvolrdt = 0._r8
@@ -1462,7 +1482,7 @@ contains
 
     ! BUDGET 
     ! BUDGET terms 1-10 are for volumes (m3)
-    ! BUDGET terms 11-30 are for flows (m3/s)
+    ! BUDGET terms 11-40 are for flows (m3/s)
 !    if (budget_check) then
        call t_startf('mosartr_budget')
        do nt = 1,nt_rtm
@@ -1474,11 +1494,24 @@ contains
           budget_terms(13,nt) = budget_terms(13,nt) + rtmCTL%qsur(nr,nt)
           budget_terms(14,nt) = budget_terms(14,nt) + rtmCTL%qsub(nr,nt)
           budget_terms(15,nt) = budget_terms(15,nt) + rtmCTL%qgwl(nr,nt)
-          budget_terms(17,nt) = budget_terms(17,nt) + rtmCTL%qsur(nr,nt) &
+          budget_terms(27,nt) = budget_terms(27,nt) + rtmCTL%qsur(nr,nt) &
                + rtmCTL%qsub(nr,nt)+ rtmCTL%qgwl(nr,nt)
           if (nt==1) then 
              budget_terms(16,nt) = budget_terms(16,nt) + rtmCTL%qirrig(nr)
-             budget_terms(17,nt) = budget_terms(17,nt) + rtmCTL%qirrig(nr)
+             budget_terms(17,nt) = budget_terms(17,nt) + rtmCTL%qdom_withd(nr)
+             budget_terms(18,nt) = budget_terms(18,nt) + rtmCTL%qliv_withd(nr)
+             budget_terms(19,nt) = budget_terms(19,nt) + rtmCTL%qelec_withd(nr)
+             budget_terms(20,nt) = budget_terms(20,nt) + rtmCTL%qmfc_withd(nr)
+             budget_terms(21,nt) = budget_terms(21,nt) + rtmCTL%qmin_withd(nr)
+             budget_terms(22,nt) = budget_terms(22,nt) + rtmCTL%qdom_rf(nr)
+             budget_terms(23,nt) = budget_terms(23,nt) + rtmCTL%qliv_rf(nr)
+             budget_terms(24,nt) = budget_terms(24,nt) + rtmCTL%qelec_rf(nr)
+             budget_terms(25,nt) = budget_terms(25,nt) + rtmCTL%qmfc_rf(nr)
+             budget_terms(26,nt) = budget_terms(26,nt) + rtmCTL%qmin_rf(nr)
+             budget_terms(27,nt) = budget_terms(27,nt) + rtmCTL%qirrig(nr) &
+                        + rtmCTL%qdom_withd(nr) + rtmCTL%qliv_withd(nr) + rtmCTL%qelec_withd(nr) &
+                        + rtmCTL%qmfc_withd(nr) + rtmCTL%qmin_withd(nr) - rtmCTL%qdom_rf(nr) &
+                        - rtmCTL%qliv_rf(nr) - rtmCTL%qelec_rf(nr) - rtmCTL%qmfc_rf(nr) - rtmCTL%qmin_rf(nr)
           endif
        enddo
        enddo
@@ -1500,39 +1533,184 @@ contains
     ! Just consider land points and only remove liquid water 
     !-----------------------------------
 
-    call t_startf('mosartr_irrig')
+    call t_startf('mosartr_irrig_and_sector_water_abstractions')
     nt = 1 
-    rtmCTL%qirrig_actual = 0._r8
+    rtmCTL%qirrig_actual      = 0._r8
+    rtmCTL%qdom_actual_withd  = 0._r8
+    rtmCTL%qliv_actual_withd  = 0._r8
+    rtmCTL%qelec_actual_withd = 0._r8
+    rtmCTL%qmfc_actual_withd  = 0._r8
+    rtmCTL%qmin_actual_withd  = 0._r8
+    rtmCTL%qdom_actual_rf     = 0._r8
+    rtmCTL%qliv_actual_rf     = 0._r8
+    rtmCTL%qelec_actual_rf    = 0._r8
+    rtmCTL%qmfc_actual_rf     = 0._r8
+    rtmCTL%qmin_actual_rf     = 0._r8
     do nr = rtmCTL%begr,rtmCTL%endr
 
           ! calculate volume of irrigation flux during timestep
           irrig_volume = -rtmCTL%qirrig(nr) * coupling_period
+          ! calculate volume of domestic withdrawal flux during timestep
+          dom_withd_volume = -rtmCTL%qdom_withd(nr) * coupling_period
+          ! calculate volume of livestock withdrawal flux during timestep
+          liv_withd_volume = -rtmCTL%qliv_withd(nr) * coupling_period
+          ! calculate volume of thermoelectric withdrawal flux during timestep
+          elec_withd_volume = -rtmCTL%qelec_withd(nr) * coupling_period
+          ! calculate volume of manufacturing withdrawal flux during timestep
+          mfc_withd_volume = -rtmCTL%qmfc_withd(nr) * coupling_period
+          ! calculate volume of mining withdrawal flux during timestep
+          min_withd_volume = -rtmCTL%qmin_withd(nr) * coupling_period
+          
+          ! calculate volume of domestic return flow flux during timestep
+          dom_rf_volume = rtmCTL%qdom_rf(nr) * coupling_period
+          ! calculate volume of livestock return flow flux during timestep
+          liv_rf_volume = rtmCTL%qliv_rf(nr) * coupling_period
+          ! calculate volume of thermoelectric return flow flux during timestep
+          elec_rf_volume = rtmCTL%qelec_rf(nr) * coupling_period
+          ! calculate volume of manufacturing return flow flux during timestep
+          mfc_rf_volume = rtmCTL%qmfc_rf(nr) * coupling_period
+          ! calculate volume of mining return flow flux during timestep
+          min_rf_volume = rtmCTL%qmin_rf(nr) * coupling_period
 
-          ! compare irrig_volume to main channel storage; 
+          ! compare water usage volume to main channel storage;
+          ! priority in usage: domestic> livestock > thermoelectric > manufacturing > mining > irrigation
           ! add overage to subsurface runoff
-          if(irrig_volume > TRunoff%wr(nr,nt)) then
+
+          if(dom_withd_volume > TRunoff%wr(nr,nt)) then
+             ! if water missing for domestic sector; satisfy as much as possible;
+             ! all other sectors get 0.0;
+             ! to back up potential excessive water consumption which already occured in the land component we send all consumed water to subsurface runoff
+             ! later in the code there is a procedure on how to deal with negative subsurface runoff, by sending it to direct flux (ocean)
+             ! in general we should not expect that this deffense mechanism will be required to often;
+             ! this is because sectoral abstractions are already adjusted in the land model based on volr from coupler;
              rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
-                  + (TRunoff%wr(nr,nt) - irrig_volume) / coupling_period 
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+               
              TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
-             irrig_volume = TRunoff%wr(nr,nt)
+             ! First update the return flow volume by keeping the same ratio between return flow and withdrawal fluxes
+             dom_rf_volume  = TRunoff%wr(nr,nt) * (dom_rf_volume/dom_withd_volume)
+             liv_rf_volume  = 0._r8
+             elec_rf_volume = 0._r8
+             mfc_rf_volume  = 0._r8
+             min_rf_volume  = 0._r8
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             dom_withd_volume  = TRunoff%wr(nr,nt) 
+             liv_withd_volume  = 0._r8
+             elec_withd_volume = 0._r8
+             mfc_withd_volume  = 0._r8
+             min_withd_volume  = 0._r8
+             irrig_volume      = 0._r8
+
+          elseif(liv_withd_volume >  TRunoff%wr(nr,nt) - dom_withd_volume) then
+             ! Defense mechanism to protect against negative runoff (see details above)
+             rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+               
+             TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
+             ! If water missing for livestock sector after satisfying domestic sector, 
+             ! the livestock sector takes what is left and following sectors get 0
+             ! First update the return flow volume by keeping the same ratio between return flow and withdrawal fluxes
+             liv_rf_volume  = (TRunoff%wr(nr,nt) - dom_withd_volume) * (liv_rf_volume/liv_withd_volume)
+             elec_rf_volume = 0._r8
+             mfc_rf_volume  = 0._r8
+             min_rf_volume  = 0._r8
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             liv_withd_volume  = TRunoff%wr(nr,nt) - dom_withd_volume
+             elec_withd_volume = 0._r8
+             mfc_withd_volume  = 0._r8
+             min_withd_volume  = 0._r8
+             irrig_volume      = 0._r8
+             
+          elseif(elec_withd_volume > TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume) then
+             ! Defense mechanism to protect against negative runoff (see details above)
+             rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+             
+             TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
+             ! If water missing for thermoelectric sector after satisfying domestic and livestock sectors, 
+             ! the thermoelectric sector takes what is left and following sectors get 0
+             ! First update the return flow volume by keeping the same ratio between return flow and withdrawal fluxes
+             elec_rf_volume  = (TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume) * (elec_rf_volume/elec_withd_volume)
+             mfc_rf_volume   = 0._r8
+             min_rf_volume   = 0._r8
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             elec_withd_volume  = TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume
+             mfc_withd_volume   = 0._r8
+             min_withd_volume   = 0._r8
+             irrig_volume       = 0._r8
+          elseif(mfc_withd_volume > TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume) then 
+             ! Defense mechanism to protect against negative runoff (see details above)
+             rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+           
+             TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
+             ! If water missing for manufacturing sector after satisfying domestic, livestock and thermoelectric sectors, 
+             ! the manufacturing sector takes what is left and following sectors get 0
+             ! First update the return flow volume by keeping the same ratio between return flow and withdrawal fluxes
+             mfc_rf_volume  = (TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume) * (mfc_rf_volume/mfc_withd_volume)
+             min_rf_volume  = 0._r8
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             mfc_withd_volume  = TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume
+             min_withd_volume  = 0._r8
+             irrig_volume      = 0._r8
+
+          elseif(min_withd_volume  > TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume - mfc_withd_volume) then
+             ! Defense mechanism to protect against negative runoff (see details above)
+             rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+         
+             TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
+             ! If water missing for mining sector after satisfying domestic, livestock, thermoelectric and manufacturing sectors, 
+             ! the mining sector takes what is left and following sectors get 0
+             ! First update the return flow volume by keeping the same ratio between return flow and withdrawal fluxes
+             min_rf_volume  = (TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume - mfc_withd_volume) * (min_rf_volume/min_withd_volume)
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             min_withd_volume  = TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume - mfc_withd_volume
+             irrig_volume      = 0._r8
+          elseif(irrig_volume > TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume - mfc_withd_volume - min_withd_volume) then
+             ! Defense mechanism to protect against negative runoff (see details above)
+             rtmCTL%qsub(nr,nt) = rtmCTL%qsub(nr,nt) &
+              + (TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (liv_withd_volume - liv_rf_volume) &
+              - (elec_withd_volume - elec_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume)  / coupling_period
+       
+             TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
+             ! Update the withdrawal fluxes based on water availability and sector priority
+             irrig_volume      = TRunoff%wr(nr,nt) - dom_withd_volume - liv_withd_volume - elec_withd_volume - mfc_withd_volume - min_withd_volume
           endif
+
 
 !scs: how to deal with sink points / river outlets?
 !       if (rtmCTL%mask(nr) == 1) then
 
-          ! actual irrigation rate [m3/s]
+          ! update actual irrigation/domestic/thermoelectric/livestick/mining/manufacturing rates [m3/s]
           ! i.e. the rate actually removed from the main channel
-          ! if irrig_volume is greater than TRunoff%wr
+          rtmCTL%qdom_actual_withd(nr)   = - dom_withd_volume / coupling_period
+          rtmCTL%qelec_actual_withd(nr)  = - elec_withd_volume / coupling_period
+          rtmCTL%qliv_actual_withd(nr)   = - liv_withd_volume / coupling_period
+          rtmCTL%qmfc_actual_withd(nr)   = - mfc_withd_volume / coupling_period
+          rtmCTL%qmin_actual_withd(nr)   = - min_withd_volume / coupling_period
           rtmCTL%qirrig_actual(nr) = - irrig_volume / coupling_period
 
-          ! remove irrigation from wr (main channel)
-          TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) - irrig_volume
+          ! update the actual return flow rates for all sectors (except irrigation)
+          rtmCTL%qdom_actual_rf(nr)  = dom_rf_volume / coupling_period
+          rtmCTL%qelec_actual_rf(nr) = elec_rf_volume / coupling_period
+          rtmCTL%qliv_actual_rf(nr)  = liv_rf_volume / coupling_period
+          rtmCTL%qmfc_actual_rf(nr)  = mfc_rf_volume / coupling_period
+          rtmCTL%qmin_actual_rf(nr)  = min_rf_volume / coupling_period
 
-
+          ! remove withdrawals for all sectors and add the return flows to wr (main channel)
+          ! the return flows are scaled to the actual withdrawals (irrigation have no return flow)
+          TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) - (dom_withd_volume - dom_rf_volume) - (elec_withd_volume - elec_rf_volume) &
+                              - (liv_withd_volume - liv_rf_volume) - (mfc_withd_volume - mfc_rf_volume) - (min_withd_volume - min_rf_volume) - irrig_volume
 
 !scs       endif
     enddo
-    call t_stopf('mosartr_irrig')
+    call t_stopf('mosartr_irrig_and_sector_water_abstractions')
 
 
     !-----------------------------------
@@ -1800,9 +1978,9 @@ contains
        call t_startf('mosartr_budget')
        do nt = 1,nt_rtm
        do nr = rtmCTL%begr,rtmCTL%endr
-          budget_terms(20,nt) = budget_terms(20,nt) + TRunoff%qsur(nr,nt) &
+          budget_terms(30,nt) = budget_terms(30,nt) + TRunoff%qsur(nr,nt) &
              + TRunoff%qsub(nr,nt) + TRunoff%qgwl(nr,nt)
-          budget_terms(29,nt) = budget_terms(29,nt) + TRunoff%qgwl(nr,nt)
+          budget_terms(39,nt) = budget_terms(39,nt) + TRunoff%qgwl(nr,nt)
        enddo
        enddo
        call t_stopf('mosartr_budget')
@@ -1930,24 +2108,24 @@ contains
           budget_terms( 4,nt) = budget_terms( 4,nt) + TRunoff%wt(nr,nt)
           budget_terms( 6,nt) = budget_terms( 6,nt) + TRunoff%wr(nr,nt)
           budget_terms( 8,nt) = budget_terms( 8,nt) + TRunoff%wh(nr,nt)*rtmCTL%area(nr)
-          budget_terms(21,nt) = budget_terms(21,nt) + rtmCTL%direct(nr,nt)
+          budget_terms(31,nt) = budget_terms(31,nt) + rtmCTL%direct(nr,nt)
           if (rtmCTL%mask(nr) >= 2) then
-             budget_terms(18,nt) = budget_terms(18,nt) + rtmCTL%runoff(nr,nt)
-             budget_terms(26,nt) = budget_terms(26,nt) - erout_prev(nr,nt)
-             budget_terms(27,nt) = budget_terms(27,nt) + flow(nr,nt)
+             budget_terms(28,nt) = budget_terms(28,nt) + rtmCTL%runoff(nr,nt)
+             budget_terms(36,nt) = budget_terms(36,nt) - erout_prev(nr,nt)
+             budget_terms(37,nt) = budget_terms(37,nt) + flow(nr,nt)
           else
-             budget_terms(23,nt) = budget_terms(23,nt) - erout_prev(nr,nt)
-             budget_terms(24,nt) = budget_terms(24,nt) + flow(nr,nt)
+             budget_terms(33,nt) = budget_terms(33,nt) - erout_prev(nr,nt)
+             budget_terms(34,nt) = budget_terms(34,nt) + flow(nr,nt)
           endif
-          budget_terms(25,nt) = budget_terms(25,nt) - eroutup_avg(nr,nt)
-          budget_terms(28,nt) = budget_terms(28,nt) - erlat_avg(nr,nt)
-          budget_terms(22,nt) = budget_terms(22,nt) + rtmCTL%runoff(nr,nt) + rtmCTL%direct(nr,nt) + eroutup_avg(nr,nt) 
+          budget_terms(35,nt) = budget_terms(35,nt) - eroutup_avg(nr,nt)
+          budget_terms(38,nt) = budget_terms(38,nt) - erlat_avg(nr,nt)
+          budget_terms(32,nt) = budget_terms(32,nt) + rtmCTL%runoff(nr,nt) + rtmCTL%direct(nr,nt) + eroutup_avg(nr,nt) 
        enddo
        enddo
        nt = 1
        do nr = rtmCTL%begr,rtmCTL%endr
-          budget_terms(19,nt) = budget_terms(19,nt) + rtmCTL%flood(nr)
-          budget_terms(22,nt) = budget_terms(22,nt) + rtmCTL%flood(nr)
+          budget_terms(29,nt) = budget_terms(29,nt) + rtmCTL%flood(nr)
+          budget_terms(32,nt) = budget_terms(32,nt) + rtmCTL%flood(nr)
        enddo
 
        ! accumulate the budget total over the run to make sure it's decreasing on avg
@@ -1955,12 +2133,18 @@ contains
        do nt = 1,nt_rtm
           budget_volume = (budget_terms( 2,nt) - budget_terms( 1,nt)) / delt_coupling
           budget_input  = (budget_terms(13,nt) + budget_terms(14,nt) + &
-                           budget_terms(15,nt) + budget_terms(16,nt))
-          budget_output = (budget_terms(18,nt) + budget_terms(19,nt) + &
-                           budget_terms(21,nt))
+                           budget_terms(15,nt) + budget_terms(16,nt) + &
+                           ! Modifications for dom/elec/liv/mfc/min abstractions (both withdrawal and return flow terms)
+                           budget_terms(17,nt) + budget_terms(18,nt) + &
+                           budget_terms(19,nt) + budget_terms(20,nt) + &
+                           budget_terms(21,nt) + budget_terms(22,nt) + &
+                           budget_terms(23,nt) + budget_terms(24,nt) + &
+                           budget_terms(25,nt) + budget_terms(26,nt))
+          budget_output = (budget_terms(28,nt) + budget_terms(29,nt) + &
+                           budget_terms(31,nt))
           budget_total  = budget_volume - budget_input + budget_output
           budget_accum(nt) = budget_accum(nt) + budget_total
-          budget_terms(30,nt) = budget_accum(nt)/budget_accum_cnt
+          budget_terms(40,nt) = budget_accum(nt)/budget_accum_cnt
        enddo
        call t_stopf('mosartr_budget')
 
@@ -1969,7 +2153,7 @@ contains
        !--- check budget
 
        ! convert fluxes from m3/s to m3 by mult by coupling_period
-       budget_terms(11:30,:) = budget_terms(11:30,:) * delt_coupling
+       budget_terms(11:40,:) = budget_terms(11:40,:) * delt_coupling
 
        ! convert terms from m3 to million m3
        budget_terms(:,:) = budget_terms(:,:) * 1.0e-6_r8
@@ -1984,11 +2168,11 @@ contains
             budget_volume = (budget_global( 2,nt) - budget_global( 1,nt))
             budget_input  = (budget_global(13,nt) + budget_global(14,nt) + &
                              budget_global(15,nt))
-            budget_output = (budget_global(18,nt) + budget_global(19,nt) + &
-                             budget_global(21,nt))
+            budget_output = (budget_global(28,nt) + budget_global(29,nt) + &
+                             budget_global(31,nt))
             budget_total  = budget_volume - budget_input + budget_output
-            budget_euler  = budget_volume - budget_global(20,nt) + budget_global(18,nt)
-            budget_eroutlag = budget_global(23,nt) - budget_global(24,nt)
+            budget_euler  = budget_volume - budget_global(30,nt) + budget_global(28,nt)
+            budget_eroutlag = budget_global(33,nt) - budget_global(34,nt)
             write(iulog,'(2a,i4)')        trim(subname),'  tracer = ',nt
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume   init = ',nt,budget_global(1,nt)
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume  final = ',nt,budget_global(2,nt)
@@ -2003,15 +2187,25 @@ contains
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input subsurf = ',nt,budget_global(14,nt)
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input gwl     = ',nt,budget_global(15,nt)
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   input irrig   = ',nt,budget_global(16,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input total   = ',nt,budget_global(17,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input check   = ',nt,budget_input - budget_global(17,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input euler   = ',nt,budget_global(20,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input dom withd = ',nt,budget_global(17,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input liv withd = ',nt,budget_global(18,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input elec withd= ',nt,budget_global(19,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input mfc withd = ',nt,budget_global(20,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input min withd = ',nt,budget_global(21,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input dom rf  = ',nt,budget_global(22,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input liv rf  = ',nt,budget_global(23,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input elec rf = ',nt,budget_global(24,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input mfc rf  = ',nt,budget_global(25,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input min rf  = ',nt,budget_global(26,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   input total   = ',nt,budget_global(27,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input check   = ',nt,budget_input - budget_global(27,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input euler   = ',nt,budget_global(30,nt)
            !write(iulog,'(2a)') trim(subname),'----------------'
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flow   = ',nt,budget_global(18,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output direct = ',nt,budget_global(21,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flood  = ',nt,budget_global(19,nt)
-            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output total  = ',nt,budget_global(22,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   output check  = ',nt,budget_output - budget_global(22,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flow   = ',nt,budget_global(28,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output direct = ',nt,budget_global(31,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flood  = ',nt,budget_global(29,nt)
+            write(iulog,'(2a,i4,f22.6)') trim(subname),'   output total  = ',nt,budget_global(32,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   output check  = ',nt,budget_output - budget_global(32,nt)
            !write(iulog,'(2a)') trim(subname),'----------------'
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   sum input     = ',nt,budget_input
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   sum dvolume   = ',nt,budget_volume
@@ -2020,16 +2214,16 @@ contains
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   net (dv-i+o)  = ',nt,budget_total
            !write(iulog,'(2a,i4,f22.6)') trim(subname),'   net euler     = ',nt,budget_euler
             write(iulog,'(2a,i4,f22.6)') trim(subname),'   eul erout lag = ',nt,budget_eroutlag
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   accum (dv-i+o)= ',nt,budget_global(30,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   accum (dv-i+o)= ',nt,budget_global(40,nt)
            !write(iulog,'(2a)') trim(subname),'----------------'
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev  no= ',nt,budget_global(23,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout       no= ',nt,budget_global(24,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   eroutup_avg   = ',nt,budget_global(25,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev out= ',nt,budget_global(26,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout      out= ',nt,budget_global(27,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erlateral     = ',nt,budget_global(28,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   euler gwl     = ',nt,budget_global(29,nt)
-           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   net main chan = ',nt,budget_global(6,nt)-budget_global(5,nt)+budget_global(24,nt)-budget_global(23,nt)+budget_global(27,nt)+budget_global(28,nt)+budget_global(29,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev  no= ',nt,budget_global(33,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout       no= ',nt,budget_global(34,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   eroutup_avg   = ',nt,budget_global(35,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev out= ',nt,budget_global(36,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout      out= ',nt,budget_global(37,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erlateral     = ',nt,budget_global(38,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   euler gwl     = ',nt,budget_global(39,nt)
+           !write(iulog,'(2a,i4,f22.6)') trim(subname),'   net main chan = ',nt,budget_global(6,nt)-budget_global(5,nt)+budget_global(34,nt)-budget_global(33,nt)+budget_global(37,nt)+budget_global(38,nt)+budget_global(39,nt)
            !write(iulog,'(2a)') trim(subname),'----------------'
 
             if ((budget_total-budget_eroutlag) > 1.0e-6) then

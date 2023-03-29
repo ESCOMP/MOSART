@@ -33,6 +33,11 @@ module rof_comp_mct
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi
   use mosart_cpl_indices  , only : index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub
   use mosart_cpl_indices  , only : index_x2r_Flrl_irrig
+  use mosart_cpl_indices  , only :  index_x2r_Flrl_dom_withd, index_x2r_Flrl_dom_rf 
+  use mosart_cpl_indices  , only :  index_x2r_Flrl_liv_withd, index_x2r_Flrl_liv_rf 
+  use mosart_cpl_indices  , only :  index_x2r_Flrl_elec_withd, index_x2r_Flrl_elec_rf
+  use mosart_cpl_indices  , only :  index_x2r_Flrl_mfc_withd, index_x2r_Flrl_mfc_rf 
+  use mosart_cpl_indices  , only :  index_x2r_Flrl_min_withd, index_x2r_Flrl_min_rf
   use mosart_cpl_indices  , only : index_r2x_Forr_rofl, index_r2x_Forr_rofi, index_r2x_Flrr_flood
   use mosart_cpl_indices  , only : index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
 

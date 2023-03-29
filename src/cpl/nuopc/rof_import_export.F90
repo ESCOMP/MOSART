@@ -114,7 +114,17 @@ contains
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
-
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_dom_withd')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_dom_rf')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_liv_withd')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_liv_rf')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_elec_withd')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_elec_rf')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_mfc_withd')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_mfc_rf')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_min_withd')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_min_rf')
+    
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
             TransferOfferGeomObject='will provide', rc=rc)
@@ -290,6 +300,46 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call state_getimport(importState, 'Flrl_irrig', begr, endr, rtmCTL%area, output=rtmCTL%qirrig(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_dom_withd', begr, endr, rtmCTL%area, output=rtmCTL%qdom_withd(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_dom_rf', begr, endr, rtmCTL%area, output=rtmCTL%qdom_rf(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_liv_withd', begr, endr, rtmCTL%area, output=rtmCTL%qliv_withd(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_liv_rf', begr, endr, rtmCTL%area, output=rtmCTL%qliv_rf(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_elec_withd', begr, endr, rtmCTL%area, output=rtmCTL%qelec_withd(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_elec_rf', begr, endr, rtmCTL%area, output=rtmCTL%qelec_rf(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_mfc_withd', begr, endr, rtmCTL%area, output=rtmCTL%qmfc_withd(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_mfc_rf', begr, endr, rtmCTL%area, output=rtmCTL%qmfc_rf(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_min_withd', begr, endr, rtmCTL%area, output=rtmCTL%qmin_withd(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport(importState, 'Flrl_min_rf', begr, endr, rtmCTL%area, output=rtmCTL%qmin_rf(:), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
