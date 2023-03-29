@@ -51,7 +51,7 @@ MODULE MOSART_physics_mod
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
     real(r8) :: temp_erout, localDeltaT
     real(r8) :: negchan
-    real(r8) :: temp_eroutdom(nt_rtm_dom),Rest_R(nt_rtm_dom),Rest_T(nt_rtm_dom)
+    real(r8) :: temp_eroutdom(nt_rtm_dom),Rest_R(nt_rtm_dom),Rest_T(nt_rtm_dom),Rest_H(nt_rtm_dom)
 
     !------------------
     ! hillslope
@@ -62,6 +62,7 @@ MODULE MOSART_physics_mod
     if (TUnit%euler_calc(nt)) then
     do iunit=rtmCTL%begr,rtmCTL%endr
        if (TUnit%mask(iunit) > 0) then
+          Rest_H(:) = 0._r8
           call hillslopeRouting(iunit,nt,Tctl%DeltaT)
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
@@ -75,33 +76,33 @@ MODULE MOSART_physics_mod
               endif
               if (TRunoff%wh(iunit,nt)-TRunoff%dwh(iunit,nt)*Tctl%DeltaT+TRunoff%qsur(iunit,nt)*Tctl%DeltaT>0._r8) then
                  if (TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT < 0._r8 .and. Tdom%domsur(iunit,ntdom)>0._r8) then
-                  Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)-(TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)
-                  Tdom%domsur(iunit,ntdom)=max(0._r8,Tdom%domsur(iunit,ntdom)+(TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt))
+                  Rest_H(ntdom)= Rest_H(ntdom)-(TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)
+                  Tdom%domsur(iunit,ntdom)=max(0._r8,Tdom%domsur(iunit,ntdom)+((TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt))/Tctl%DeltaT)
                  endif
                  call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT)
               else if (Tdom%domsur(iunit,ntdom)>0._r8) then
-                 Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)+Tdom%domsur(iunit,ntdom)*Tctl%DeltaT
+                  Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domsur(iunit,ntdom)*Tctl%DeltaT
               endif
-              !write(iulog,*) 'HILL',iunit,'domH',Tdom%domH(iunit,ntdom),'domHout',Tdom%domHout(iunit,ntdom),'domsur',Tdom%domsur(iunit,ntdom),'qsur',TRunoff%qsur(iunit,nt),'wh',TRunoff%wh(iunit,nt),'ehout',TRunoff%ehout(iunit,nt),'domRest',Tdom%domRest(iunit,ntdom),'dwh',TRunoff%dwh(iunit,nt)
-              if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8 .and. Tdom%domH(iunit,ntdom) < 1.e-10_r8*(Tdom%domsur(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
-                  Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)+Tdom%domH(iunit,ntdom)
+              ! here some checks to make sure the DOM is not at too hugh or low concentrations
+              if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8) ! .and. Tdom%domH(iunit,ntdom) < 1.e-10_r8*(Tdom%domsur(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
+                  Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
                   Tdom%domH(iunit,ntdom)=0._r8
               endif
               if (Tdom%domH(iunit,ntdom) < 1.e-50_r8) then
-                  Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)+Tdom%domH(iunit,ntdom)
+                  Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
                   Tdom%domH(iunit,ntdom)=0._r8
-                 !write(iulog,*)'Concentration 1111',iunit,'domH',Tdom%domH(iunit,ntdom),'wh',TRunoff%wh(iunit,nt)
               endif
               if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8 .or. Tdom%domH(iunit,ntdom)< 0._r8) then
                write(iulog,*)'Concentration in hill is too high or too low ',iunit,'domH',Tdom%domH(iunit,ntdom),'wh',TRunoff%wh(iunit,nt)
                !call shr_sys_abort('Concentration in hill is too high or too low')
               endif
               if (Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)> 0.30001_r8) then
-               Tdom%domRest(iunit,ntdom)=Tdom%domRest(iunit,ntdom)+(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt)*Tctl%DeltaT
+               Rest_H(ntdom)= Rest_H(ntdom)+(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt)*Tctl%DeltaT
                Tdom%domsub(iunit,ntdom)=max(0._r8,Tdom%domsub(iunit,ntdom)-(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt))
               endif
-              Tdom%domsub(iunit,ntdom) = 0._r8 !Tdom%domsub(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
-              Tdom%domHout(iunit,ntdom) = TRunoff%etin(iunit,nt)*0.1_r8 !Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domsub(iunit,ntdom)  = Tdom%domsub(iunit,ntdom)  * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domHout(iunit,ntdom) = Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domRest(iunit,ntdom) = Tdom%domRest(iunit,ntdom) + Rest_H(ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
             enddo
           endif
           !--------------------------------------------------------------------------------------------------------------------------
@@ -136,7 +137,7 @@ MODULE MOSART_physics_mod
        TRunoff%erlateral(:,:) = 0._r8
        Tdom%domToutLat(:,:) = 0._r8
        do nt=1,nt_rtm
-       if (TUnit%mask(iunit) > 0) then
+       if (TUnit%euler_calc(nt)) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
             Rest_T(:) = 0._r8
@@ -150,18 +151,14 @@ MODULE MOSART_physics_mod
                 if (nt==1) then ! if LIQ tracer and there is water
                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
                   if (TRunoff%wt(iunit,nt)-TRunoff%dwt(iunit,nt)*localDeltaT+TRunoff%etin(iunit,nt)*localDeltaT>0._r8) then
-                   !if (TRunoff%wt(iunit,nt) - TRunoff%dwt(iunit,nt) * localDeltaT < -1.e-10*TRunoff%dwt(iunit,nt) .and. Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom)>0._r8) then
-                   !  write(iulog,*) 'SUBN SHIT0 need to add conditions',iunit,Tdom%domT(iunit,ntdom),TRunoff%wt(iunit,nt),TRunoff%dwt(iunit,nt),localDeltaT,(TRunoff%wt(iunit,nt) - TRunoff%dwt(iunit,nt) * localDeltaT)
-                   !endif
                    call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
                    Tdom%domToutLat(iunit,ntdom) = Tdom%domToutLat(iunit,ntdom) + Tdom%domTout(iunit,ntdom)
                   else if ((Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))>0._r8) then
                     Rest_T(ntdom)= Rest_T(ntdom)+(Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))*localDeltaT
                   endif
                   if (TRunoff%wt(iunit,nt)<0._r8) then
-                   write(iulog,*) 'SUBN SHIT1'
+                   write(iulog,*) 'Concentration error wt<0'
                   endif
-                  !write(iulog,*) 'SUBN',iunit,'domT',Tdom%domT(iunit,ntdom),'areafrac',TUnit%area(iunit) * TUnit%frac(iunit),'etin',TRunoff%etin(iunit,nt),'domTout',Tdom%domTout(iunit,ntdom),'domHout',Tdom%domHout(iunit,ntdom),'domsub',Tdom%domsub(iunit,ntdom),'qsub',TRunoff%qsub(iunit,nt),'wt',TRunoff%wt(iunit,nt),'etout',TRunoff%etout(iunit,nt),'domRest',Tdom%domRest(iunit,ntdom),'dwt',TRunoff%dwt(iunit,nt)
                   if (Tdom%domT(iunit,ntdom)/TRunoff%wt(iunit,nt) > 0.30001_r8 .and. Tdom%domT(iunit,ntdom) < 1.e-10*(Tdom%domTout(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
                    Rest_T(ntdom)=Rest_T(ntdom)+Tdom%domT(iunit,ntdom)
                    Tdom%domT(iunit,ntdom)=0._r8
@@ -183,6 +180,7 @@ MODULE MOSART_physics_mod
              do ntdom=1,nt_rtm_dom
                   Tdom%domToutLat(iunit,ntdom)   = Tdom%domToutLat(iunit,ntdom)   / TUnit%numDT_t(iunit)
                   Tdom%domToutLat2(iunit,ntdom)  = Tdom%domToutLat2(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom)
+                  Tdom%domRest(iunit,ntdom)      = Tdom%domRest(iunit,ntdom) +  Rest_T(ntdom) 
              end do
              end if
           endif
@@ -555,7 +553,7 @@ MODULE MOSART_physics_mod
 !-----------------------------------------------------------------------
     
   function CRVRMAN(slp_, n_, rr_) result(v_)
-  ! Function for calculating channel velocity according to Manning's equation.vt
+  ! Function for calculating channel velocity according to Manning's equation.
     implicit none
     real(r8), intent(in) :: slp_, n_, rr_ ! slope, manning's roughness coeff., hydraulic radius
     real(r8)             :: v_            ! v_ is  discharge

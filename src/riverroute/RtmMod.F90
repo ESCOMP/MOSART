@@ -1949,6 +1949,7 @@ contains
     rtmCTL%erout   = TRunoff%erout
     rtmCTL%domT    = Tdom%domT
     rtmCTL%domR    = Tdom%domR
+    rtmCTL%domH    = Tdom%domH
     rtmCTL%domRout = Tdom%domRout
     rtmCTL%domRest = Tdom%domRest
 
