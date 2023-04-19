@@ -71,34 +71,29 @@ MODULE MOSART_physics_mod
           if (nt==1) then ! if LIQ tracer and there is water
             do ntdom=1,nt_rtm_dom ! loop over DOM tracers
               Tdom%domHout(iunit,ntdom)=0._r8
-              if (Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)> 0.30001_r8) then
-               write(iulog,*)'Concentration ERROR qsur',Tdom%domsur(iunit,ntdom),TRunoff%qsur(iunit,nt)
-              endif
+              !if (Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)> 0.30001_r8) then
+              ! write(iulog,*)'Concentration ERROR qsur',Tdom%domsur(iunit,ntdom),TRunoff%qsur(iunit,nt)
+              !endif
               if (TRunoff%wh(iunit,nt)-TRunoff%dwh(iunit,nt)*Tctl%DeltaT+TRunoff%qsur(iunit,nt)*Tctl%DeltaT>0._r8) then
-                 if (TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT < 0._r8 .and. Tdom%domsur(iunit,ntdom)>0._r8) then
-                  Rest_H(ntdom)= Rest_H(ntdom)-(TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)
-                  Tdom%domsur(iunit,ntdom)=max(0._r8,Tdom%domsur(iunit,ntdom)+((TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT)*Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt))/Tctl%DeltaT)
+                 if (TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT < 0._r8) then
+                  Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
+                  Tdom%domH(iunit,ntdom)=0._r8
                  endif
                  call hillslopeRoutingDOM(iunit,nt,ntdom,Tctl%DeltaT)
               else if (Tdom%domsur(iunit,ntdom)>0._r8) then
                   Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domsur(iunit,ntdom)*Tctl%DeltaT
               endif
-              ! here some checks to make sure the DOM is not at too hugh or low concentrations
-              if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8) ! .and. Tdom%domH(iunit,ntdom) < 1.e-10_r8*(Tdom%domsur(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
+              ! here some checks to make sure the DOM is not at too high or low concentrations
+              if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8) then ! .and. Tdom%domH(iunit,ntdom) < 1.e-10_r8*(Tdom%domsur(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
                   Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
                   Tdom%domH(iunit,ntdom)=0._r8
               endif
               if (Tdom%domH(iunit,ntdom) < 1.e-50_r8) then
-                  Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
                   Tdom%domH(iunit,ntdom)=0._r8
               endif
-              if (Tdom%domH(iunit,ntdom)/TRunoff%wh(iunit,nt) > 0.30001_r8 .or. Tdom%domH(iunit,ntdom)< 0._r8) then
-               write(iulog,*)'Concentration in hill is too high or too low ',iunit,'domH',Tdom%domH(iunit,ntdom),'wh',TRunoff%wh(iunit,nt)
-               !call shr_sys_abort('Concentration in hill is too high or too low')
-              endif
               if (Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)> 0.30001_r8) then
-               Rest_H(ntdom)= Rest_H(ntdom)+(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt)*Tctl%DeltaT
-               Tdom%domsub(iunit,ntdom)=max(0._r8,Tdom%domsub(iunit,ntdom)-(Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)-0.3_r8)*TRunoff%qsub(iunit,nt))
+               Rest_H(ntdom)= Rest_H(ntdom)+(Tdom%domsub(iunit,ntdom)-0.3_r8*TRunoff%qsub(iunit,nt))*Tctl%DeltaT
+               Tdom%domsub(iunit,ntdom)=max(0._r8,0.3_r8*TRunoff%qsub(iunit,nt))
               endif
               Tdom%domsub(iunit,ntdom)  = Tdom%domsub(iunit,ntdom)  * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
               Tdom%domHout(iunit,ntdom) = Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
@@ -151,25 +146,22 @@ MODULE MOSART_physics_mod
                 if (nt==1) then ! if LIQ tracer and there is water
                  do ntdom=1,nt_rtm_dom ! loop over DOM tracers
                   if (TRunoff%wt(iunit,nt)-TRunoff%dwt(iunit,nt)*localDeltaT+TRunoff%etin(iunit,nt)*localDeltaT>0._r8) then
-                   call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
-                   Tdom%domToutLat(iunit,ntdom) = Tdom%domToutLat(iunit,ntdom) + Tdom%domTout(iunit,ntdom)
+                     if (TRunoff%wt(iunit,nt)-TRunoff%dwt(iunit,nt)*localDeltaT < 0._r8) then
+                        Rest_T(ntdom)= Rest_T(ntdom)+Tdom%domT(iunit,ntdom)
+                        Tdom%domT(iunit,ntdom)=0._r8
+                     endif
+                     call subnetworkRoutingDOM(iunit,nt,ntdom,localDeltaT)
+                     Tdom%domToutLat(iunit,ntdom) = Tdom%domToutLat(iunit,ntdom) + Tdom%domTout(iunit,ntdom)
                   else if ((Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))>0._r8) then
                     Rest_T(ntdom)= Rest_T(ntdom)+(Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))*localDeltaT
                   endif
-                  if (TRunoff%wt(iunit,nt)<0._r8) then
-                   write(iulog,*) 'Concentration error wt<0'
-                  endif
-                  if (Tdom%domT(iunit,ntdom)/TRunoff%wt(iunit,nt) > 0.30001_r8 .and. Tdom%domT(iunit,ntdom) < 1.e-10*(Tdom%domTout(iunit,ntdom)+Tdom%domHout(iunit,ntdom))) then
+                  if (Tdom%domT(iunit,ntdom)/TRunoff%wt(iunit,nt) > 0.30001_r8) then
                    Rest_T(ntdom)=Rest_T(ntdom)+Tdom%domT(iunit,ntdom)
                    Tdom%domT(iunit,ntdom)=0._r8
                   endif
                   if (Tdom%domT(iunit,ntdom) < 1.e-50_r8) then
                    Rest_T(ntdom)=Rest_T(ntdom)+Tdom%domT(iunit,ntdom)
                    Tdom%domT(iunit,ntdom)=0._r8
-                  endif
-                  if (Tdom%domT(iunit,ntdom)/TRunoff%wt(iunit,nt) > 0.30001_r8 .or. Tdom%domT(iunit,ntdom) <0._r8) then
-                   write(iulog,*)' Concentration in subn is too high or too low ',Tdom%domT(iunit,ntdom),TRunoff%wt(iunit,nt)
-                   !call shr_sys_abort('Concentration in subn is too high or too low')
                   endif
                  enddo
                 endif
@@ -277,19 +269,27 @@ MODULE MOSART_physics_mod
              if (nt==1) then ! if LIQ tracer and there is water
                do ntdom=1,nt_rtm_dom ! loop over DOM tracers
                   if (TRunoff%wr(iunit,nt)-TRunoff%dwr(iunit,nt)*localDeltaT+(TRunoff%erlateral(iunit,nt)+TRunoff%erin(iunit,nt))*localDeltaT>0._r8) then
+                     if (TRunoff%wr(iunit,nt)-TRunoff%dwr(iunit,nt)*localDeltaT < 0._r8) then
+                        Rest_R(ntdom)= Rest_T(ntdom)+Tdom%domR(iunit,ntdom)
+                        Tdom%domR(iunit,ntdom)=0._r8
+                     endif
                      call mainchannelRoutingDOM(iunit,nt,ntdom,localDeltaT)
                      temp_eroutdom(ntdom) = temp_eroutdom(ntdom) + Tdom%domRout(iunit,ntdom)
                    else if ((Tdom%domRUp(iunit,ntdom)+Tdom%domToutLat(iunit,ntdom))>0._r8) then
                       Rest_R(ntdom)= Rest_R(ntdom)+(Tdom%domRUp(iunit,ntdom)+Tdom%domToutLat(iunit,ntdom))*localDeltaT
                    endif
-                   if (Tdom%domR(iunit,ntdom)/TRunoff%wr(iunit,nt) > 0.30001_r8 .and. Tdom%domR(iunit,ntdom) < 1.e-10*(Tdom%domRout(iunit,ntdom)+Tdom%domToutLat(iunit,ntdom)+Tdom%domRUp(iunit,ntdom))) then
+                   if (Tdom%domR(iunit,ntdom)/TRunoff%wr(iunit,nt) > 0.30001_r8) then !.and. Tdom%domR(iunit,ntdom) < 1.e-10*(Tdom%domRout(iunit,ntdom)+Tdom%domToutLat(iunit,ntdom)+Tdom%domRUp(iunit,ntdom))) then
                      Rest_R(ntdom)=Rest_R(ntdom)+Tdom%domR(iunit,ntdom)
                      Tdom%domR(iunit,ntdom)=0._r8
                    endif
-                   if (Tdom%domR(iunit,ntdom)/TRunoff%wr(iunit,nt) > 0.30001_r8 .or. Tdom%domR(iunit,ntdom) <0._r8) then
-                      write(iulog,*)' Concentration in main is too high or too low ',Tdom%domR(iunit,ntdom),TRunoff%wr(iunit,nt)
+                   if (Tdom%domR(iunit,ntdom) < 1.e-50_r8) then
+                     Rest_R(ntdom)=Rest_R(ntdom)+Tdom%domR(iunit,ntdom)
+                     Tdom%domR(iunit,ntdom)=0._r8
+                    endif
+                   !if (Tdom%domR(iunit,ntdom)/TRunoff%wr(iunit,nt) > 0.30001_r8 .or. Tdom%domR(iunit,ntdom) <0._r8) then
+                   !   write(iulog,*)' Concentration in main is too high or too low ',Tdom%domR(iunit,ntdom),TRunoff%wr(iunit,nt)
                       !call shr_sys_abort('Concentration in main is too high or too low')
-                   endif
+                   !endif
                enddo
              endif
              !----------------------------------------------------------------------------------------------------------------
