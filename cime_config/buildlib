@@ -9,7 +9,7 @@ import os, sys
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
     raise SystemExit("ERROR: must set CIMEROOT environment variable")
-sys.path.append(os.path.join(CIMEROOT, "scripts", "Tools"))
+sys.path.append(os.path.join(CIMEROOT, "scripts", "CIME", "Tools"))
 
 from standard_script_setup import *
 from CIME.case import Case

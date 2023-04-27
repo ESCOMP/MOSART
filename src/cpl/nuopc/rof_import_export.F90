@@ -9,7 +9,8 @@ module rof_import_export
   use NUOPC_Model     , only : NUOPC_ModelGet
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_abort
-  use RunoffMod       , only : rtmCTL, TRunoff
+  use nuopc_shr_methods , only : chkerr
+  use RunoffMod       , only : rtmCTL, TRunoff, TUnit
   use RtmVar          , only : iulog, nt_rtm, rtm_tracers
   use RtmSpmd         , only : masterproc, mpicom_rof
   use RtmTimeManager  , only : get_nstep
@@ -36,6 +37,7 @@ module rof_import_export
   integer, parameter     :: fldsMax = 100
   integer                :: fldsToRof_num = 0
   integer                :: fldsFrRof_num = 0
+  logical                :: flds_r2l_stream_channel_depths = .false.   ! If should pass the channel depth fields needed for the hillslope model
   type (fld_list_type)   :: fldsToRof(fldsMax)
   type (fld_list_type)   :: fldsFrRof(fldsMax)
 
@@ -43,6 +45,7 @@ module rof_import_export
   real(r8), allocatable :: mod2med_areacor(:)
   real(r8), allocatable :: med2mod_areacor(:)
 
+  integer     ,parameter :: debug = 0 ! internal debug level
   character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
@@ -51,12 +54,11 @@ module rof_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtm, do_rtmflood, rc)
+  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    logical          , intent(in)  :: do_rtm
     logical          , intent(in)  :: do_rtmflood
     integer          , intent(out) :: rc
 
@@ -64,7 +66,9 @@ contains
     type(ESMF_State)       :: importState
     type(ESMF_State)       :: exportState
     character(ESMF_MAXSTR) :: stdname
-    character(ESMF_MAXSTR) :: cvalue
+    character(ESMF_MAXSTR) :: cvalue          ! Character string read from driver attribute
+    logical                :: isPresent       ! Atribute is present
+    logical                :: isSet           ! Atribute is set
     integer                :: n, num
     character(len=128)     :: fldname
     character(len=*), parameter :: subname='(rof_import_export:advertise_fields)'
@@ -79,13 +83,19 @@ contains
     ! Advertise export fields
     !--------------------------------
 
-    if (do_rtm) then
-       call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+    call NUOPC_CompAttributeGet(gcomp, name="flds_r2l_stream_channel_depths", value=cvalue, &
+         isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
+    call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
+    if ( flds_r2l_stream_channel_depths )then
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
     end if
 
     do n = 1,fldsFrRof_num
@@ -98,15 +108,12 @@ contains
     ! Advertise import fields
     !--------------------------------
 
-    if (do_rtm) then
-       call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofdto')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
-    end if
+    call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -315,6 +322,8 @@ contains
     real(r8), pointer :: flood(:)
     real(r8), pointer :: volr(:)
     real(r8), pointer :: volrmch(:)
+    real(r8), pointer :: tdepth(:)
+    real(r8), pointer :: tdepth_max(:)
     logical, save     :: first_time = .true.
     character(len=*), parameter :: subname='(rof_import_export:export_fields)'
     !---------------------------------------------------------------------------
@@ -357,6 +366,10 @@ contains
     allocate(flood(begr:endr))
     allocate(volr(begr:endr))
     allocate(volrmch(begr:endr))
+    if ( flds_r2l_stream_channel_depths )then
+       allocate(tdepth(begr:endr))
+       allocate(tdepth_max(begr:endr))
+    end if
 
     if ( ice_runoff )then
        ! separate liquid and ice runoff
@@ -389,6 +402,11 @@ contains
        flood(n)   = -rtmCTL%flood(n)    / (rtmCTL%area(n)*0.001_r8)
        volr(n)    =  rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
        volrmch(n) =  Trunoff%wr(n,nliq) / rtmCTL%area(n)
+       if ( flds_r2l_stream_channel_depths )then
+          tdepth(n)  = Trunoff%yt(n,nliq)
+          ! assume height to width ratio is the same for tributaries and main channel
+          tdepth_max(n) = max(TUnit%twidth0(n),0._r8)*(TUnit%rdepth(n)/TUnit%rwidth(n))
+        end if
     end do
 
     call state_setexport(exportState, 'Forr_rofl', begr, endr, input=rofl, do_area_correction=.true., rc=rc)
@@ -406,7 +424,28 @@ contains
     call state_setexport(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+    if ( flds_r2l_stream_channel_depths ) then
+       call state_setexport(exportState, 'Sr_tdepth', begr, endr, input=tdepth, do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
+
+    if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
+       do n = begr,endr
+          write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, flood(n)
+          write(iulog,F01)'export: nstep, n, Flrr_volr    = ',get_nstep(), n, volr(n)
+          write(iulog,F01)'export: nstep, n, Flrr_volrmch = ',get_nstep(), n, volrmch(n)
+          write(iulog,F01)'export: nstep, n, Forr_rofl    = ',get_nstep() ,n, rofl(n)
+          write(iulog,F01)'export: nstep, n, Forr_rofi    = ',get_nstep() ,n, rofi(n)
+       end do
+    end if
+
     deallocate(rofl, rofi, flood, volr, volrmch)
+    if ( flds_r2l_stream_channel_depths ) then
+       deallocate(tdepth, tdepth_max)
+    end if
 
   end subroutine export_fields
 

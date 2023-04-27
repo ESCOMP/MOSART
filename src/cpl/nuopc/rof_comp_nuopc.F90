@@ -23,7 +23,7 @@ module rof_comp_nuopc
   use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
   use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
   use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : Rtmini, Rtmrun
+  use RtmMod                , only : Rtminit_namelist, Rtmini, Rtmrun
   use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
@@ -54,7 +54,6 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
 
-  logical                 :: do_rtm
   logical                 :: do_rtmflood
   integer                 :: nthrds
 
@@ -281,7 +280,7 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    ! Need to run the initial phase of rtm here to determine if do_rtm and do_flood is true in order to
+    ! Need to run the initial phase of rtm here to determine if do_flood is true in order to
     ! get the advertise phase correct
 
     !----------------------
@@ -415,13 +414,13 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    call Rtmini(do_rtm, do_rtmflood)
+    call Rtminit_namelist(do_rtmflood)
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, do_rtm, do_rtmflood, rc)
+    call advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -496,26 +495,24 @@ contains
        call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
     endif
 #endif
-
+    call Rtmini()
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------
 
-    if (do_rtm) then
-       ! determine global index array
-       lsize = rtmCTL%endr - rtmCTL%begr + 1
-       allocate(gindex(lsize))
-       ni = 0
-       do n = rtmCTL%begr,rtmCTL%endr
-          ni = ni + 1
-          gindex(ni) = rtmCTL%gindex(n)
-       end do
+    ! determine global index array
+    lsize = rtmCTL%endr - rtmCTL%begr + 1
+    allocate(gindex(lsize))
+    ni = 0
+    do n = rtmCTL%begr,rtmCTL%endr
+       ni = ni + 1
+       gindex(ni) = rtmCTL%gindex(n)
+    end do
 
-       ! create distGrid from global index array
-       DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       deallocate(gindex)
-    end if
+    ! create distGrid from global index array
+    DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    deallocate(gindex)
 
     ! read in the mesh
     call NUOPC_CompAttributeGet(gcomp, name='mesh_rof', value=cvalue, rc=rc)
@@ -524,14 +521,8 @@ contains
        write(iulog,*)'mesh file for domain is ',trim(cvalue)
     end if
 
-    if (do_rtm) then
-       EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=Distgrid, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    else
-       ! If do_rtm is false - then will still realize fields - but nothing will be realized
-       EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
+    EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=Distgrid, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! realize actively coupled fields
@@ -544,19 +535,17 @@ contains
     ! Create MOSART export state
     !--------------------------------
 
-    if (do_rtm) then
-       call export_fields(gcomp, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call export_fields(gcomp, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       ! Set global grid size scalars in export state
-       call State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    ! Set global grid size scalars in export state
+    call State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
+         flds_scalar_name, flds_scalar_num, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
+    call State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
+         flds_scalar_name, flds_scalar_num, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
     ! Reset shr logging

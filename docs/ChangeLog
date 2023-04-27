@@ -1,4 +1,82 @@
 ===============================================================
+Tag name:  mosart1_0_48
+Originator(s): erik
+Date: Nov 13, 2022
+One-line Summary: Change bypass_routing option to direct_to_outlet
+
+Change the bypass_routing option to negative flow is sent to
+the river outlets.
+
+Fixes #58 -- change bypass_routing default
+
+===============================================================
+Tag name:  mosart1_0_47
+Originator(s): erik
+Date: Nov 12, 2022
+One-line Summary: Some fixes for the direct_to_outlet option
+
+This fixes the balance errors evident in the mosart log file when 
+the bypass_routing_option='direct_to_outlet' method is used.
+Note that these balance errors are warnings and do not stop the model.
+
+Code from @swensosc, PR by @olyson
+
+Fixes #54 -- update cime directory in buildlib/buildnml
+Fixes #56 -- Some issues with the direct_to_outlet option
+
+Also don't allow the threshold option to be set with
+direct_to_outlet is choosen, as well as any option other
+than "all" for "none".
+
+Answers change when direct_to_outlet option is used
+
+===============================================================
+Tag name:  mosart1_0_46
+Originator(s): jedwards
+Date: Jun 12, 2022
+One-line Summary: PIO ascynchronus changes
+
+Currently mosart initializes and try's to use IO in the advertise phase, but asyncio requires that this is not done until the
+realize phase. This PR splits the mosart initialization so that the namelist is still read in the advertise phase but IO waits until
+the realize phase. Tested with cesm prealpha tests on cheyenne, a modification was also required in the mct driver to handle the new
+initialize subroutine.
+
+===============================================================
+Tag name:  mosart1_0_45
+Originator(s): erik
+Date: Nov 12, 2021
+One-line Summary: Handle CLM_ACCELERATED_SPINUP option differently
+
+Handle CLM_ACCELERATED_SPINUP option differently so it doesn't change 
+MOSART_MODE, but dies (unless the new xml variable MOSART_IGNORE_WARNINGS 
+is set to TRUE). Also only output information about decomposition from all 
+PE's only if running with DEBUG compiler options set.
+
+Fixes #48 -- Remove setting of MOSART_MODE from buildnml
+Fixes #49 -- Reduce MOSART output to cesm.log
+
+===============================================================
+Tag name:  mosart1_0_44
+Originator(s): erik
+Date: Nov 02, 2021
+One-line Summary: Nuopc now the default driver, pass channel depth fields, remove do_rtm namelist
+
+Assume nuopc is the default driver now, so switch testlist for special driver tests
+to be mct rather than nuopc. Pass channel depth fields if flds_r2l_stream_channel_depths
+is set in the driver. Remove do_rtm option and trigger MOSART_MODE==NULL instead.
+
+Fixes #47 -- do_rtm not working with NUOPC
+Fixes #45 -- frivinp_rtm is still required even if MOSART is turned off
+Fixes #44 -- Remove reference to Flrl_rofdto 
+Fixes #36 -- pass water depths to LND
+Fixes #20 -- MOSART_SIMYR not setup correctly
+
+This test fails in the build unless there is an appropriate verison of CMEPS:
+
+SMS_D.f10_f10_mg37.I1850Clm50Bgc.cheyenne_intel.mosart-passChannelDepths
+   SHARED_BUILD -- FAIL
+
+===============================================================
 Tag name:  mosart1_0_43
 Originator(s): erik
 Date: July 16, 2021

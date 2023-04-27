@@ -14,7 +14,7 @@ import os, shutil, sys
 CIMEROOT = os.environ.get("CIMEROOT")
 if CIMEROOT is None:
     raise SystemExit("ERROR: must set CIMEROOT environment variable")
-sys.path.append(os.path.join(CIMEROOT, "scripts", "Tools"))
+sys.path.append(os.path.join(CIMEROOT, "scripts", "CIME", "Tools"))
 
 from standard_script_setup import *
 from CIME.case import Case
@@ -40,8 +40,19 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
     #----------------------------------------------------
     config = {}
     config['mosart_mode'] = case.get_value("MOSART_MODE")
-    config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
+    config['ignore_warn'] = case.get_value("MOSART_IGNORE_WARNINGS")
     config['clm_accel'] = case.get_value("CLM_ACCELERATED_SPINUP")
+    ignore_msg = "\n (Set MOSART_IGNORE_WARNINGS to TRUE with xmlchange in your case to ignore this message and continue anyway)"
+    if ( config['clm_accel'] != "off" ):
+       if ( config['mosart_mode'] != "NULL" ):
+           message = "CLM_ACCELERATED_SPINUP is not off, but MOSART_MODE is not NULL, " + \
+                      "normally you should switch it off to save computer time"
+           if ( not config['ignore_warn'] ):
+               expect(False, message+ignore_msg )
+           else:
+               logger.warning( "WARNING::"+message )
+
+    config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
     config['rof_grid'] = case.get_value("ROF_GRID")
     config['lnd_grid'] = case.get_value("LND_GRID")
     config['rof_ncpl'] = case.get_value("ROF_NCPL")
@@ -120,8 +131,16 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         coupling_period = basedt // mosart_ncpl
     nmlgen.set_value("coupling_period", value=coupling_period)
 
-    if ( nmlgen.get_value("frivinp_rtm") == "UNSET" ):
-        raise SystemExit("ERROR: Direction file is NOT set and is required: frivinp_rtm")
+    if ( nmlgen.get_value("frivinp_rtm") == "UNSET" and config["mosart_mode"] != "NULL" ):
+        raise SystemExit("ERROR: Direction file is NOT set and is required when MOSART is active: frivinp_rtm")
+
+    bypass_routing_option = nmlgen.get_value("bypass_routing_option")
+    qgwl_runoff_option    = nmlgen.get_value("qgwl_runoff_option")
+    if bypass_routing_option == "none" and qgwl_runoff_option != "all":
+        raise SystemExit("ERROR: When bypass_routing_option is none, qgwl_runoff_option can only be all")
+
+    if bypass_routing_option == "direct_to_outlet" and qgwl_runoff_option == "threshold":
+        raise SystemExit("ERROR: When bypass_routing_option is direct_to_outlet, qgwl_runoff_option can not be threshold")
 
     #----------------------------------------------------
     # Write output file
