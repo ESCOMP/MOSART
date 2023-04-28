@@ -10,7 +10,8 @@ module RtmMod
 !
 ! !USES:
   use shr_kind_mod    , only : r8 => shr_kind_r8
-  use shr_sys_mod     , only : shr_sys_flush
+  use shr_sys_mod     , only : shr_sys_flush, shr_sys_abort
+  use shr_mpi_mod     , only : shr_mpi_sum, shr_mpi_max
   use shr_const_mod   , only : SHR_CONST_PI, SHR_CONST_CDAY
   use RtmVar          , only : nt_rtm, rtm_tracers 
   use RtmSpmd         , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
@@ -42,7 +43,7 @@ module RtmMod
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel
   use RtmIO
-  use mct_mod
+  use RtmMctMod
   use perf_mod
   use pio
 !
@@ -353,12 +354,16 @@ contains
     integer,parameter :: dbug = 3             ! 0 = none, 1=normal, 2=much, 3=max
 #endif
     character(len=*),parameter :: subname = '(Rtmini) '
+
+    !-------------------------------------------------------
+    ! Intiialize MOSART pio
+    !-------------------------------------------------------
+
+    call ncd_pio_init()
+
     !-------------------------------------------------------
     ! Initialize MOSART time manager 
     !-------------------------------------------------------
-
-    ! Intiialize MOSART pio
-    call ncd_pio_init()
 
     ! Obtain restart file if appropriate
     if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
