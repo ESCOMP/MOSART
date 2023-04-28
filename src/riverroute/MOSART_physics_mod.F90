@@ -18,7 +18,7 @@ MODULE MOSART_physics_mod
   use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
   use RtmSpmd       , only : masterproc, mpicom_rof
   use perf_mod      , only: t_startf, t_stopf
-  use mct_mod
+  use RtmMctMod
 
   implicit none
   private

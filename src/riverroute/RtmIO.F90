@@ -17,7 +17,7 @@ module RtmIO
   use RunoffMod      , only : rtmCTL
   use RtmVar         , only : spval, ispval, iulog
   use perf_mod       , only : t_startf, t_stopf
-  use mct_mod
+  use RtmMctMod
   use pio
 
 ! !PUBLIC TYPES:
