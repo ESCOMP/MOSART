@@ -97,7 +97,7 @@ MODULE MOSART_physics_mod
               endif
               Tdom%domsub(iunit,ntdom)  = Tdom%domsub(iunit,ntdom)  * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
               Tdom%domHout(iunit,ntdom) = Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
-              Tdom%domRest(iunit,ntdom) = Tdom%domRest(iunit,ntdom) + Rest_H(ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              Tdom%domRest(iunit,ntdom) = Tdom%domRest(iunit,ntdom) + Rest_H(ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units kg/m2 --> kg
             enddo
           endif
           !--------------------------------------------------------------------------------------------------------------------------
