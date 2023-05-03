@@ -34,7 +34,8 @@ MODULE DommasbMod
       !cannot be more than available carbon, upper boundary
       !Tdom%domHout(iunit,ntdom) = min((Tdom%domH(iunit,ntdom)+Tdom%domsur(iunit,ntdom)*theDeltaT)/theDeltaT,Tdom%domHout(iunit,ntdom))
 
-      Tdom%domH(iunit,ntdom) = max(0._r8,Tdom%domH(iunit,ntdom) + (Tdom%domsur(iunit,ntdom) - Tdom%domHout(iunit,ntdom))* theDeltaT)
+      !Tdom%domH(iunit,ntdom) = max(0._r8,Tdom%domH(iunit,ntdom) + (Tdom%domsur(iunit,ntdom) - Tdom%domHout(iunit,ntdom))* theDeltaT)
+      Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (Tdom%domsur(iunit,ntdom) - Tdom%domHout(iunit,ntdom))* theDeltaT
 
     end subroutine hillslopeRoutingDOM
 
@@ -49,7 +50,8 @@ MODULE DommasbMod
       !Tdom%domTout(iunit,ntdom) = min((Tdom%domT(iunit,ntdom)+(Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))* theDeltaT)/theDeltaT,Tdom%domTout(iunit,ntdom))
 
       
-      Tdom%domT(iunit,ntdom) = max(0._r8,Tdom%domT(iunit,ntdom) + ( Tdom%domsub(iunit,ntdom) + Tdom%domHout(iunit,ntdom) - Tdom%domTout(iunit,ntdom) ) * theDeltaT)
+      !Tdom%domT(iunit,ntdom) = max(0._r8,Tdom%domT(iunit,ntdom) + ( Tdom%domsub(iunit,ntdom) + Tdom%domHout(iunit,ntdom) - Tdom%domTout(iunit,ntdom) ) * theDeltaT)
+      Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + ( Tdom%domsub(iunit,ntdom) + Tdom%domHout(iunit,ntdom) - Tdom%domTout(iunit,ntdom) ) * theDeltaT
       
     end subroutine subnetworkRoutingDOM
 
@@ -67,7 +69,8 @@ MODULE DommasbMod
       !Tdom%domRout(iunit,ntdom) = min((Tdom%domR(iunit,ntdom)+(Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom))* theDeltaT)/theDeltaT,Tdom%domRout(iunit,ntdom))
 
       
-      Tdom%domR(iunit,ntdom) = max(0._r8,Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom) - Tdom%domRout(iunit,ntdom)) * theDeltaT)
+      !Tdom%domR(iunit,ntdom) = max(0._r8,Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom) - Tdom%domRout(iunit,ntdom)) * theDeltaT)
+      Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom) - Tdom%domRout(iunit,ntdom)) * theDeltaT
     end subroutine mainchannelRoutingDOM
 !-------------------------------------------------------------------------
 end MODULE DommasbMod
