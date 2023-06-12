@@ -16,7 +16,7 @@ MODULE MOSART_physics_mod
   use RtmVar        , only : iulog, barrier_timers, nt_rtm, rtm_tracers, nt_rtm_dom, rtm_tracers_dom
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL,Tdom
   use RunoffMod     , only : SMatP_eroutUp, avsrc_eroutUp, avdst_eroutUp
-  use RunoffMod     , only : SMatP_domRUp, avsrc_domRUp, avdst_domRUp
+  use RunoffMod     , only : SMatP_domRUp, avsrc_domRUp, avdst_domRUp ! Matrix to calculate the DOC coming from all upstream gridcells
   use RtmSpmd       , only : masterproc, mpicom_rof
   use perf_mod      , only: t_startf, t_stopf
   use mct_mod
@@ -51,7 +51,7 @@ MODULE MOSART_physics_mod
     integer :: iunit, m, k, unitUp, cnt, ier   !local index
     real(r8) :: temp_erout, localDeltaT
     real(r8) :: negchan
-    real(r8) :: temp_eroutdom(nt_rtm_dom),Rest_R(nt_rtm_dom),Rest_T(nt_rtm_dom),Rest_H(nt_rtm_dom)
+    real(r8) :: temp_eroutdom(nt_rtm_dom),Rest_R(nt_rtm_dom),Rest_T(nt_rtm_dom),Rest_H(nt_rtm_dom) ! Rest DOC for when water becomes or has been negative it is negligible, and may not be necessary
 
     !------------------
     ! hillslope
@@ -62,20 +62,20 @@ MODULE MOSART_physics_mod
     if (TUnit%euler_calc(nt)) then
     do iunit=rtmCTL%begr,rtmCTL%endr
        if (TUnit%mask(iunit) > 0) then
-          Rest_H(:) = 0._r8
           call hillslopeRouting(iunit,nt,Tctl%DeltaT)
           TRunoff%wh(iunit,nt) = TRunoff%wh(iunit,nt) + TRunoff%dwh(iunit,nt) * Tctl%DeltaT
           call UpdateState_hillslope(iunit,nt)
           TRunoff%etin(iunit,nt) = (-TRunoff%ehout(iunit,nt) + TRunoff%qsub(iunit,nt)) * TUnit%area(iunit) * TUnit%frac(iunit)
           !-----------------------------------------------------------------------------------------------------------------
-          if (nt==1) then ! if LIQ tracer and there is water
+          if (nt==1) then ! if LIQ tracer
+            Rest_H(:) = 0._r8
             do ntdom=1,nt_rtm_dom ! loop over DOM tracers
-              Tdom%domHout(iunit,ntdom)=0._r8
-              !if (Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)> 0.30001_r8) then
+              Tdom%domHout(iunit,ntdom)=0._r8 ! initialize flux to 0
+              !if (Tdom%domsur(iunit,ntdom)/TRunoff%qsur(iunit,nt)> 0.30001_r8) then this was a check for the surface doc concentration
               ! write(iulog,*)'Concentration ERROR qsur',Tdom%domsur(iunit,ntdom),TRunoff%qsur(iunit,nt)
               !endif
-              if (TRunoff%wh(iunit,nt)-TRunoff%dwh(iunit,nt)*Tctl%DeltaT+TRunoff%qsur(iunit,nt)*Tctl%DeltaT>0._r8) then
-                 if (TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT < 0._r8) then
+              if (TRunoff%wh(iunit,nt)-TRunoff%dwh(iunit,nt)*Tctl%DeltaT+TRunoff%qsur(iunit,nt)*Tctl%DeltaT>0._r8) then ! if the water entering and present in the hillslope is greater than 0
+                 if (TRunoff%wh(iunit,nt) - TRunoff%dwh(iunit,nt) * Tctl%DeltaT <= 0._r8) then
                   Rest_H(ntdom)= Rest_H(ntdom)+Tdom%domH(iunit,ntdom)
                   Tdom%domH(iunit,ntdom)=0._r8
                  endif
@@ -91,11 +91,11 @@ MODULE MOSART_physics_mod
               if (Tdom%domH(iunit,ntdom) < 1.e-50_r8) then
                   Tdom%domH(iunit,ntdom)=0._r8
               endif
-              if (Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)> 0.30001_r8) then
-               Rest_H(ntdom)= Rest_H(ntdom)+(Tdom%domsub(iunit,ntdom)-0.3_r8*TRunoff%qsub(iunit,nt))*Tctl%DeltaT
-               Tdom%domsub(iunit,ntdom)=max(0._r8,0.3_r8*TRunoff%qsub(iunit,nt))
-              endif
-              Tdom%domsub(iunit,ntdom)  = Tdom%domsub(iunit,ntdom)  * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
+              !if (Tdom%domsub(iunit,ntdom)/TRunoff%qsub(iunit,nt)> 0.30001_r8) then this was a check for the subsurface DOC concentratrion
+              ! Rest_H(ntdom)= Rest_H(ntdom)+(Tdom%domsub(iunit,ntdom)-0.3_r8*TRunoff%qsub(iunit,nt))*Tctl%DeltaT
+              ! Tdom%domsub(iunit,ntdom)=max(0._r8,0.3_r8*TRunoff%qsub(iunit,nt))
+              !endif
+              Tdom%domsub(iunit,ntdom)  = Tdom%domsub(iunit,ntdom)  * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units kg/m2s --> kg/s
               Tdom%domHout(iunit,ntdom) = Tdom%domHout(iunit,ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units
               Tdom%domRest(iunit,ntdom) = Tdom%domRest(iunit,ntdom) + Rest_H(ntdom) * TUnit%area(iunit) * TUnit%frac(iunit) ! readjust to correct units kg/m2 --> kg
             enddo
@@ -135,7 +135,7 @@ MODULE MOSART_physics_mod
        if (TUnit%euler_calc(nt)) then
        do iunit=rtmCTL%begr,rtmCTL%endr
           if(TUnit%mask(iunit) > 0) then
-            Rest_T(:) = 0._r8
+            Rest_T(:) = 0._r8 ! we need to add another rest variable because it has only one dimension
              localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_t(iunit)
              do k=1,TUnit%numDT_t(iunit)
                 call subnetworkRouting(iunit,nt,localDeltaT)

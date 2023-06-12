@@ -246,7 +246,7 @@ contains
     type(ESMF_State) :: importState
     integer          :: n,nt
     integer          :: begr, endr
-    integer          :: nliq, nfrz, ndoc
+    integer          :: nliq, nfrz, ndoc ! ndoc is carbon tracer, ndon can be added for nitrogen later
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
 
@@ -271,7 +271,7 @@ contains
 
     ndoc = 0
     do nt = 1,nt_rtm_dom
-       if (trim(rtm_tracers_dom(nt)) == 'DOC') ndoc = nt
+       if (trim(rtm_tracers_dom(nt)) == 'DOC') ndoc = nt ! DOC is currently the only tracer in DOM
     enddo
     if (ndoc == 0) then
        write(iulog,*) trim(subname),': ERROR in rtm_tracers_dom DOC ',ndoc,rtm_tracers_dom

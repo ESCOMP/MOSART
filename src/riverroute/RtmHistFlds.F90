@@ -116,11 +116,11 @@ contains
 
     call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qgwl_nt1, default='inactive')
+         ptr_rof=rtmCTL%qgwl_nt1, default='active')
 
     call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qgwl_nt2, default='inactive')
+         ptr_rof=rtmCTL%qgwl_nt2, default='active')
 
     call RtmHistAddfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
          avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
@@ -165,23 +165,23 @@ contains
     call RtmHistAddfld (fname='MASS_REST'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domRest_ntdom1, default='active') 
-
+    ! added DOC out of Hills
     call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domHout_ntdom1, default='active')
-
-    call RtmHistAddfld (fname='OUT_SUBN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%erlateral2_nt1, default='active')
-
-    call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%etin_nt1, default='active')
-     
+    ! added DOC out of Subn 
     call RtmHistAddfld (fname='OUT_SUBN'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domTout_ntdom1, default='active')
-
+    ! added water out of Subn
+    call RtmHistAddfld (fname='OUT_SUBN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%erlateral2_nt1, default='active')
+    ! added water out of Hills
+    call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%etin_nt1, default='active')
+    
     call RtmHistAddfld (fname='MASS_HILLS'//'_'//trim(rtm_tracers(1)), units='m',  &
          avgflag='A', long_name='MOSART WATER: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%wh_nt1, default='active')

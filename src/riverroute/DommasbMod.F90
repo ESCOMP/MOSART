@@ -27,14 +27,15 @@ MODULE DommasbMod
       real(r8), intent(in) :: theDeltaT
       !domsur (kg/m2*s) ,domH  (kg/m2), ehout (m/s), domHout (kg/m2*s), qsur (m/s), wh (m)
       Tdom%domHout(iunit,ntdom) = -TRunoff%ehout(iunit,nt) * (Tdom%domH(iunit,ntdom) + Tdom%domsur(iunit,ntdom) * theDeltaT)/(TRunoff%wh(iunit,nt)-TRunoff%dwh(iunit,nt)*theDeltaT+TRunoff%qsur(iunit,nt)*theDeltaT)
+      
       !we dont want a too high out
       !Tdom%domHout(iunit,ntdom) = min(-TRunoff%ehout(iunit,nt) * 0.3_r8, Tdom%domHout(iunit,ntdom))
-      !cannot be more be less than 0, lower boundary
+      !cannot be less than 0, lower boundary
       !Tdom%domHout(iunit,ntdom) = max(0._r8,Tdom%domHout(iunit,ntdom))
       !cannot be more than available carbon, upper boundary
       !Tdom%domHout(iunit,ntdom) = min((Tdom%domH(iunit,ntdom)+Tdom%domsur(iunit,ntdom)*theDeltaT)/theDeltaT,Tdom%domHout(iunit,ntdom))
-
       !Tdom%domH(iunit,ntdom) = max(0._r8,Tdom%domH(iunit,ntdom) + (Tdom%domsur(iunit,ntdom) - Tdom%domHout(iunit,ntdom))* theDeltaT)
+
       Tdom%domH(iunit,ntdom) = Tdom%domH(iunit,ntdom) + (Tdom%domsur(iunit,ntdom) - Tdom%domHout(iunit,ntdom))* theDeltaT
 
     end subroutine hillslopeRoutingDOM
@@ -44,13 +45,15 @@ MODULE DommasbMod
       implicit none
       integer, intent(in) :: iunit, nt, ntdom
       real(r8), intent(in) :: theDeltaT
+      ! domTout (kg/s), etout (m3/s), domT (kg), domsub (kg/s), domHout (kg/s), wt (m3), dwt (m3/s), etin (m3/s)
+
       Tdom%domTout(iunit,ntdom) = -TRunoff%etout(iunit,nt) * (Tdom%domT(iunit,ntdom) + (Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom)) * theDeltaT)/(TRunoff%wt(iunit,nt)-TRunoff%dwt(iunit,nt)*theDeltaT+TRunoff%etin(iunit,nt)*theDeltaT)
+      
       !Tdom%domTout(iunit,ntdom) = min(-TRunoff%etout(iunit,nt) *0.3_r8,Tdom%domTout(iunit,ntdom))
       !Tdom%domTout(iunit,ntdom) = max(0._r8,Tdom%domTout(iunit,ntdom))
-      !Tdom%domTout(iunit,ntdom) = min((Tdom%domT(iunit,ntdom)+(Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))* theDeltaT)/theDeltaT,Tdom%domTout(iunit,ntdom))
-
-      
+      !Tdom%domTout(iunit,ntdom) = min((Tdom%domT(iunit,ntdom)+(Tdom%domsub(iunit,ntdom)+Tdom%domHout(iunit,ntdom))* theDeltaT)/theDeltaT,Tdom%domTout(iunit,ntdom))      
       !Tdom%domT(iunit,ntdom) = max(0._r8,Tdom%domT(iunit,ntdom) + ( Tdom%domsub(iunit,ntdom) + Tdom%domHout(iunit,ntdom) - Tdom%domTout(iunit,ntdom) ) * theDeltaT)
+      
       Tdom%domT(iunit,ntdom) = Tdom%domT(iunit,ntdom) + ( Tdom%domsub(iunit,ntdom) + Tdom%domHout(iunit,ntdom) - Tdom%domTout(iunit,ntdom) ) * theDeltaT
       
     end subroutine subnetworkRoutingDOM
@@ -64,12 +67,12 @@ MODULE DommasbMod
       temp_gwl = TRunoff%qgwl(iunit,nt) * TUnit%area(iunit) * TUnit%frac(iunit)
 
       Tdom%domRout(iunit,ntdom) = -TRunoff%erout(iunit,nt) * (Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom)) * theDeltaT)/(TRunoff%wr(iunit,nt)-TRunoff%dwr(iunit,nt)*theDeltaT+(TRunoff%erlateral(iunit,nt)+TRunoff%erin(iunit,nt)+temp_gwl)*theDeltaT)
+      
       !Tdom%domRout(iunit,ntdom) = min(-TRunoff%erout(iunit,nt) *0.3_r8,Tdom%domRout(iunit,ntdom))
       !Tdom%domRout(iunit,ntdom) = max(0._r8,Tdom%domRout(iunit,ntdom))
       !Tdom%domRout(iunit,ntdom) = min((Tdom%domR(iunit,ntdom)+(Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom))* theDeltaT)/theDeltaT,Tdom%domRout(iunit,ntdom))
-
-      
       !Tdom%domR(iunit,ntdom) = max(0._r8,Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom) - Tdom%domRout(iunit,ntdom)) * theDeltaT)
+      
       Tdom%domR(iunit,ntdom) = Tdom%domR(iunit,ntdom) + (Tdom%domRUp(iunit,ntdom) + Tdom%domToutLat(iunit,ntdom) - Tdom%domRout(iunit,ntdom)) * theDeltaT
     end subroutine mainchannelRoutingDOM
 !-------------------------------------------------------------------------
