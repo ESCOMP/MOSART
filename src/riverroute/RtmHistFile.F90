@@ -983,8 +983,9 @@ contains
     ! and write data to history files if end of history interval.
     do t = 1, ntapes
 
-       ! Skip nstep=0 if monthly average
-       if (nstep==0 .and. tape(t)%nhtfrq==0) cycle
+!KO    ! Should no longer be needed
+!KO       ! Skip nstep=0 if monthly average
+!KO       if (nstep==0 .and. tape(t)%nhtfrq==0) cycle
 
        ! Determine if end of history interval
        tape(t)%is_endhist = .false.
