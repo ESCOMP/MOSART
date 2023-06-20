@@ -74,9 +74,12 @@ module RunoffMod
      real(r8), pointer :: domHout(:,:)     ! RTM DOM storage (kgC/s)
      real(r8), pointer :: domRoutFlow(:,:) ! RTM DOM storage (kgC/s)
      real(r8), pointer :: domRout(:,:)     ! RTM DOM storage (kgC/s)
-     real(r8), pointer :: domRest(:,:)     ! RTM DOM storage (kgC)
+     real(r8), pointer :: domResthill(:,:)     ! RTM DOM storage (kgC)
+     real(r8), pointer :: domRestsubn(:,:)     ! RTM DOM storage (kgC)
+     real(r8), pointer :: domRestmain(:,:)     ! RTM DOM storage (kgC)
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
-     real(r8), pointer :: etin(:,:)     
+     real(r8), pointer :: etin(:,:)    
+     real(r8), pointer :: ehout(:,:)     
      real(r8), pointer :: erlateral2(:,:)
      
      !    - restarts
@@ -122,7 +125,9 @@ module RunoffMod
      real(r8), pointer :: qsub_nt2(:)
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
-     real(r8), pointer :: domRest_ntdom1(:)
+     real(r8), pointer :: domResthill_ntdom1(:)
+     real(r8), pointer :: domRestsubn_ntdom1(:)
+     real(r8), pointer :: domRestmain_ntdom1(:)
      real(r8), pointer :: domsur_ntdom1(:)
      real(r8), pointer :: domsub_ntdom1(:)
      real(r8), pointer :: dommas_ntdom1(:)
@@ -130,13 +135,14 @@ module RunoffMod
      real(r8), pointer :: runofflnddom_ntdom1(:)
      real(r8), pointer :: domH_ntdom1(:)
      real(r8), pointer :: domT_ntdom1(:)
+     real(r8), pointer :: domR_ntdom1(:)
      real(r8), pointer :: domHout_ntdom1(:)
      real(r8), pointer :: domTout_ntdom1(:)
-     real(r8), pointer :: domR_ntdom1(:)
      real(r8), pointer :: wh_nt1(:)
      real(r8), pointer :: wt_nt1(:)
      real(r8), pointer :: wr_nt1(:)
      real(r8), pointer :: etin_nt1(:)
+     real(r8), pointer :: ehout_nt1(:)
      real(r8), pointer :: erlateral2_nt1(:)
 
   end type runoff_flow
@@ -326,7 +332,9 @@ module RunoffMod
      real(r8), pointer :: domRout(:,:) ! dom discharge from main channel into downstream gridcells (kgC/s)
      real(r8), pointer :: domRoutFlow(:,:) 
      real(r8), pointer :: domRUp(:,:)  ! outflow sum of upstream gridcells (kgC/m3)
-     real(r8), pointer :: domRest(:,:) ! excess DOM in mosart (kgC)
+     real(r8), pointer :: domResthill(:,:) ! excess DOM in mosart (kgC)
+     real(r8), pointer :: domRestsubn(:,:) ! excess DOM in mosart (kgC)
+     real(r8), pointer :: domRestmain(:,:) ! excess DOM in mosart (kgC)
   end type Domflux 
   
   !== Hongyi
@@ -410,8 +418,12 @@ contains
              rtmCTL%domsur_ntdom1(begr:endr),            &
              rtmCTL%domsub_ntdom1(begr:endr),            &
              rtmCTL%dommas_ntdom1(begr:endr),            &
-             rtmCTL%domRest_ntdom1(begr:endr),              &
-             rtmCTL%domRest(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domResthill_ntdom1(begr:endr),              &
+             rtmCTL%domResthill(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domRestsubn_ntdom1(begr:endr),              &
+             rtmCTL%domRestsubn(begr:endr,nt_rtm_dom),          &
+             rtmCTL%domRestmain_ntdom1(begr:endr),              &
+             rtmCTL%domRestmain(begr:endr,nt_rtm_dom),          &
              rtmCTL%domH_ntdom1(begr:endr),              &
              rtmCTL%domH(begr:endr,nt_rtm_dom),          &
              rtmCTL%domT_ntdom1(begr:endr),              &
@@ -427,6 +439,8 @@ contains
              rtmCTL%erlateral2_nt1(begr:endr),              &
              rtmCTL%etin(begr:endr,nt_rtm),           &
              rtmCTL%etin_nt1(begr:endr),              &
+             rtmCTL%ehout(begr:endr,nt_rtm),           &
+             rtmCTL%ehout_nt1(begr:endr),              &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -450,21 +464,17 @@ contains
     rtmCTL%qsur(:,:)       = 0._r8
     rtmCTL%qsub(:,:)       = 0._r8
     rtmCTL%qgwl(:,:)       = 0._r8
+    rtmCTL%erlateral2(:,:)  =0._r8
+    rtmCTL%etin(:,:)     =0._r8
+    rtmCTL%ehout(:,:)     =0._r8
 
     rtmCTL%runofflnddom(:,:)=spval
     rtmCTL%runoffocndom(:,:)=spval
     rtmCTL%domsur(:,:)      =0._r8
     rtmCTL%domsub(:,:)      =0._r8
-    !rtmCTL%dommas(:,:)      =0._r8
-    !rtmCTL%domH(:,:)        =0._r8
-    !rtmCTL%domT(:,:)        =0._r8
-    !rtmCTL%domR(:,:)        =0._r8
     rtmCTL%domTout(:,:)     =0._r8
-    rtmCTL%erlateral2(:,:)     =0._r8
-    rtmCTL%etin(:,:)     =0._r8
     rtmCTL%domHout(:,:)     =0._r8
-    rtmCTL%domRoutFlow(:,:) =0._r8
-    rtmCTL%domRest(:,:)     =0._r8
+
 
   end subroutine RunoffInit
 

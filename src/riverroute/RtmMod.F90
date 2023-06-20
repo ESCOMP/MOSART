@@ -86,6 +86,7 @@ module RtmMod
   real(r8), save, pointer :: flow(:,:)       ! mosart flow (m3/s)
   real(r8), save, pointer :: erlateral2(:,:) ! mosart flow (m3/s)
   real(r8), save, pointer :: etin(:,:)       ! mosart flow (m3/s)
+  real(r8), save, pointer :: ehout(:,:)       ! mosart flow (m3/s)
   real(r8), save, pointer :: flowdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: Houtdom(:,:)    ! mosart flow (kg/s)
   real(r8), save, pointer :: Toutdom(:,:)    ! mosart flow (kg/s)
@@ -938,6 +939,7 @@ contains
               flowdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erlateral2    (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               etin          (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+              ehout         (rtmCTL%begr:rtmCTL%endr,nt_rtm), &
               Houtdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               Toutdom    (rtmCTL%begr:rtmCTL%endr,nt_rtm_dom), &
               erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
@@ -951,6 +953,7 @@ contains
     flow(:,:)    = 0._r8
     erlateral2(:,:)    = 0._r8
     etin(:,:)    = 0._r8
+    ehout(:,:)    = 0._r8
     flowdom(:,:)    = 0._r8
     Houtdom(:,:)    = 0._r8
     Toutdom(:,:)    = 0._r8
@@ -1478,6 +1481,7 @@ contains
     flow = 0._r8
     erlateral2 = 0._r8
     etin = 0._r8
+    ehout = 0._r8
     flowdom = 0._r8
     Houtdom = 0._r8
     Toutdom = 0._r8
@@ -1910,6 +1914,7 @@ contains
        do nr = rtmCTL%begr,rtmCTL%endr
           flow(nr,nt) = flow(nr,nt) + TRunoff%flow(nr,nt)
           etin(nr,nt) = etin(nr,nt) + TRunoff%etin(nr,nt)
+          ehout(nr,nt) = ehout(nr,nt) - TRunoff%ehout(nr,nt)*rtmCTL%area(nr)
           erlateral2(nr,nt) = erlateral2(nr,nt) + TRunoff%erlateral2(nr,nt)
           erout_prev(nr,nt) = erout_prev(nr,nt) + TRunoff%erout_prev(nr,nt)
           eroutup_avg(nr,nt) = eroutup_avg(nr,nt) + TRunoff%eroutup_avg(nr,nt)
@@ -1931,6 +1936,7 @@ contains
     !-----------------------------------
     erlateral2  = erlateral2  / float(nsub)
     etin        = etin        / float(nsub)
+    ehout       = ehout       / float(nsub)
     flow        = flow        / float(nsub)
     flowdom     = flowdom     / float(nsub)
     Houtdom     = Houtdom     / float(nsub)
@@ -1942,47 +1948,52 @@ contains
     !-----------------------------------
     ! update states when subsycling completed
     !-----------------------------------
-
-    rtmCTL%wh      = TRunoff%wh
     rtmCTL%wt      = TRunoff%wt
     rtmCTL%wr      = TRunoff%wr
     rtmCTL%erout   = TRunoff%erout
     rtmCTL%domT    = Tdom%domT
     rtmCTL%domR    = Tdom%domR
     rtmCTL%domRout = Tdom%domRout
-    rtmCTL%domRest = Tdom%domRest
+    rtmCTL%domResthill = Tdom%domResthill
+    rtmCTL%domRestsubn = Tdom%domRestsubn
+    rtmCTL%domRestmain = Tdom%domRestmain
 
     do nt = 1,nt_rtm
-    do nr = rtmCTL%begr,rtmCTL%endr
+    do nr = rtmCTL%begr,rtmCTL%endr ! both ocean, land and outlet
        volr_init = rtmCTL%volr(nr,nt)
        rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + &
                              TRunoff%wh(nr,nt)*rtmCTL%area(nr))
+       rtmCTL%wh = TRunoff%wh*rtmCTL%area(nr)
        if (nt==1) then
          do ntdom = 1,nt_rtm_dom
             rtmCTL%domH(nr,ntdom)    = Tdom%domH(nr,ntdom) * rtmCTL%area(nr)
             rtmCTL%dommas(nr,ntdom)=(rtmCTL%area(nr)*Tdom%domH(nr,ntdom) + &
                                      Tdom%domT(nr,ntdom) + &
                                      Tdom%domR(nr,ntdom))
+            rtmCTL%domHout(nr,ntdom)=Houtdom(nr,ntdom)
+            rtmCTL%domTout(nr,ntdom)=Toutdom(nr,ntdom)
          enddo   
        end if     
        rtmCTL%dvolrdt(nr,nt) = (rtmCTL%volr(nr,nt) - volr_init) / delt_coupling
        rtmCTL%runoff(nr,nt) = flow(nr,nt)
      
        rtmCTL%runofftot(nr,nt) = rtmCTL%direct(nr,nt)
-       if (rtmCTL%mask(nr) == 1) then
+
+       rtmCTL%erlateral2(nr,nt)=erlateral2(nr,nt)
+       rtmCTL%etin(nr,nt)=etin(nr,nt)
+       rtmCTL%ehout(nr,nt)=ehout(nr,nt)
+
+       if (rtmCTL%mask(nr) == 1) then ! over land
           rtmCTL%runofflnd(nr,nt) = rtmCTL%runoff(nr,nt)
           rtmCTL%dvolrdtlnd(nr,nt)= rtmCTL%dvolrdt(nr,nt)
-          rtmCTL%erlateral2(nr,nt)=erlateral2(nr,nt)
-          rtmCTL%etin(nr,nt)=etin(nr,nt)
+
           if (nt==1) then
             do ntdom = 1,nt_rtm_dom
                rtmCTL%runofflnddom(nr,ntdom)=flowdom(nr,ntdom)
-               rtmCTL%domHout(nr,ntdom)=Houtdom(nr,ntdom)
-               rtmCTL%domTout(nr,ntdom)=Toutdom(nr,ntdom)
             enddo   
           end if     
 
-       elseif (rtmCTL%mask(nr) >= 2) then
+       elseif (rtmCTL%mask(nr) >= 2) then ! ocean and outlet
           rtmCTL%runoffocn(nr,nt) = rtmCTL%runoff(nr,nt)
           rtmCTL%runofftot(nr,nt) = rtmCTL%runofftot(nr,nt) + rtmCTL%runoff(nr,nt)
           rtmCTL%dvolrdtocn(nr,nt)= rtmCTL%dvolrdt(nr,nt)
@@ -2648,8 +2659,12 @@ contains
      Tdom%domRoutFlow = 0._r8
      allocate (Tdom%domRUp(begr:endr,nt_rtm_dom))
      Tdom%domRUp = 0._r8
-     allocate (Tdom%domRest(begr:endr,nt_rtm_dom))
-     Tdom%domRest = 0._r8
+     allocate (Tdom%domResthill(begr:endr,nt_rtm_dom))
+     Tdom%domResthill = 0._r8
+     allocate (Tdom%domRestsubn(begr:endr,nt_rtm_dom))
+     Tdom%domRestsubn = 0._r8
+     allocate (Tdom%domRestmain(begr:endr,nt_rtm_dom))
+     Tdom%domRestmain = 0._r8
      allocate (Tdom%domsur(begr:endr,nt_rtm_dom))
      Tdom%domsur = 0._r8
      allocate (Tdom%domsub(begr:endr,nt_rtm_dom))

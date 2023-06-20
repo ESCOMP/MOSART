@@ -80,11 +80,11 @@ contains
 
     call RtmHistAddfld (fname='STORAGE_MCH', units='m3',  &
          avgflag='A', long_name='MOSART main channelstorage', &
-         ptr_rof=rtmCTL%volr_mch, default='inactive')
+         ptr_rof=rtmCTL%volr_mch, default='active')
 
     call RtmHistAddfld (fname='DVOLRDT_LND'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART land change in storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%dvolrdtlnd_nt1, default='inactive')
+         ptr_rof=rtmCTL%dvolrdtlnd_nt1, default='active')
 
     call RtmHistAddfld (fname='DVOLRDT_LND'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART land change in storage: '//trim(rtm_tracers(2)), &
@@ -92,7 +92,7 @@ contains
 
     call RtmHistAddfld (fname='DVOLRDT_OCN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART ocean change of storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%dvolrdtocn_nt1, default='inactive')
+         ptr_rof=rtmCTL%dvolrdtocn_nt1, default='active')
 
     call RtmHistAddfld (fname='DVOLRDT_OCN'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
          avgflag='A', long_name='MOSART ocean change of storage: '//trim(rtm_tracers(2)), &
@@ -162,9 +162,15 @@ contains
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
          ptr_rof=rtmCTL%domR_ntdom1, default='active')
 
-    call RtmHistAddfld (fname='MASS_REST'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
+    call RtmHistAddfld (fname='MASS_REST_HILL'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
-         ptr_rof=rtmCTL%domRest_ntdom1, default='active') 
+         ptr_rof=rtmCTL%domResthill_ntdom1, default='active') 
+    call RtmHistAddfld (fname='MASS_REST_SUBN'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
+         avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domRestsubn_ntdom1, default='active') 
+    call RtmHistAddfld (fname='MASS_REST_MAIN'//'_'//trim(rtm_tracers_dom(1)), units='kgC',  &
+         avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
+         ptr_rof=rtmCTL%domRestmain_ntdom1, default='active') 
     ! added DOC out of Hills
     call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers_dom(1)), units='kgC/s',  &
          avgflag='A', long_name='MOSART DOM: '//trim(rtm_tracers_dom(1)), &
@@ -178,11 +184,15 @@ contains
          avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%erlateral2_nt1, default='active')
     ! added water out of Hills
-    call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+    call RtmHistAddfld (fname='IN_SUBN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%etin_nt1, default='active')
+
+    call RtmHistAddfld (fname='OUT_HILLS'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
+         avgflag='A', long_name='MOSART water: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%ehout_nt1, default='active')
     
-    call RtmHistAddfld (fname='MASS_HILLS'//'_'//trim(rtm_tracers(1)), units='m',  &
+    call RtmHistAddfld (fname='MASS_HILLS'//'_'//trim(rtm_tracers(1)), units='m3',  &
          avgflag='A', long_name='MOSART WATER: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%wh_nt1, default='active')
 
@@ -252,13 +262,16 @@ contains
     rtmCTL%domH_ntdom1(:) = rtmCTL%domH(:,1)
     rtmCTL%domT_ntdom1(:) = rtmCTL%domT(:,1)
     rtmCTL%domR_ntdom1(:) = rtmCTL%domR(:,1)
-    rtmCTL%domRest_ntdom1(:) = rtmCTL%domRest(:,1)
+    rtmCTL%domResthill_ntdom1(:) = rtmCTL%domResthill(:,1)
+    rtmCTL%domRestsubn_ntdom1(:) = rtmCTL%domRestsubn(:,1)
+    rtmCTL%domRestmain_ntdom1(:) = rtmCTL%domRestmain(:,1)
     rtmCTL%domHout_ntdom1(:) = rtmCTL%domHout(:,1)
     rtmCTL%domTout_ntdom1(:) = rtmCTL%domTout(:,1)
     rtmCTL%wr_nt1(:) = rtmCTL%wr(:,1)
     rtmCTL%wt_nt1(:) = rtmCTL%wt(:,1)
     rtmCTL%wh_nt1(:) = rtmCTL%wh(:,1)
     rtmCTL%etin_nt1(:) = rtmCTL%etin(:,1)
+    rtmCTL%ehout_nt1(:) = rtmCTL%ehout(:,1)
     rtmCTL%erlateral2_nt1(:) = rtmCTL%erlateral2(:,1)
 
   end subroutine RtmHistFldsSet
