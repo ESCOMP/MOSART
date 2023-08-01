@@ -1346,6 +1346,8 @@ contains
 
        ! Add history filenames to master restart file
        do t = 1,ntapes
+          locfnh(t) = set_hist_filename (hist_freq=tape(t)%nhtfrq, &
+               rtmhist_mfilt=tape(t)%mfilt, hist_file=t)
           call ncd_io('locfnh',  locfnh(t),  'write', ncid, nt=t)
           call ncd_io('locfnhr', locfnhr(t), 'write', ncid, nt=t)
        end do
