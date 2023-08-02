@@ -5,10 +5,13 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+      <machine name="cheyenne" compiler="nvhpc" category="mosart"></machine>
+      <machine name="izumi" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="gnu" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Restart test without DEBUG on all machines/compilers</option>
+      <option name="comment"  >Restart test without DEBUG on all machines/compilers (except nag since nag needs DEBUG for CTSM)</option>
     </options>
   </test>
   <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
@@ -17,6 +20,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Restart test without DEBUG with ice flow off</option>
     </options>
   </test>
   <test name="SMS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/mosartCold">
@@ -26,12 +30,13 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Run a Cold-Start with all machine/compilers</option>
+      <option name="comment"  >Run a Cold-Start with main machine and all compilers</option>
     </options>
   </test>
   <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="gnu" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -69,7 +74,10 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+      <machine name="cheyenne" compiler="nvhpc" category="mosart"></machine>
       <machine name="izumi" compiler="nag" category="mosart"></machine>
+      <machine name="izumi" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="gnu" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -97,6 +105,7 @@
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/passChannelDepths">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -106,18 +115,21 @@
   <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Exact restart test changing processor count with DEBUG on</option>
     </options>
   </test>
   <test name="PEM_D" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/inplacethreshold">
     <machines>
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Set direct_in_place for threshold negative flow</option>
+      <option name="comment"  >Change the processor count and set direct_in_place for threshold negative flow</option>
     </options>
   </test>
   <test name="SMS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/nobypass">
