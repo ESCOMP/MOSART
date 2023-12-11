@@ -746,7 +746,6 @@ contains
        status = PIO_def_var(ncid,trim(varname),lxtype,dimid0        ,vardesc)
     endif
     varid = vardesc%varid
-
     !
     ! Add attributes
     !

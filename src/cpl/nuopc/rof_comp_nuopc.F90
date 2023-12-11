@@ -28,9 +28,11 @@ module rof_comp_nuopc
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
   use rof_import_export     , only : import_fields, export_fields
-  use nuopc_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use nuopc_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
+  use rof_comp_share        , only : Emesh
+  use nuopc_shr_methods     , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+  use nuopc_shr_methods     , only : set_component_logging, get_component_instance, log_clock_advance
 !$ use omp_lib              , only : omp_set_num_threads
+
   implicit none
   private ! except
 
@@ -444,7 +446,6 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
-    type(ESMF_Mesh)       :: Emesh
     type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
     type(ESMF_VM)         :: vm
     integer , allocatable :: gindex(:)             ! global index space on my processor
