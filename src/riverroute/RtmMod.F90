@@ -1762,6 +1762,7 @@ contains
    end subroutine RtmFloodInit
 
    !-----------------------------------------------------------------------
+
    subroutine MOSART_init(rc)
 
       !-----------------------------------------------------------------------
@@ -1800,6 +1801,7 @@ contains
       rc = ESMF_SUCCESS
 
       ! Calculate map for direct to outlet mapping
+      ! The route handle rh_direct will then be used in Rtmrun
       cnt = rtmCTL%endr - rtmCTL%begr + 1
       allocate(factorList(cnt))
       allocate(factorIndexList(2,cnt))
@@ -1808,8 +1810,8 @@ contains
          cnt = cnt + 1
          if (rtmCTL%outletg(nr) > 0) then
             factorList(cnt) = 1.0_r8
-            factorIndexList(1,cnt) = rtmCTL%outletg(nr)
-            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
+            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
+            factorIndexList(2,cnt) = rtmCTL%outletg(nr)
          else
             factorList(cnt) = 1.0_r8
             factorIndexList(1,cnt) = rtmCTL%gindex(nr)
@@ -1825,19 +1827,15 @@ contains
 
       if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
 
-      ! Set up pointer arrays into srcfield and dstfield
-      call ESMF_FieldGet(srcfield, farrayPtr=src_eroutUp, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-      src_eroutUp(:,:) = 0._r8
-      dst_eroutUp(:,:) = 0._r8
+      ! ---------------------------------------
+      ! Read in data from frivinp_rtm
+      ! ---------------------------------------
 
       begr = rtmCTL%begr
       endr = rtmCTL%endr
 
       if(endr >= begr) then
+
          ! routing parameters
          call ncd_pio_openfile (ncid, trim(frivinp_rtm), 0)
          call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
@@ -2189,6 +2187,10 @@ contains
             if(TUnit%dnID(iunit) > 0) cnt = cnt + 1
          enddo
 
+         ! --------------------------------------------------
+         ! Compute route handle rh_eroutUp
+         ! --------------------------------------------------
+
          allocate(factorList(cnt))
          allocate(factorIndexList(2,cnt))
          cnt = 0
@@ -2196,8 +2198,8 @@ contains
             if (TUnit%dnID(iunit) > 0) then
                cnt = cnt + 1
                factorList(cnt) = 1.0_r8
-               factorIndexList(1,cnt) = TUnit%dnID(iunit)
-               factorIndexList(2,cnt) = TUnit%ID0(iunit)
+               factorIndexList(1,cnt) = TUnit%ID0(iunit)
+               factorIndexList(2,cnt) = TUnit%dnID(iunit)
             endif
          enddo
          if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
@@ -2210,6 +2212,12 @@ contains
 
       end if  ! endr >= begr
 
+      ! Set up pointer arrays into srcfield and dstfield
+      call ESMF_FieldGet(srcfield, farrayPtr=src_eroutUp, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
       !--- compute areatot from area using dnID ---
       !--- this basically advects upstream areas downstream and
       !--- adds them up as it goes until all upstream areas are accounted for
@@ -2219,6 +2227,7 @@ contains
 
       ! initialize dst_eroutUp to local area and add that to areatotal2
       cnt = 0
+      dst_eroutUp(:,:) = 0._r8
       do nr = rtmCTL%begr,rtmCTL%endr
          cnt = cnt + 1
          dst_eroutUp(1,cnt) = rtmCTL%area(nr)
@@ -2240,6 +2249,7 @@ contains
             src_eroutUp(1,cnt) = dst_eroutUp(1,cnt)
          enddo
 
+         dst_eroutUp(:,:) = 0._r8
          call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, rc=rc)
          if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
