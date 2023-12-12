@@ -18,17 +18,17 @@ module rof_comp_nuopc
   use shr_sys_mod           , only : shr_sys_abort
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_cal_mod           , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use RtmVar                , only : rtmlon, rtmlat, iulog
+  use RtmVar                , only : rtmlon, rtmlat, iulog, nt_rtm
   use RtmVar                , only : nsrStartup, nsrContinue, nsrBranch
   use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
+  use RtmVar                , only : srcfield, dstfield
   use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
   use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : Rtminit_namelist, Rtmini, Rtmrun
+  use RtmMod                , only : Rtminit_namelist, Rtmini, MOSART_init, Rtmrun
   use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
   use rof_import_export     , only : import_fields, export_fields
-  use rof_comp_share        , only : Emesh
   use nuopc_shr_methods     , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods     , only : set_component_logging, get_component_instance, log_clock_advance
 !$ use omp_lib              , only : omp_set_num_threads
@@ -446,6 +446,7 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
+    type(ESMF_Mesh)       :: Emesh
     type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
     type(ESMF_VM)         :: vm
     integer , allocatable :: gindex(:)             ! global index space on my processor
@@ -496,7 +497,10 @@ contains
        call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
     endif
 #endif
-    call Rtmini()
+
+    call Rtmini(rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------
@@ -531,6 +535,28 @@ contains
 
     call realize_fields(gcomp,  Emesh, flds_scalar_name, flds_scalar_num, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !-------------------------------------------------------
+    ! create srcfield and dstfield - needed for mapping
+    !-------------------------------------------------------
+
+    srcfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
+         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    dstfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
+         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+
+    !-------------------------------------------------------
+    ! Initialize mosart
+    !-------------------------------------------------------
+
+    call t_startf('mosarti_mosart_init')
+    call MOSART_init(rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call t_stopf('mosarti_mosart_init')
 
     !--------------------------------
     ! Create MOSART export state
@@ -692,7 +718,8 @@ contains
 
     ! Advance mosart time step then run MOSART (export data is in rtmCTL and Trunoff data types)
     call advance_timestep()
-    call Rtmrun(rstwr, nlend, rdate)
+    call Rtmrun(rstwr, nlend, rdate, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! Pack export state to mediator
@@ -700,10 +727,8 @@ contains
 
     ! (input is rtmCTL%runoff, output is r2x)
     call t_startf ('lc_rof_export')
-
     call export_fields(gcomp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     call t_stopf ('lc_rof_export')
 
     !--------------------------------

@@ -1,16 +1,11 @@
 module RtmMod
 
    !-----------------------------------------------------------------------
-   !BOP
-   !
-   ! !MODULE: RtmMod
-   !
-   ! !DESCRIPTION:
    ! Mosart Routing Model
    !
    ! !USES:
    use shr_kind_mod       , only : r8 => shr_kind_r8
-   use shr_sys_mod        , only : shr_sys_flush, shr_sys_abort
+   use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
    use RtmVar             , only : nt_rtm, rtm_tracers
@@ -22,7 +17,7 @@ module RtmMod
                                    inst_index, inst_suffix, inst_name, decomp_option, &
                                    bypass_routing_option, qgwl_runoff_option, barrier_timers, &
                                    srcfield, dstfield, rh_direct, rh_eroutUp
-   use RtmFileUtils       , only : getfil, getavu, relavu
+   use RtmFileUtils       , only : getfil
    use RtmTimeManager     , only : timemgr_init, get_nstep, get_curr_date
    use RtmHistFlds        , only : RtmHistFldsInit, RtmHistFldsSet
    use RtmHistFile        , only : RtmHistUpdateHbuf, RtmHistHtapesWrapup, RtmHistHtapesBuild, &
@@ -33,12 +28,12 @@ module RtmMod
                                    max_tapes, max_namlen
    use RtmRestFile        , only : RtmRestTimeManager, RtmRestGetFile, RtmRestFileRead, &
                                    RtmRestFileWrite, RtmRestFileName
-   use RunoffMod          , only : RunoffInit, rtmCTL, Tctl, Tunit, TRunoff, Tpara, &
-   use MOSART_physics_mod , only : Euler
+   use RunoffMod          , only : RunoffInit, rtmCTL, Tctl, Tunit, TRunoff, Tpara
    use MOSART_physics_mod , only : updatestate_hillslope, updatestate_subnetwork, &
-                                   updatestate_mainchannel
+                                   updatestate_mainchannel, Euler
+   use perf_mod           , only : t_startf, t_stopf
+   use nuopc_shr_methods  , only : chkerr
    use RtmIO
-   use perf_mod
    use pio
    use ESMF
    !
@@ -47,17 +42,14 @@ module RtmMod
    private
    !
    ! !PUBLIC MEMBER FUNCTIONS:
-   public Rtminit_namelist ! Initialize MOSART grid
-   public Rtmini           ! Initialize MOSART grid
-   public Rtmrun           ! River routing model
-   !
-   ! !REVISION HISTORY:
-   ! Author: Sam Levis
+   public :: Rtminit_namelist ! Initialize MOSART grid
+   public :: Rtmini           ! Initialize MOSART grid
+   public :: MOSART_init
+   public :: Rtmrun           ! River routing model
    !
    ! !PRIVATE MEMBER FUNCTIONS:
    private :: RtmFloodInit
-
-   ! !PRIVATE TYPES:
+   private :: SubTimestep
 
    ! MOSART tracers
    character(len=256) :: rtm_trstr   ! tracer string
@@ -70,13 +62,13 @@ module RtmMod
    real(r8) :: cfl_scale = 1.0_r8    ! cfl scale factor, must be <= 1.0
    real(r8) :: river_depth_minimum = 1.e-4 ! gridcell average minimum river depth [m]
 
-   !global (glo)
+   ! global (glo)
    integer , pointer :: ID0_global(:)  ! local ID index
    integer , pointer :: dnID_global(:) ! downstream ID based on ID0
    real(r8), pointer :: area_global(:) ! area
    integer , pointer :: IDkey(:)       ! translation key from ID to gindex
 
-   !local (gdc)
+   ! local (gdc)
    real(r8), pointer :: evel(:,:)       ! effective tracer velocity (m/s)
    real(r8), pointer :: flow(:,:)       ! mosart flow (m3/s)
    real(r8), pointer :: erout_prev(:,:) ! erout previous timestep (m3/s)
@@ -92,37 +84,23 @@ module RtmMod
    real(r8),pointer :: rlone(:)    ! longitude of 1d east grid cell edge (deg)
 
    logical :: do_rtmflood
-
    character(len=256) :: nlfilename_rof = 'mosart_in'
-   !
-   !EOP
+   character(len=256) :: fnamer      ! name of netcdf restart file
+   character(*), parameter :: u_FILE_u = &
+        __FILE__
    !-----------------------------------------------------------------------
 
 contains
 
    !-----------------------------------------------------------------------
-   !BOP
-   !
-   ! !IROUTINE: Rtminit_namelist
-   !
-   ! !INTERFACE:
    subroutine Rtminit_namelist(flood_active)
       !
-      ! !DESCRIPTION:
       ! Read and distribute mosart namelist
       !
-      ! !USES:
-      !
-      ! !ARGUMENTS:
+      ! arguments
       logical, intent(out) :: flood_active
       !
-      ! !REVISION HISTORY:
-      ! Author: Sam Levis
-      ! Update: T Craig, Dec 2006
-      ! Update: J Edwards, Jun 2022
-      !
-      ! !LOCAL VARIABLES:
-      !EOP
+      ! local variables
       integer           :: i
       integer           :: ier       ! error code
       integer           :: unitn     ! unit for namelist file
@@ -158,14 +136,12 @@ contains
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
       if ( .not. lexist ) then
-         write(iulog,*) subname // ' ERROR: nlfilename_rof does NOT exist:'&
-              //trim(nlfilename_rof)
+         write(iulog,*) subname // ' ERROR: nlfilename_rof does NOT exist: '//trim(nlfilename_rof)
          call shr_sys_abort(trim(subname)//' ERROR nlfilename_rof does not exist')
       end if
       if (masterproc) then
-         unitn = getavu()
-         write(iulog,*) 'Read in mosart_inparm namelist from: ', trim(nlfilename_rof)
-         open( unitn, file=trim(nlfilename_rof), status='old' )
+         write(iulog,*) 'Reading mosart_inparm namelist from: ', trim(nlfilename_rof)
+         open( newunit=unitn, file=trim(nlfilename_rof), status='old' )
          ier = 1
          do while ( ier /= 0 )
             read(unitn, mosart_inparm, iostat=ier)
@@ -173,18 +149,19 @@ contains
                call shr_sys_abort( subname//' encountered end-of-file on mosart_inparm read' )
             endif
          end do
-         call relavu( unitn )
+         close(unitn)
       end if
 
       call mpi_bcast (coupling_period,   1, MPI_INTEGER, 0, mpicom_rof, ier)
       call mpi_bcast (delt_mosart    ,   1, MPI_INTEGER, 0, mpicom_rof, ier)
 
-      call mpi_bcast (finidat_rtm  , len(finidat_rtm)  , MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (frivinp_rtm  , len(frivinp_rtm)  , MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (nrevsn_rtm   , len(nrevsn_rtm)   , MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (decomp_option, len(decomp_option), MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (bypass_routing_option, len(bypass_routing_option), MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (qgwl_runoff_option, len(qgwl_runoff_option), MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (finidat_rtm           , len(finidat_rtm)           , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (frivinp_rtm           , len(frivinp_rtm)           , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (nrevsn_rtm            , len(nrevsn_rtm)            , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (decomp_option         , len(decomp_option)         , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (bypass_routing_option , len(bypass_routing_option) , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (qgwl_runoff_option    , len(qgwl_runoff_option)    , MPI_CHARACTER, 0, mpicom_rof, ier)
+
       call mpi_bcast (do_rtmflood, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
       call mpi_bcast (ice_runoff,  1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
@@ -209,9 +186,6 @@ contains
       if (masterproc) then
          write(iulog,*) 'define run:'
          write(iulog,*) '   run type              = ',runtyp(nsrest+1)
-         !write(iulog,*) '   case title            = ',trim(ctitle)
-         !write(iulog,*) '   username              = ',trim(username)
-         !write(iulog,*) '   hostname              = ',trim(hostname)
          write(iulog,*) '   coupling_period       = ',coupling_period
          write(iulog,*) '   delt_mosart           = ',delt_mosart
          write(iulog,*) '   decomp option         = ',trim(decomp_option)
@@ -234,11 +208,13 @@ contains
 
       if (trim(bypass_routing_option) == 'direct_to_outlet') then
          if (trim(qgwl_runoff_option) == 'threshold') then
-            call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can NOT be threshold if bypass_routing_option==direct_to_outlet' )
+            call shr_sys_abort( subname//' ERROR: qgwl_runoff_option &
+                 CANNOT be threshold if bypass_routing_option==direct_to_outlet' )
          end if
       else if (trim(bypass_routing_option) == 'none') then
          if (trim(qgwl_runoff_option) /= 'all') then
-            call shr_sys_abort( subname//' ERROR: qgwl_runoff_option can only be all if bypass_routing_option==none' )
+            call shr_sys_abort( subname//' ERROR: qgwl_runoff_option &
+                 can only be all if bypass_routing_option==none' )
          end if
       end if
 
@@ -259,35 +235,20 @@ contains
             rtmhist_nhtfrq(i) = nint(-rtmhist_nhtfrq(i)*SHR_CONST_CDAY/(24._r8*coupling_period))
          endif
       end do
-   end subroutine Rtminit_namelist
-   !-----------------------------------------------------------------------
-   !BOP
-   !
-   ! !IROUTINE: Rtmini
-   !
-   ! !INTERFACE:
-   subroutine Rtmini
 
-      !
-      ! !DESCRIPTION:
+   end subroutine Rtminit_namelist
+
+   !-----------------------------------------------------------------------
+
+   subroutine Rtmini(rc)
+
+      !-------------------------------------------------
       ! Initialize MOSART grid, mask, decomp
       !
-      ! !USES:
+      ! Arguments
+      integer, intent(out) :: rc
       !
-      ! !ARGUMENTS:
-      implicit none
-      !
-      ! !CALLED FROM:
-      ! subroutine initialize in module initializeMod
-      !
-      ! !REVISION HISTORY:
-      ! Author: Sam Levis
-      ! Update: T Craig, Dec 2006
-      ! Update: J Edwards, Jun 2022
-      !
-      !
-      ! !LOCAL VARIABLES:
-
+      ! Local variables
       real(r8)                   :: effvel0 = 10.0_r8        ! default velocity (m/s)
       real(r8)                   :: effvel(nt_rtm)           ! downstream velocity (m/s)
       integer ,pointer           :: rgdc2glo(:)              ! temporary for initialization
@@ -295,11 +256,9 @@ contains
       type(file_desc_t)          :: ncid                     ! netcdf file id
       integer                    :: dimid                    ! netcdf dimension identifier
       real(r8)                   :: lrtmarea                 ! tmp local sum of area
-      integer                    :: cnt, lsize, gsize        ! counter
       real(r8)                   :: deg2rad                  ! pi/180
       integer                    :: g, n, i, j, nr, nt       ! iterators
       integer                    :: nl,nloops                ! used for decomp search
-      character(len=256)         :: fnamer                   ! name of netcdf restart file
       character(len=256)         :: pnamer                   ! full pathname of netcdf restart file
       character(len=256)         :: locfn                    ! local file name
       integer                    :: ier
@@ -321,7 +280,6 @@ contains
       real(r8)                   :: dx,dx1,dx2,dx3           ! lon dist. betn grid cells (m)
       real(r8)                   :: dy                       ! lat dist. betn grid cells (m)
       integer                    :: igrow,igcol,iwgt         ! mct field indices
-      character(len=16384)       :: rList                    ! list of fields for SM multiply
       integer                    :: baspe                    ! pe with min number of mosart cells
       integer ,pointer           :: gmask(:)                 ! global mask
       integer ,allocatable       :: idxocn(:)                ! downstream ocean outlet cell
@@ -337,9 +295,10 @@ contains
 #else
       integer,parameter          :: dbug = 3                 ! 0 = none, 1=normal, 2=much, 3=max
 #endif
-      integer, allocatable       :: factorIndexList(:,:)
-      real(r8), allocatable      :: factorList
       character(len=*),parameter :: subname = '(Rtmini) '
+      !-------------------------------------------------
+
+      rc = ESMF_SUCCESS
 
       !-------------------------------------------------------
       ! Intiialize MOSART pio
@@ -389,7 +348,6 @@ contains
       call getfil(frivinp_rtm, locfn, 0 )
       if (masterproc) then
          write(iulog,*) 'Read in MOSART file name: ',trim(frivinp_rtm)
-         call shr_sys_flush(iulog)
       endif
 
       call ncd_pio_openfile (ncid, trim(locfn), 0)
@@ -401,26 +359,22 @@ contains
       if (masterproc) then
          write(iulog,*) 'Values for rtmlon/rtmlat: ',rtmlon,rtmlat
          write(iulog,*) 'Successfully read MOSART dimensions'
-         call shr_sys_flush(iulog)
       endif
 
       ! Allocate variables
       allocate(rlonc(rtmlon), rlatc(rtmlat), &
-           rlonw(rtmlon), rlone(rtmlon), &
-           rlats(rtmlat), rlatn(rtmlat), &
-           rtmCTL%rlon(rtmlon),          &
-           rtmCTL%rlat(rtmlat),          &
-           stat=ier)
+               rlonw(rtmlon), rlone(rtmlon), &
+               rlats(rtmlat), rlatn(rtmlat), &
+               rtmCTL%rlon(rtmlon),          &
+               rtmCTL%rlat(rtmlat),          &
+               stat=ier)
       if (ier /= 0) then
          write(iulog,*) subname,' : Allocation ERROR for rlon'
          call shr_sys_abort(subname//' ERROR alloc for rlon')
       end if
 
       ! reading the routing parameters
-      allocate ( &
-           ID0_global(rtmlon*rtmlat), area_global(rtmlon*rtmlat), &
-           dnID_global(rtmlon*rtmlat), &
-           stat=ier)
+      allocate (ID0_global(rtmlon*rtmlat), area_global(rtmlon*rtmlat), dnID_global(rtmlon*rtmlat), stat=ier)
       if (ier /= 0) then
          write(iulog,*) subname, ' : Allocation error for ID0_global'
          call shr_sys_abort(subname//' ERROR alloc for ID0')
@@ -898,11 +852,9 @@ contains
 
       call t_startf('mosarti_print')
 
-      call shr_sys_flush(iulog)
       if (masterproc) then
          write(iulog,*) 'total runoff cells numr  = ',rtmCTL%numr
       endif
-      call shr_sys_flush(iulog)
       call mpi_barrier(mpicom_rof,ier)
       npmin = 0
       npmax = npes-1
@@ -932,7 +884,6 @@ contains
                  ' endr = ',rtmCTL%endr, &
                  ' numr = ',rtmCTL%lnumr
          endif
-         call shr_sys_flush(iulog)
          call mpi_barrier(mpicom_rof,ier)
       enddo
 
@@ -942,14 +893,12 @@ contains
       ! Allocate local flux variables
       !-------------------------------------------------------
 
-      call t_startf('mosarti_vars')
-
-      allocate (eve(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-           flow(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-           erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-           eroutup_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-           erlat_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
-           stat=ier)
+      allocate (evel(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+                flow(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+                erout_prev(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+                eroutup_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+                erlat_avg(rtmCTL%begr:rtmCTL%endr,nt_rtm), &
+                stat=ier)
       if (ier /= 0) then
          write(iulog,*) subname,' Allocation ERROR for flow'
          call shr_sys_abort(subname//' Allocationt ERROR flow')
@@ -1012,7 +961,6 @@ contains
 
       ! Determine runoff datatype variables
       lrtmarea = 0.0_r8
-      cnt = 0
       do nr = rtmCTL%begr,rtmCTL%endr
          rtmCTL%gindex(nr) = rgdc2glo(nr)
          rtmCTL%mask(nr) = gmask(rgdc2glo(nr))
@@ -1037,7 +985,6 @@ contains
                     nr,n,dnID_global(n),rglo2gdc(dnID_global(n))
                call shr_sys_abort(subname//' ERROT glo2gdc dnID_global')
             endif
-            cnt = cnt + 1
             rtmCTL%dsig(nr) = dnID_global(n)
          endif
       enddo
@@ -1054,126 +1001,20 @@ contains
          call shr_sys_abort(subname//' ERROR rtmCTL mask')
       endif
 
-      !-------------------------------------------------------
-      ! create srcfield and dstfield
-      !-------------------------------------------------------
-
-      srcfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
-           ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      dstfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
-           ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-      !-------------------------------------------------------
-      ! Compute Sparse Matrix for direct to outlet transfer
-      !-------------------------------------------------------
-
-      cnt = rtmCTL%endr - rtmCTL%begr + 1
-      allocate(factorList(cnt))
-      allocate(factorIndexList(2,cnt))
-      cnt = 0
-      do nr = rtmCTL%begr,rtmCTL%endr
-         cnt = cnt + 1
-         if (rtmCTL%outletg(nr) > 0) then
-            factorList(iwgt ,cnt) = 1.0_r8
-            factorIndexList(1,cnt) = rtmCTL%outletg(nr)
-            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
-         else
-            factorList(iwgt ,cnt) = 1.0_r8
-            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
-            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
-         endif
-      enddo
-
-      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, rc=rc)
-      if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
-
-      deallocate(factorList)
-      deallocate(factorIndexList)
-
-      if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
-
-      !-------------------------------------------------------
-      ! Compute timestep and subcycling number
-      !-------------------------------------------------------
-
-      call t_stopf('mosarti_vars')
-
-      !-------------------------------------------------------
-      ! Initialize mosart
-      !-------------------------------------------------------
-
-      call t_startf('mosarti_mosart_init')
-      call MOSART_init()
-      call t_stopf('mosarti_mosart_init')
-
-      !-------------------------------------------------------
-      ! Read restart/initial info
-      !-------------------------------------------------------
-
-      call t_startf('mosarti_restart')
-
-      ! The call below opens and closes the file
-      if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
-           (nsrest == nsrContinue) .or. &
-           (nsrest == nsrBranch  )) then
-         call RtmRestFileRead( file=fnamer )
-         TRunoff%wh   = rtmCTL%wh
-         TRunoff%wt   = rtmCTL%wt
-         TRunoff%wr   = rtmCTL%wr
-         TRunoff%erout= rtmCTL%erout
-      endif
-
-      do nt = 1,nt_rtm
-         do nr = rtmCTL%begr,rtmCTL%endr
-            call UpdateState_hillslope(nr,nt)
-            call UpdateState_subnetwork(nr,nt)
-            call UpdateState_mainchannel(nr,nt)
-            rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + TRunoff%wh(nr,nt)*rtmCTL%area(nr))
-         enddo
-      enddo
-
-      call t_stopf('mosarti_restart')
-
-      !-------------------------------------------------------
-      ! Initialize mosart history handler and fields
-      !-------------------------------------------------------
-
-      call t_startf('mosarti_histinit')
-      call RtmHistFldsInit()
-      if (nsrest==nsrStartup .or. nsrest==nsrBranch) then
-         call RtmHistHtapesBuild()
-      end if
-      call RtmHistFldsSet()
-      if (masterproc) write(iulog,*) subname,' done'
-      call t_stopf('mosarti_histinit')
-
    end subroutine Rtmini
 
    !-----------------------------------------------------------------------
-   !BOP
-   !
-   ! !IROUTINE: Rtmrun
-   !
-   ! !INTERFACE:
-   subroutine Rtmrun(rstwr,nlend,rdate)
+   subroutine Rtmrun(rstwr, nlend, rdate, rc)
       !
-      ! !DESCRIPTION:
       ! River routing model
       !
-      ! !USES:
-      !
-      ! !ARGUMENTS:
+      ! Arguments
       logical ,         intent(in) :: rstwr          ! true => write restart file this step)
       logical ,         intent(in) :: nlend          ! true => end of run on this step
       character(len=*), intent(in) :: rdate          ! restart file time stamp for name
+      integer,          intent(out) :: rc
       !
-      ! !REVISION HISTORY:
-      ! Author: Sam Levis
-      !
-      ! !LOCAL VARIABLES:
-      !EOP
+      ! Local variables
       integer            :: i, j, n, nr, ns, nt, n2, nf ! indices
       real(r8)           :: budget_terms(30,nt_rtm)     ! BUDGET terms
                                                         ! BUDGET terms 1-10 are for volumes (m3)
@@ -1209,6 +1050,8 @@ contains
       !-----------------------------------------------------------------------
 
       call t_startf('mosartr_tot')
+
+      rc = ESMF_SUCCESS
 
       !-----------------------------------------------------
       ! Set up pointer arrays into srcfield and dstfield
@@ -1388,7 +1231,7 @@ contains
       cnt = 0
       do nr = rtmCTL%begr,rtmCTL%endr
          cnt = cnt + 1
-         src_direct(cnt,nt) = TRunoff%qsur(nr,nt) + TRunoff%qsub(nr,nt) + TRunoff%qgwl(nr,nt)
+         src_direct(nt,cnt) = TRunoff%qsur(nr,nt) + TRunoff%qsub(nr,nt) + TRunoff%qgwl(nr,nt)
          TRunoff%qsur(nr,nt) = 0._r8
          TRunoff%qsub(nr,nt) = 0._r8
          TRunoff%qgwl(nr,nt) = 0._r8
@@ -1585,8 +1428,7 @@ contains
       Tctl%DeltaT = delt
 
       !-----------------------------------
-      ! mosart euler solver
-      ! --- convert TRunoff fields from m3/s to m/s before calling Euler
+      ! MOSART euler solver
       !-----------------------------------
 
       call t_startf('mosartr_budget')
@@ -1600,6 +1442,7 @@ contains
       enddo
       call t_stopf('mosartr_budget')
 
+      ! convert TRunoff fields from m3/s to m/s before calling Euler
       do nt = 1,nt_rtm
          do nr = rtmCTL%begr,rtmCTL%endr
             TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
@@ -1611,7 +1454,8 @@ contains
       do ns = 1,nsub
 
          call t_startf('mosartr_euler')
-         call Euler()
+         call Euler(rc)
+         if (chkerr(rc,__LINE__,u_FILE_u)) return
          call t_stopf('mosartr_euler')
 
          !-----------------------------------
@@ -1833,7 +1677,6 @@ contains
 
       first_call = .false.
 
-      call shr_sys_flush(iulog)
       call t_stopf('mosartr_tot')
 
    end subroutine Rtmrun
@@ -1843,28 +1686,26 @@ contains
    subroutine RtmFloodInit(frivinp, begr, endr, fthresh, evel )
 
       !-----------------------------------------------------------------------
-      ! Uses
-
       ! Input variables
-      character(len=*), intent(in) :: frivinp
-      integer , intent(in)  :: begr, endr
-      real(r8), intent(out) :: fthresh(begr:endr)
-      real(r8), intent(out) :: evel(begr:endr,nt_rtm)
+      character(len=*) , intent(in)  :: frivinp
+      integer          , intent(in)  :: begr, endr
+      real(r8)         , intent(out) :: fthresh(begr:endr)
+      real(r8)         , intent(out) :: evel(begr:endr,nt_rtm)
 
       ! Local variables
-      real(r8) , pointer :: rslope(:)
-      real(r8) , pointer :: max_volr(:)
-      integer, pointer   :: compdof(:) ! computational degrees of freedom for pio
-      integer :: nt,n,cnt              ! indices
-      logical :: readvar               ! read variable in or not
-      integer :: ier                   ! status variable
-      integer :: dids(2)               ! variable dimension ids
+      real(r8), pointer  :: rslope(:)
+      real(r8), pointer  :: max_volr(:)
+      integer , pointer  :: compdof(:) ! computational degrees of freedom for pio
+      integer            :: nt,n,cnt   ! indices
+      logical            :: readvar    ! read variable in or not
+      integer            :: ier        ! status variable
+      integer            :: dids(2)    ! variable dimension ids
       type(file_desc_t)  :: ncid       ! pio file desc
       type(var_desc_t)   :: vardesc    ! pio variable desc
       type(io_desc_t)    :: iodesc     ! pio io desc
       character(len=256) :: locfn      ! local file name
 
-      !MOSART Flood variables for spatially varying celerity
+      ! MOSART Flood variables for spatially varying celerity
       real(r8) :: effvel(nt_rtm) = 0.7_r8   ! downstream velocity (m/s)
       real(r8) :: min_ev(nt_rtm) = 0.35_r8  ! minimum downstream velocity (m/s)
       real(r8) :: fslope = 1.0_r8           ! maximum slope for which flooding can occur
@@ -1921,27 +1762,16 @@ contains
    end subroutine RtmFloodInit
 
    !-----------------------------------------------------------------------
-   !BOP
-   !
-   ! !IROUTINE:
-   !
-   ! !INTERFACE:
-   subroutine MOSART_init
-      !
-      ! !REVISION HISTORY:
-      ! Author: Hongyi Li
+   subroutine MOSART_init(rc)
 
-      ! !DESCRIPTION:
+      !-----------------------------------------------------------------------
       ! initialize MOSART variables
-      !
-      ! !USES:
-      ! !ARGUMENTS:
-      !
-      ! !REVISION HISTORY:
       ! Author: Hongyi Li
       !
-      ! !OTHER LOCAL VARIABLES:
-      !EOP
+      ! Arguments
+      integer, intent(out) :: rc
+      !
+      ! Local variables
       type(file_desc_t)    :: ncid          ! pio file desc
       type(var_desc_t)     :: vardesc       ! pio variable desc
       type(io_desc_t)      :: iodesc_dbl    ! pio io desc
@@ -1952,7 +1782,6 @@ contains
       integer              :: ier           ! error code
       integer              :: begr, endr, iunit, nn, n, cnt, nr, nt
       integer              :: numDT_r, numDT_t
-      integer              :: lsize, gsize
       integer              :: igrow, igcol, iwgt
       real(r8)             :: areatot_prev, areatot_tmp, areatot_new
       real(r8)             :: hlen_max, rlen_min
@@ -1961,16 +1790,47 @@ contains
       character(len=1000)  :: fname
       real(r8), pointer    :: src_eroutUp(:,:)
       real(r8), pointer    :: dst_eroutUp(:,:)
+      integer ,allocatable :: factorIndexList(:,:)
+      real(r8),allocatable :: factorList(:)
       character(len=*),parameter :: subname = '(MOSART_init)'
       character(len=*),parameter :: FORMI = '(2A,2i10)'
       character(len=*),parameter :: FORMR = '(2A,2g15.7)'
       !-----------------------------------------------------------------------
+
+      rc = ESMF_SUCCESS
+
+      ! Calculate map for direct to outlet mapping
+      cnt = rtmCTL%endr - rtmCTL%begr + 1
+      allocate(factorList(cnt))
+      allocate(factorIndexList(2,cnt))
+      cnt = 0
+      do nr = rtmCTL%begr,rtmCTL%endr
+         cnt = cnt + 1
+         if (rtmCTL%outletg(nr) > 0) then
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = rtmCTL%outletg(nr)
+            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
+         else
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
+            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
+         endif
+      enddo
+
+      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+      deallocate(factorList)
+      deallocate(factorIndexList)
+
+      if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
 
       ! Set up pointer arrays into srcfield and dstfield
       call ESMF_FieldGet(srcfield, farrayPtr=src_eroutUp, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
       call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
+
       src_eroutUp(:,:) = 0._r8
       dst_eroutUp(:,:) = 0._r8
 
@@ -2005,8 +1865,9 @@ contains
          allocate(TUnit%frac(begr:endr))
          ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%frac, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read frac ',minval(Tunit%frac),maxval(Tunit%frac)
-         call shr_sys_flush(iulog)
+         if (masterproc) then
+            write(iulog,FORMR) trim(subname),' read frac ',minval(Tunit%frac),maxval(Tunit%frac)
+         end if
 
          ! read fdir, convert to mask
          ! fdir <0 ocean, 0=outlet, >0 land
@@ -2015,8 +1876,9 @@ contains
          allocate(TUnit%mask(begr:endr))
          ier = pio_inq_varid(ncid, name='fdir', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%mask, ier)
-         if (masterproc) write(iulog,FORMI) trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
-         call shr_sys_flush(iulog)
+         if (masterproc) then
+            write(iulog,FORMI) trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
+         end if
 
          do n = rtmCtl%begr, rtmCTL%endr
             if (Tunit%mask(n) < 0) then
@@ -2042,13 +1904,11 @@ contains
          ier = pio_inq_varid(ncid, name='ID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ID0, ier)
          if (masterproc) write(iulog,FORMI) trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%dnID(begr:endr))
          ier = pio_inq_varid(ncid, name='dnID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%dnID, ier)
          if (masterproc) write(iulog,FORMI) trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
-         call shr_sys_flush(iulog)
 
          !-------------------------------------------------------
          ! RESET ID0 and dnID indices using the IDkey to be consistent
@@ -2070,7 +1930,6 @@ contains
          ier = pio_inq_varid(ncid, name='area', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%area, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read area ',minval(Tunit%area),maxval(Tunit%area)
-         call shr_sys_flush(iulog)
 
          do n=rtmCtl%begr, rtmCTL%endr
             if (TUnit%area(n) < 0._r8) TUnit%area(n) = rtmCTL%area(n)
@@ -2084,7 +1943,6 @@ contains
          ier = pio_inq_varid(ncid, name='areaTotal', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%areaTotal, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read areaTotal ',minval(Tunit%areaTotal),maxval(Tunit%areaTotal)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rlenTotal(begr:endr))
          TUnit%rlenTotal = 0._r8
@@ -2093,13 +1951,11 @@ contains
          ier = pio_inq_varid(ncid, name='nh', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nh, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read nh ',minval(Tunit%nh),maxval(Tunit%nh)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%hslp(begr:endr))
          ier = pio_inq_varid(ncid, name='hslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%hslp, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read hslp ',minval(Tunit%hslp),maxval(Tunit%hslp)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%hslpsqrt(begr:endr))
          TUnit%hslpsqrt = 0._r8
@@ -2108,7 +1964,6 @@ contains
          ier = pio_inq_varid(ncid, name='gxr', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%gxr, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read gxr ',minval(Tunit%gxr),maxval(Tunit%gxr)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%hlen(begr:endr))
          TUnit%hlen = 0._r8
@@ -2117,7 +1972,6 @@ contains
          ier = pio_inq_varid(ncid, name='tslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%tslp, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read tslp ',minval(Tunit%tslp),maxval(Tunit%tslp)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%tslpsqrt(begr:endr))
          TUnit%tslpsqrt = 0._r8
@@ -2129,7 +1983,7 @@ contains
          ier = pio_inq_varid(ncid, name='twid', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%twidth, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
-         call shr_sys_flush(iulog)
+
          ! save twidth before adjusted below
          allocate(TUnit%twidth0(begr:endr))
          TUnit%twidth0(begr:endr)=TUnit%twidth(begr:endr)
@@ -2138,19 +1992,16 @@ contains
          ier = pio_inq_varid(ncid, name='nt', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nt, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read nt ',minval(Tunit%nt),maxval(Tunit%nt)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rlen(begr:endr))
          ier = pio_inq_varid(ncid, name='rlen', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rlen, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read rlen ',minval(Tunit%rlen),maxval(Tunit%rlen)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rslp(begr:endr))
          ier = pio_inq_varid(ncid, name='rslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rslp, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read rslp ',minval(Tunit%rslp),maxval(Tunit%rslp)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rslpsqrt(begr:endr))
          TUnit%rslpsqrt = 0._r8
@@ -2159,147 +2010,104 @@ contains
          ier = pio_inq_varid(ncid, name='rwid', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rwidth0(begr:endr))
          ier = pio_inq_varid(ncid, name='rwid0', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth0, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth0 ',minval(Tunit%rwidth0),maxval(Tunit%rwidth0)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%rdepth(begr:endr))
          ier = pio_inq_varid(ncid, name='rdep', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rdepth, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%nr(begr:endr))
          ier = pio_inq_varid(ncid, name='nr', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nr, ier)
          if (masterproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
-         call shr_sys_flush(iulog)
 
          allocate(TUnit%nUp(begr:endr))
          TUnit%nUp = 0
-
          allocate(TUnit%iUp(begr:endr,8))
          TUnit%iUp = 0
-
          allocate(TUnit%indexDown(begr:endr))
          TUnit%indexDown = 0
 
          ! initialize water states and fluxes
          allocate (TRunoff%wh(begr:endr,nt_rtm))
          TRunoff%wh = 0._r8
-
          allocate (TRunoff%dwh(begr:endr,nt_rtm))
          TRunoff%dwh = 0._r8
-
          allocate (TRunoff%yh(begr:endr,nt_rtm))
          TRunoff%yh = 0._r8
-
          allocate (TRunoff%qsur(begr:endr,nt_rtm))
          TRunoff%qsur = 0._r8
-
          allocate (TRunoff%qsub(begr:endr,nt_rtm))
          TRunoff%qsub = 0._r8
-
          allocate (TRunoff%qgwl(begr:endr,nt_rtm))
          TRunoff%qgwl = 0._r8
-
          allocate (TRunoff%ehout(begr:endr,nt_rtm))
          TRunoff%ehout = 0._r8
-
          allocate (TRunoff%tarea(begr:endr,nt_rtm))
          TRunoff%tarea = 0._r8
-
          allocate (TRunoff%wt(begr:endr,nt_rtm))
          TRunoff%wt= 0._r8
-
          allocate (TRunoff%dwt(begr:endr,nt_rtm))
          TRunoff%dwt = 0._r8
-
          allocate (TRunoff%yt(begr:endr,nt_rtm))
          TRunoff%yt = 0._r8
-
          allocate (TRunoff%mt(begr:endr,nt_rtm))
          TRunoff%mt = 0._r8
-
          allocate (TRunoff%rt(begr:endr,nt_rtm))
          TRunoff%rt = 0._r8
-
          allocate (TRunoff%pt(begr:endr,nt_rtm))
          TRunoff%pt = 0._r8
-
          allocate (TRunoff%vt(begr:endr,nt_rtm))
          TRunoff%vt = 0._r8
-
          allocate (TRunoff%tt(begr:endr,nt_rtm))
          TRunoff%tt = 0._r8
-
          allocate (TRunoff%etin(begr:endr,nt_rtm))
          TRunoff%etin = 0._r8
-
          allocate (TRunoff%etout(begr:endr,nt_rtm))
          TRunoff%etout = 0._r8
-
          allocate (TRunoff%rarea(begr:endr,nt_rtm))
          TRunoff%rarea = 0._r8
-
          allocate (TRunoff%wr(begr:endr,nt_rtm))
          TRunoff%wr = 0._r8
-
          allocate (TRunoff%dwr(begr:endr,nt_rtm))
          TRunoff%dwr = 0._r8
-
          allocate (TRunoff%yr(begr:endr,nt_rtm))
          TRunoff%yr = 0._r8
-
          allocate (TRunoff%mr(begr:endr,nt_rtm))
          TRunoff%mr = 0._r8
-
          allocate (TRunoff%rr(begr:endr,nt_rtm))
          TRunoff%rr = 0._r8
-
          allocate (TRunoff%pr(begr:endr,nt_rtm))
          TRunoff%pr = 0._r8
-
          allocate (TRunoff%vr(begr:endr,nt_rtm))
          TRunoff%vr = 0._r8
-
          allocate (TRunoff%tr(begr:endr,nt_rtm))
          TRunoff%tr = 0._r8
-
          allocate (TRunoff%erlg(begr:endr,nt_rtm))
          TRunoff%erlg = 0._r8
-
          allocate (TRunoff%erlateral(begr:endr,nt_rtm))
          TRunoff%erlateral = 0._r8
-
          allocate (TRunoff%erin(begr:endr,nt_rtm))
          TRunoff%erin = 0._r8
-
          allocate (TRunoff%erout(begr:endr,nt_rtm))
          TRunoff%erout = 0._r8
-
          allocate (TRunoff%erout_prev(begr:endr,nt_rtm))
          TRunoff%erout_prev = 0._r8
-
          allocate (TRunoff%eroutUp(begr:endr,nt_rtm))
          TRunoff%eroutUp = 0._r8
-
          allocate (TRunoff%eroutUp_avg(begr:endr,nt_rtm))
          TRunoff%eroutUp_avg = 0._r8
-
          allocate (TRunoff%erlat_avg(begr:endr,nt_rtm))
          TRunoff%erlat_avg = 0._r8
-
          allocate (TRunoff%ergwl(begr:endr,nt_rtm))
          TRunoff%ergwl = 0._r8
-
          allocate (TRunoff%flow(begr:endr,nt_rtm))
          TRunoff%flow = 0._r8
-
          allocate (TPara%c_twid(begr:endr))
          TPara%c_twid = 1.0_r8
 
@@ -2376,9 +2184,6 @@ contains
             TUnit%hslpsqrt(iunit) = sqrt(Tunit%hslp(iunit))
          end do
 
-         lsize = rtmCTL%lnumr
-         gsize = rtmlon*rtmlat
-
          cnt = 0
          do iunit=rtmCTL%begr,rtmCTL%endr
             if(TUnit%dnID(iunit) > 0) cnt = cnt + 1
@@ -2412,7 +2217,7 @@ contains
       allocate(Tunit%areatotal2(rtmCTL%begr:rtmCTL%endr))
       Tunit%areatotal2 = 0._r8
 
-      ! initialize avdst to local area and add that to areatotal2
+      ! initialize dst_eroutUp to local area and add that to areatotal2
       cnt = 0
       do nr = rtmCTL%begr,rtmCTL%endr
          cnt = cnt + 1
@@ -2427,7 +2232,7 @@ contains
 
          tcnt = tcnt + 1
 
-         ! copy avdst to avsrc for next downstream step
+         ! copy dst_eroutUp to src_eroutUp for next downstream step
          src_eroutUp(:,:) = 0._r8
          cnt = 0
          do nr = rtmCTL%begr,rtmCTL%endr
@@ -2438,13 +2243,13 @@ contains
          call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, rc=rc)
          if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
-         ! add avdst to areatot and compute new global sum
+         ! add dst_eroutUp to areatot and compute new global sum
          cnt = 0
          areatot_prev = areatot_new
          areatot_tmp = 0._r8
          do nr = rtmCTL%begr,rtmCTL%endr
             cnt = cnt + 1
-            Tunit%areatotal2(nr) = Tunit%areatotal2(nr) + avdst_eroutUp(1,cnt)
+            Tunit%areatotal2(nr) = Tunit%areatotal2(nr) + dst_eroutUp(1,cnt)
             areatot_tmp = areatot_tmp + Tunit%areatotal2(nr)
          enddo
          call shr_mpi_sum(areatot_tmp, areatot_new, mpicom_rof, 'areatot_new', all=.true.)
@@ -2491,6 +2296,44 @@ contains
          write(iulog,*) subname,' numDT_t max  = ',numDT_t
       endif
 
+      !-------------------------------------------------------
+      ! Read restart/initial info
+      !-------------------------------------------------------
+
+      call t_startf('mosarti_restart')
+      if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
+          (nsrest == nsrContinue) .or. &
+          (nsrest == nsrBranch  )) then
+         call RtmRestFileRead( file=fnamer )
+         TRunoff%wh   = rtmCTL%wh
+         TRunoff%wt   = rtmCTL%wt
+         TRunoff%wr   = rtmCTL%wr
+         TRunoff%erout= rtmCTL%erout
+      endif
+
+      do nt = 1,nt_rtm
+         do nr = rtmCTL%begr,rtmCTL%endr
+            call UpdateState_hillslope(nr,nt)
+            call UpdateState_subnetwork(nr,nt)
+            call UpdateState_mainchannel(nr,nt)
+            rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + TRunoff%wh(nr,nt)*rtmCTL%area(nr))
+         enddo
+      enddo
+      call t_stopf('mosarti_restart')
+
+      !-------------------------------------------------------
+      ! Initialize mosart history handler and fields
+      !-------------------------------------------------------
+
+      call t_startf('mosarti_histinit')
+      call RtmHistFldsInit()
+      if (nsrest==nsrStartup .or. nsrest==nsrBranch) then
+         call RtmHistHtapesBuild()
+      end if
+      call RtmHistFldsSet()
+      if (masterproc) write(iulog,*) subname,' done'
+      call t_stopf('mosarti_histinit')
+
       !if(masterproc) then
       !    fname = '/lustre/liho745/DCLM_model/ccsm_hy/run/clm_MOSART_subw2/run/test.dat'
       !    call createFile(1111,fname)
@@ -2536,7 +2379,5 @@ contains
          if(TUnit%numDT_t(iunit) < 1) TUnit%numDT_t(iunit) = 1
       end do
    end subroutine SubTimestep
-
-   !-----------------------------------------------------------------------
 
 end module RtmMod

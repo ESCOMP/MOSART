@@ -12,18 +12,15 @@ module RtmIO
   use shr_kind_mod   , only : r8 => shr_kind_r8, i8=>shr_kind_i8, shr_kind_cl, r4=>shr_kind_r4
   use shr_sys_mod    , only : shr_sys_flush, shr_sys_abort
   use shr_file_mod   , only : shr_file_getunit, shr_file_freeunit
-  use RtmFileUtils   , only : getavu, relavu
   use RtmSpmd        , only : masterproc, mpicom_rof, iam, npes, rofid
   use RunoffMod      , only : rtmCTL
   use RtmVar         , only : spval, ispval, iulog
   use perf_mod       , only : t_startf, t_stopf
-  use RtmMctMod
   use pio
 
 ! !PUBLIC TYPES:
   implicit none
   private
-  save
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
@@ -64,13 +61,8 @@ module RtmIO
   public file_desc_t
   public var_desc_t
   public io_desc_t
-!
-! !REVISION HISTORY:
-!
-!
-! !PRIVATE MEMBER FUNCTIONS:
-!
 
+  ! !PRIVATE MEMBER FUNCTIONS:
   interface ncd_putatt
      module procedure ncd_putatt_int
      module procedure ncd_putatt_real
