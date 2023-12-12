@@ -1039,28 +1039,19 @@ contains
       character(len=256) :: filer                       ! restart file name
       integer            :: cnt                         ! counter for gridcells
       integer            :: ier                         ! error code
+      real(r8), pointer  :: src_direct(:,:)
+      real(r8), pointer  :: dst_direct(:,:)
 
       ! parameters used in negative runoff partitioning algorithm
       real(r8)           :: river_volume_minimum        ! gridcell area multiplied by average river_depth_minimum [m3]
       real(r8)           :: qgwl_volume                 ! volume of runoff during time step [m3]
       real(r8)           :: irrig_volume                ! volume of irrigation demand during time step [m3]
-      real(r8), pointer  :: src_direct(:,:)
-      real(r8), pointer  :: dst_direct(:,:)
       character(len=*),parameter :: subname = '(Rtmrun) '
       !-----------------------------------------------------------------------
 
       call t_startf('mosartr_tot')
 
       rc = ESMF_SUCCESS
-
-      !-----------------------------------------------------
-      ! Set up pointer arrays into srcfield and dstfield
-      !-----------------------------------------------------
-
-      call ESMF_FieldGet(srcfield, farrayPtr=src_direct, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      call ESMF_FieldGet(dstfield, farrayPtr=dst_direct, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-----------------------------------------------------
       ! Get date info
@@ -1077,7 +1068,7 @@ contains
       if (first_call) then
          budget_accum = 0._r8
          budget_accum_cnt = 0
-         delt_save    = delt_mosart
+         delt_save = delt_mosart
          if (masterproc) write(iulog,'(2a,g20.12)') trim(subname),' MOSART coupling period ',delt_coupling
       end if
 
@@ -1216,6 +1207,15 @@ contains
       call t_startf('mosartr_SMdirect')
       !--- copy direct transfer fields
       !--- convert kg/m2s to m3/s
+
+      !-----------------------------------------------------
+      ! Set up pointer arrays into srcfield and dstfield
+      !-----------------------------------------------------
+
+      call ESMF_FieldGet(srcfield, farrayPtr=src_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_FieldGet(dstfield, farrayPtr=dst_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-----------------------------------------------------
       !--- all frozen runoff passed direct to outlet
@@ -1789,16 +1789,26 @@ contains
       integer              :: tcnt
       character(len=16384) :: rList         ! list of fields for SM multiply
       character(len=1000)  :: fname
+      real(r8), pointer    :: src_direct(:,:)
+      real(r8), pointer    :: dst_direct(:,:)
       real(r8), pointer    :: src_eroutUp(:,:)
       real(r8), pointer    :: dst_eroutUp(:,:)
-      integer ,allocatable :: factorIndexList(:,:)
       real(r8),allocatable :: factorList(:)
+      integer ,allocatable :: factorIndexList(:,:)
       character(len=*),parameter :: subname = '(MOSART_init)'
       character(len=*),parameter :: FORMI = '(2A,2i10)'
       character(len=*),parameter :: FORMR = '(2A,2g15.7)'
       !-----------------------------------------------------------------------
 
       rc = ESMF_SUCCESS
+
+      ! Set up pointer arrays into srcfield and dstfield
+      call ESMF_FieldGet(srcfield, farrayPtr=src_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_FieldGet(dstfield, farrayPtr=dst_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      src_direct(:,:) = 0._r8
+      dst_direct(:,:) = 0._r8
 
       ! Calculate map for direct to outlet mapping
       ! The route handle rh_direct will then be used in Rtmrun
@@ -2187,29 +2197,8 @@ contains
             if(TUnit%dnID(iunit) > 0) cnt = cnt + 1
          enddo
 
-         ! --------------------------------------------------
-         ! Compute route handle rh_eroutUp
-         ! --------------------------------------------------
-
-         allocate(factorList(cnt))
-         allocate(factorIndexList(2,cnt))
-         cnt = 0
-         do iunit = rtmCTL%begr,rtmCTL%endr
-            if (TUnit%dnID(iunit) > 0) then
-               cnt = cnt + 1
-               factorList(cnt) = 1.0_r8
-               factorIndexList(1,cnt) = TUnit%ID0(iunit)
-               factorIndexList(2,cnt) = TUnit%dnID(iunit)
-            endif
-         enddo
-         if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
-
-         call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, rc=rc)
-         if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
-
-         deallocate(factorList)
-         deallocate(factorIndexList)
-
+      else
+         write(6,*)'DEBUG: endr < begr'
       end if  ! endr >= begr
 
       ! Set up pointer arrays into srcfield and dstfield
@@ -2217,6 +2206,34 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
       call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
+      src_eroutUp(:,:) = 0._r8
+      dst_eroutUp(:,:) = 0._r8
+
+      ! Compute route handle rh_eroutUp
+      cnt = 0
+      do iunit = rtmCTL%begr,rtmCTL%endr
+         if (TUnit%dnID(iunit) > 0) then
+            cnt = cnt + 1
+         end if
+      end do
+      allocate(factorList(cnt))
+      allocate(factorIndexList(2,cnt))
+      cnt = 0
+      do iunit = rtmCTL%begr,rtmCTL%endr
+         if (TUnit%dnID(iunit) > 0) then
+            cnt = cnt + 1
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = TUnit%ID0(iunit)
+            factorIndexList(2,cnt) = TUnit%dnID(iunit)
+         endif
+      enddo
+      if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
+
+      call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, rc=rc)
+      if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+
+      deallocate(factorList)
+      deallocate(factorIndexList)
 
       !--- compute areatot from area using dnID ---
       !--- this basically advects upstream areas downstream and
