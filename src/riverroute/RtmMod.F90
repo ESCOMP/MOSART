@@ -1237,7 +1237,7 @@ contains
          TRunoff%qgwl(nr,nt) = 0._r8
       enddo
 
-      call ESMF_FieldSMM(srcfield, dstfield, rh_direct, rc=rc)
+      call ESMF_FieldSMM(srcfield, dstfield, rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       ! copy direct transfer water to output field
@@ -1273,7 +1273,7 @@ contains
             endif
          enddo
 
-         call ESMF_FieldSMM(srcfield, dstfield, rh_direct, rc=rc)
+         call ESMF_FieldSMM(srcfield, dstfield, rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
          if (chkerr(rc,__LINE__,u_FILE_u)) return
 
          !--- copy direct transfer water to output field ---
@@ -1385,7 +1385,7 @@ contains
             enddo
          enddo
 
-         call ESMF_FieldSMM(srcfield, dstfield, rh_direct, rc=rc)
+         call ESMF_FieldSMM(srcfield, dstfield, rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
          if (chkerr(rc,__LINE__,u_FILE_u)) return
 
          !--- copy direct transfer water to output field ---
@@ -1785,6 +1785,7 @@ contains
       integer              :: numDT_r, numDT_t
       integer              :: igrow, igcol, iwgt
       real(r8)             :: areatot_prev, areatot_tmp, areatot_new
+      real(r8)             :: areatot_tmp2, areatot_new2
       real(r8)             :: hlen_max, rlen_min
       integer              :: tcnt
       character(len=16384) :: rList         ! list of fields for SM multiply
@@ -1795,6 +1796,7 @@ contains
       real(r8), pointer    :: dst_eroutUp(:,:)
       real(r8),allocatable :: factorList(:)
       integer ,allocatable :: factorIndexList(:,:)
+      integer              :: srcTermProcessing_Value = 0
       character(len=*),parameter :: subname = '(MOSART_init)'
       character(len=*),parameter :: FORMI = '(2A,2i10)'
       character(len=*),parameter :: FORMR = '(2A,2g15.7)'
@@ -1829,7 +1831,8 @@ contains
          endif
       enddo
 
-      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, rc=rc)
+      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, &
+           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       deallocate(factorList)
@@ -2229,7 +2232,8 @@ contains
       enddo
       if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
 
-      call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, rc=rc)
+      call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, &
+           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
       if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
 
       deallocate(factorList)
@@ -2267,24 +2271,35 @@ contains
          enddo
 
          dst_eroutUp(:,:) = 0._r8
-         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, rc=rc)
-         if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+         if (chkerr(rc,__LINE__,u_FILE_u)) return
 
          ! add dst_eroutUp to areatot and compute new global sum
          cnt = 0
          areatot_prev = areatot_new
          areatot_tmp = 0._r8
+         areatot_tmp2 = 0._r8
          do nr = rtmCTL%begr,rtmCTL%endr
             cnt = cnt + 1
             Tunit%areatotal2(nr) = Tunit%areatotal2(nr) + dst_eroutUp(1,cnt)
             areatot_tmp = areatot_tmp + Tunit%areatotal2(nr)
+            areatot_tmp2 = areatot_tmp2 + dst_eroutUp(1,cnt)
          enddo
          call shr_mpi_sum(areatot_tmp, areatot_new, mpicom_rof, 'areatot_new', all=.true.)
+         call shr_mpi_sum(areatot_tmp2, areatot_new2, mpicom_rof, 'areatot_new2', all=.true.)
 
          if (masterproc) then
             write(iulog,*) trim(subname),' areatot calc ',tcnt,areatot_new
+            write(iulog,*) trim(subname),' areatot calc2 ',tcnt,areatot_new2
          endif
 
+         cnt = 0
+         do nr = rtmCTL%begr,rtmCTL%endr
+            cnt = cnt + 1
+            if (dst_eroutUp(1,cnt) /= 0._r8) then
+               write(6,'(a,i8,2x,i8,2x,i8,2x,d25.16)')' DEBUG: iam , cnt, nr, dst_eroutUp(1,cnt= ',iam,cnt,nr,dst_eroutUp(1,cnt)
+            end if
+         end do
       enddo
 
       if (areatot_new /= areatot_prev) then
