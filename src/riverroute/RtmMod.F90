@@ -33,9 +33,10 @@ module RtmMod
                                    updatestate_mainchannel, Euler
    use perf_mod           , only : t_startf, t_stopf
    use nuopc_shr_methods  , only : chkerr
+   use ESMF               , only : ESMF_SUCCESS, ESMF_FieldGet, ESMF_FieldSMMStore, ESMF_FieldSMM, &
+                                   ESMF_TERMORDER_SRCSEQ
    use RtmIO
    use pio
-   use ESMF
    !
    ! !PUBLIC TYPES:
    implicit none
@@ -240,13 +241,10 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine MOSART_init1(rc)
+   subroutine MOSART_init1()
 
       !-------------------------------------------------
       ! Initialize MOSART grid, mask, decomp
-      !
-      ! Arguments
-      integer, intent(out) :: rc
       !
       ! Local variables
       real(r8)                   :: effvel0 = 10.0_r8        ! default velocity (m/s)
@@ -279,7 +277,6 @@ contains
       real(r8)                   :: edgew                    ! West edge of the direction file
       real(r8)                   :: dx,dx1,dx2,dx3           ! lon dist. betn grid cells (m)
       real(r8)                   :: dy                       ! lat dist. betn grid cells (m)
-      integer                    :: igrow,igcol,iwgt         ! mct field indices
       integer                    :: baspe                    ! pe with min number of mosart cells
       integer ,pointer           :: gmask(:)                 ! global mask
       integer ,allocatable       :: idxocn(:)                ! downstream ocean outlet cell
@@ -297,8 +294,6 @@ contains
 #endif
       character(len=*),parameter :: subname = '(MOSART_init1) '
       !-------------------------------------------------
-
-      rc = ESMF_SUCCESS
 
       !-------------------------------------------------------
       ! Intiialize MOSART pio
@@ -794,8 +789,7 @@ contains
          endif
       enddo
 
-      allocate(rglo2gdc(rtmlon*rtmlat), &  !global mosart array
-           nrs(0:npes-1))
+      allocate(rglo2gdc(rtmlon*rtmlat), nrs(0:npes-1)) !global mosart array
       nrs = 0
       rglo2gdc = 0
 
@@ -988,18 +982,23 @@ contains
             rtmCTL%dsig(nr) = dnID_global(n)
          endif
       enddo
-      deallocate(gmask)
-      deallocate(rglo2gdc)
-      deallocate(rgdc2glo)
-      deallocate (dnID_global,area_global)
-      deallocate(idxocn)
-      call shr_mpi_sum(lrtmarea,rtmCTL%totarea,mpicom_rof,'mosart totarea',all=.true.)
-      if (masterproc) write(iulog,*) subname,'  earth area ',4.0_r8*shr_const_pi*1.0e6_r8*re*re
-      if (masterproc) write(iulog,*) subname,' MOSART area ',rtmCTL%totarea
       if (minval(rtmCTL%mask) < 1) then
          write(iulog,*) subname,'ERROR rtmCTL mask lt 1 ',minval(rtmCTL%mask),maxval(rtmCTL%mask)
          call shr_sys_abort(subname//' ERROR rtmCTL mask')
       endif
+
+      deallocate(gmask)
+      deallocate(rglo2gdc)
+      deallocate(rgdc2glo)
+      deallocate(dnID_global)
+      deallocate(area_global)
+      deallocate(idxocn)
+
+      call shr_mpi_sum(lrtmarea, rtmCTL%totarea, mpicom_rof, 'mosart totarea', all=.true.)
+      if (masterproc) then
+         write(iulog,*) subname,'  earth area ',4.0_r8*shr_const_pi*1.0e6_r8*re*re
+         write(iulog,*) subname,' MOSART area ',rtmCTL%totarea
+      end if
 
    end subroutine MOSART_init1
 
@@ -1007,7 +1006,7 @@ contains
 
    subroutine MOSART_init2(rc)
 
-      ! initialize MOSART variables
+      ! Second phyas of MOSART initialization, including ESMF Mapping
       ! Author: Hongyi Li
       !
       ! Arguments
@@ -1022,14 +1021,12 @@ contains
       integer              :: dids(2)       ! variable dimension ids
       integer              :: dsizes(2)     ! variable dimension lengths
       integer              :: ier           ! error code
-      integer              :: begr, endr, iunit, nn, n, cnt, nr, nt
+      integer              :: begr, endr
+      integer              :: iunit, nn, n, cnt, nr, nt
       integer              :: numDT_r, numDT_t
-      integer              :: igrow, igcol, iwgt
       real(r8)             :: areatot_prev, areatot_tmp, areatot_new
       real(r8)             :: hlen_max, rlen_min
       integer              :: tcnt
-      character(len=16384) :: rList         ! list of fields for SM multiply
-      character(len=1000)  :: fname
       real(r8), pointer    :: src_direct(:,:)
       real(r8), pointer    :: dst_direct(:,:)
       real(r8), pointer    :: src_eroutUp(:,:)
@@ -1128,7 +1125,7 @@ contains
          ier = pio_inq_varid(ncid, name='fdir', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%mask, ier)
          if (masterproc) then
-            write(iulog,FORMI) trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
+            write(iulog,'(2A,2i10)') trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
          end if
 
          do n = rtmCtl%begr, rtmCTL%endr
@@ -1154,12 +1151,12 @@ contains
          allocate(TUnit%ID0(begr:endr))
          ier = pio_inq_varid(ncid, name='ID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ID0, ier)
-         if (masterproc) write(iulog,FORMI) trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
+         if (masterproc) write(iulog,'(2A,2i10)') trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
 
          allocate(TUnit%dnID(begr:endr))
          ier = pio_inq_varid(ncid, name='dnID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%dnID, ier)
-         if (masterproc) write(iulog,FORMI) trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
+         if (masterproc) write(iulog,'(2A,2i10)') trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
 
          !-------------------------------------------------------
          ! RESET ID0 and dnID indices using the IDkey to be consistent
@@ -1477,7 +1474,7 @@ contains
 
       call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, &
            ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
-      if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       deallocate(factorList)
       deallocate(factorIndexList)
@@ -1607,11 +1604,6 @@ contains
       if (masterproc) write(iulog,*) subname,' done'
       call t_stopf('mosarti_histinit')
 
-      !if(masterproc) then
-      !    fname = '/lustre/liho745/DCLM_model/ccsm_hy/run/clm_MOSART_subw2/run/test.dat'
-      !    call createFile(1111,fname)
-      !end if
-
    end subroutine MOSART_init2
 
    !-----------------------------------------------------------------------
@@ -1621,10 +1613,10 @@ contains
       ! Run MOSART river routing model
       !
       ! Arguments
-      logical ,         intent(in) :: rstwr          ! true => write restart file this step)
-      logical ,         intent(in) :: nlend          ! true => end of run on this step
-      character(len=*), intent(in) :: rdate          ! restart file time stamp for name
-      integer,          intent(out) :: rc
+      logical          , intent(in)  :: rstwr ! true => write restart file this step)
+      logical          , intent(in)  :: nlend ! true => end of run on this step
+      character(len=*) , intent(in)  :: rdate ! restart file time stamp for name
+      integer          , intent(out) :: rc
       !
       ! Local variables
       integer            :: i, j, n, nr, ns, nt, n2, nf ! indices
@@ -1637,10 +1629,8 @@ contains
       integer ,save      :: budget_accum_cnt            ! counter for budget_accum
       real(r8)           :: budget_global(30,nt_rtm)    ! global budget sum
       logical            :: budget_check                ! do global budget check
-      real(r8)           :: volr_init                   ! temporary storage to compute dvolrdt
       real(r8),parameter :: budget_tolerance = 1.0e-6   ! budget tolerance, m3/day
-      logical            :: abort                       ! abort flag
-      real(r8)           :: sum1,sum2
+      real(r8)           :: volr_init                   ! temporary storage to compute dvolrdt
       integer            :: yr, mon, day, ymd, tod      ! time information
       integer            :: nsub                        ! subcyling for cfl
       real(r8)           :: delt                        ! delt associated with subcycling
@@ -1769,6 +1759,7 @@ contains
          TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) - irrig_volume
 
          !scs       endif
+
       enddo
       call t_stopf('mosartr_irrig')
 
@@ -1817,8 +1808,6 @@ contains
       endif
 
       call t_startf('mosartr_SMdirect')
-      !--- copy direct transfer fields
-      !--- convert kg/m2s to m3/s
 
       !-----------------------------------------------------
       ! Set up pointer arrays into srcfield and dstfield
@@ -1928,6 +1917,7 @@ contains
                endif
             endif
          enddo
+
       endif
 
       !-------------------------------------------------------
@@ -2132,7 +2122,7 @@ contains
       ! BUDGET terms 1-10 are for volumes (m3)
       ! BUDGET terms 11-30 are for flows (m3/s)
       ! BUDGET only ocean runoff and direct gets out of the system
-      !    if (budget_check) then
+
       call t_startf('mosartr_budget')
       do nt = 1,nt_rtm
          do nr = rtmCTL%begr,rtmCTL%endr
@@ -2199,7 +2189,7 @@ contains
                budget_total  = budget_volume - budget_input + budget_output
                budget_euler  = budget_volume - budget_global(20,nt) + budget_global(18,nt)
                budget_eroutlag = budget_global(23,nt) - budget_global(24,nt)
-               write(iulog,'(2a,i4)')        trim(subname),'  tracer = ',nt
+               write(iulog,'(2a,i4)')       trim(subname),'  tracer = ',nt
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume   init = ',nt,budget_global(1,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume  final = ',nt,budget_global(2,nt)
                !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumeh  init = ',nt,budget_global(7,nt)
@@ -2374,16 +2364,18 @@ contains
 
    !----------------------------------------------------------------------------
 
-   subroutine MOSART_SubTimestep
+   subroutine MOSART_SubTimestep()
 
       ! predescribe the sub-time-steps for channel routing
 
+      ! Local variables
       integer :: iunit   !local index
-      character(len=*),parameter :: subname = '(SubTimestep)'
+      character(len=*),parameter :: subname = '(MOSART_SubTimestep)'
 
       allocate(TUnit%numDT_r(rtmCTL%begr:rtmCTL%endr),TUnit%numDT_t(rtmCTL%begr:rtmCTL%endr))
       TUnit%numDT_r = 1
       TUnit%numDT_t = 1
+
       allocate(TUnit%phi_r(rtmCTL%begr:rtmCTL%endr),TUnit%phi_t(rtmCTL%begr:rtmCTL%endr))
       TUnit%phi_r = 0._r8
       TUnit%phi_t = 0._r8

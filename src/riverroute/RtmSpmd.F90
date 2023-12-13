@@ -17,18 +17,16 @@ module RtmSpmd
   implicit none
   private
 
-#include <mpif.h>  
+#include <mpif.h>
 
-  save     ! This statement won't be needed once all compilers we support are compliant with FORTRAN-2008
-
-  ! Default settings valid even if there is no spmd 
+  ! Default settings valid even if there is no spmd
 
   logical, public :: masterproc      ! proc 0 logical for printing msgs
   integer, public :: iam             ! processor number
   integer, public :: npes            ! number of processors for rtm
   integer, public :: mpicom_rof      ! communicator group for rtm
-  integer, public :: ROFID           ! mct compid
-  integer, public, parameter :: MASTERTASK=0 ! the value of iam which is assigned 
+  integer, public :: ROFID           ! component id needed for PIO
+  integer, public, parameter :: MASTERTASK=0 ! the value of iam which is assigned
                                              ! the masterproc duties
 
   !
@@ -50,7 +48,6 @@ module RtmSpmd
   public :: MPI_ANY_SOURCE
   public :: MPI_CHARACTER
   public :: MPI_COMM_WORLD
-  public :: MPI_MAX_PROCESSOR_NAME
 
 contains
 
@@ -63,7 +60,6 @@ contains
     ! MPI initialization (number of processes, etc)
     !
     ! !ARGUMENTS:
-    implicit none
     integer, intent(in) :: mpicom
     !
     ! !LOCAL VARIABLES:
@@ -77,14 +73,13 @@ contains
     ! Get my processor id
 
     call mpi_comm_rank(mpicom_rof, iam, ier)
-    if (iam == MASTERTASK) then 
+    if (iam == MASTERTASK) then
        masterproc = .true.
     else
        masterproc = .false.
     end if
 
     ! Get number of processors
-
     call mpi_comm_size(mpicom_rof, npes, ier)
 
   end subroutine RtmSpmdInit

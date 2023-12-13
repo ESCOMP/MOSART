@@ -203,7 +203,7 @@ contains
     ! The following call initializees the module variable mpicom_rof in RtmSpmd
     call RtmSpmdInit(mpicom)
 
-    ! Set ROFID - needed for the mosart code that requires MCT
+    ! Set ROFID
     call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) ROFID  ! convert from string to integer
@@ -498,8 +498,8 @@ contains
     endif
 #endif
 
-    call MOSART_init1(rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    ! Call first phase of MOSART initialization (set decomp, grid)
+    call MOSART_init1()
 
     !--------------------------------
     ! generate the mesh and realize fields
