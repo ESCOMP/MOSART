@@ -1050,7 +1050,7 @@ contains
       dst_direct(:,:) = 0._r8
 
       ! Calculate map for direct to outlet mapping
-      ! The route handle rh_direct will then be used in Rtmrun
+      ! The route handle rh_direct will then be used in MOSART_run
       cnt = rtmCTL%endr - rtmCTL%begr + 1
       allocate(factorList(cnt))
       allocate(factorIndexList(2,cnt))
