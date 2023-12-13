@@ -5,7 +5,7 @@ module RtmFileUtils
    !
    ! !USES:
    use shr_sys_mod , only : shr_sys_abort
-   use RtmSpmd     , only : masterproc
+   use RtmSpmd     , only : mainproc
    use RtmVar      , only : iulog
    !
    ! !PUBLIC TYPES:
@@ -14,7 +14,6 @@ module RtmFileUtils
    !
    ! !PUBLIC MEMBER FUNCTIONS:
    public :: get_filename  !Returns filename given full pathname
-   public :: opnfil        !Open local unformatted or formatted file
    public :: getfil        !Obtain local copy of file
    !
    !-----------------------------------------------------------------------
@@ -28,7 +27,6 @@ contains
       ! Returns filename given full pathname
       !
       ! !ARGUMENTS:
-      implicit none
       character(len=*), intent(in)  :: fulpath !full pathname
       !
       ! !LOCAL VARIABLES:
@@ -61,25 +59,22 @@ contains
 
       ! !LOCAL VARIABLES:
       integer i               !loop index
-      integer klen            !length of fulpath character string
       logical lexist          !true if local file exists
       !--------------------------------------------------
 
       ! get local file name from full name
       locfn = get_filename( fulpath )
       if (len_trim(locfn) == 0) then
-         if (masterproc) write(iulog,*)'(GETFIL): local filename has zero length'
+         if (mainproc) write(iulog,*)'(GETFIL): local filename has zero length'
          call shr_sys_abort()
       else
-         if (masterproc) write(iulog,*)'(GETFIL): attempting to find local file ',  &
-              trim(locfn)
+         if (mainproc) write(iulog,*)'(GETFIL): attempting to find local file ',trim(locfn)
       endif
 
       ! first check if file is in current working directory.
       inquire (file=locfn,exist=lexist)
       if (lexist) then
-         if (masterproc) write(iulog,*) '(GETFIL): using ',trim(locfn), &
-              ' in current working directory'
+         if (mainproc) write(iulog,*) '(GETFIL): using ',trim(locfn),' in current working directory'
          RETURN
       endif
 
@@ -88,10 +83,10 @@ contains
 
       inquire (file=fulpath,exist=lexist)
       if (lexist) then
-         if (masterproc) write(iulog,*) '(GETFIL): using ',trim(fulpath)
+         if (mainproc) write(iulog,*) '(GETFIL): using ',trim(fulpath)
          RETURN
       else
-         if (masterproc) write(iulog,*)'(GETFIL): failed getting file from full path: ', fulpath
+         if (mainproc) write(iulog,*)'(GETFIL): failed getting file from full path: ', fulpath
          if (iflag==0) then
             call shr_sys_abort ('GETFIL: FAILED to get '//trim(fulpath))
          else
@@ -100,42 +95,5 @@ contains
       endif
 
    end subroutine getfil
-
-   !------------------------------------------------------------------------
-
-   subroutine opnfil (locfn, form, iun)
-
-      ! Open file locfn in unformatted or formatted form on unit iun
-      !
-      ! arguments
-      character(len=*), intent(in):: locfn  !file name
-      character(len=1), intent(in):: form   !file format: u = unformatted,
-      integer, intent(out)        :: iun    !fortran unit number
-
-      ! local variables
-      integer :: ioe             !error return from fortran open
-      character(len=11) :: ft    !format type: formatted. unformatted
-      !-----------------------------------------------------------
-
-      if (len_trim(locfn) == 0) then
-         write(iulog,*)'(OPNFIL): local filename has zero length'
-         call shr_sys_abort()
-      endif
-      if (form=='u' .or. form=='U') then
-         ft = 'unformatted'
-      else
-         ft = 'formatted  '
-      end if
-      open (newunit=iun,file=locfn,status='unknown',form=ft,iostat=ioe)
-      if (ioe /= 0) then
-         write(iulog,*)'(OPNFIL): failed to open file ',trim(locfn),        &
-              &     ' on unit ',iun,' ierr=',ioe
-         call shr_sys_abort()
-      else if ( masterproc )then
-         write(iulog,*)'(OPNFIL): Successfully opened file ',trim(locfn),   &
-              &     ' on unit= ',iun
-      end if
-
-   end subroutine opnfil
 
 end module RtmFileUtils

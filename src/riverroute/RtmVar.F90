@@ -3,7 +3,7 @@ module RtmVar
   use shr_kind_mod , only : r8 => shr_kind_r8, CL => SHR_KIND_CL
   use shr_const_mod, only : SHR_CONST_CDAY,SHR_CONST_REARTH
   use shr_sys_mod  , only : shr_sys_abort
-  use RtmSpmd      , only : masterproc
+  use RtmSpmd      , only : mainproc
   use ESMF
 
   implicit none
@@ -111,7 +111,7 @@ contains
 !================================================================================
 
   subroutine RtmVarInit( )
-    if (masterproc) then
+    if (mainproc) then
        if (nsrest == iundef) then
           call shr_sys_abort( 'RtmVarInit ERROR:: must set nsrest' )
        end if

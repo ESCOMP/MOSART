@@ -6,7 +6,7 @@ module RtmRestFile
    ! !USES:
    use shr_kind_mod  , only : r8 => shr_kind_r8
    use shr_sys_mod   , only : shr_sys_abort
-   use RtmSpmd       , only : masterproc
+   use RtmSpmd       , only : mainproc
    use RtmVar        , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
                               caseid, nsrest, brnch_retain_casename, &
                               finidat_rtm, nrevsn_rtm, spval, &
@@ -14,7 +14,7 @@ module RtmRestFile
                               ctitle, version, username, hostname, conventions, source, &
                               nt_rtm, nt_rtm, rtm_tracers
    use RtmHistFile   , only : RtmHistRestart
-   use RtmFileUtils  , only : opnfil, getfil
+   use RtmFileUtils  , only : getfil
    use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
    use RunoffMod     , only : rtmCTL
    use RtmIO
@@ -36,9 +36,6 @@ module RtmRestFile
    private :: restFile_read_pfile
    private :: restFile_write_pfile    ! Writes restart pointer file
    private :: restFile_dimset
-   !
-   ! !REVISION HISTORY:
-   ! Author: Mariana Vertenstein
    !-----------------------------------------------------------------------
 
 contains
@@ -49,11 +46,11 @@ contains
       !-------------------------------------
       ! Read/write MOSART restart file.
 
-      ! !ARGUMENTS:
+      ! Arguments:
       character(len=*) , intent(in) :: file            ! output netcdf restart file
       character(len=*) , intent(in) :: rdate           ! restart file time stamp for name
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       type(file_desc_t) :: ncid ! netcdf id
       integer :: i       ! index
       logical :: ptrfile ! write out the restart pointer file
@@ -61,7 +58,7 @@ contains
 
       ! Define dimensions and variables
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*)
          write(iulog,*)'restFile_open: writing MOSART restart dataset '
          write(iulog,*)
@@ -79,7 +76,7 @@ contains
       call timemgr_restart( ncid, flag='write' )
       call ncd_pio_closefile(ncid)
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Successfully wrote local restart file ',trim(file)
          write(iulog,'(72a1)') ("-",i=1,60)
          write(iulog,*)
@@ -90,7 +87,7 @@ contains
 
       ! Write out diagnostic info
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Successfully wrote out restart data at nstep = ',get_nstep()
          write(iulog,'(72a1)') ("-",i=1,60)
       end if
@@ -104,23 +101,23 @@ contains
       !-------------------------------------
       ! Read a MOSART restart file.
       !
-      ! !ARGUMENTS:
+      ! Arguments
       character(len=*), intent(in) :: file  ! output netcdf restart file
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       type(file_desc_t) :: ncid ! netcdf id
       integer :: i              ! index
       !-------------------------------------
 
       ! Read file
-      if (masterproc) write(iulog,*) 'Reading restart dataset'
+      if (mainproc) write(iulog,*) 'Reading restart dataset'
       call ncd_pio_openfile (ncid, trim(file), 0)
       call RtmRestart( ncid, flag='read' )
       call RtmHistRestart(ncid, flag='read')
       call ncd_pio_closefile(ncid)
 
       ! Write out diagnostic info
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,'(72a1)') ("-",i=1,60)
          write(iulog,*) 'Successfully read restart data for restart run'
          write(iulog,*)
@@ -135,22 +132,22 @@ contains
       !-------------------------------------
       ! Read a MOSART restart file.
       !
-      ! !ARGUMENTS:
+      ! Arguments
       character(len=*), intent(in) :: file  ! output netcdf restart file
       !
-      ! !LOCAL VARIABLES:
+      ! Local Variables:
       type(file_desc_t) :: ncid ! netcdf id
       integer :: i              ! index
       !-------------------------------------
 
       ! Read file
-      if (masterproc) write(iulog,*) 'Reading restart Timemanger'
+      if (mainproc) write(iulog,*) 'Reading restart Timemanger'
       call ncd_pio_openfile (ncid, trim(file), 0)
       call timemgr_restart(ncid, flag='read')
       call ncd_pio_closefile(ncid)
 
       ! Write out diagnostic info
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,'(72a1)') ("-",i=1,60)
          write(iulog,*) 'Successfully read restart data for restart run'
          write(iulog,*)
@@ -165,7 +162,7 @@ contains
       !-------------------------------------
       ! Determine and obtain netcdf restart file
 
-      ! ARGUMENTS:
+      ! Arguments:
       character(len=*), intent(out) :: file  ! name of netcdf restart file
       character(len=*), intent(out) :: path  ! full pathname of netcdf restart file
 
@@ -222,14 +219,14 @@ contains
       !-------------------------------------
       ! Setup restart file and perform necessary consistency checks
 
-      ! !ARGUMENTS:
+      ! Arguments
       character(len=*), intent(out) :: pnamer ! full path of restart file
 
-      ! !LOCAL VARIABLES:
-      integer :: i                  ! indices
-      integer :: nio                ! restart unit
-      integer :: status             ! substring check status
-      character(len=256) :: locfn   ! Restart pointer file name
+      ! Local variables
+      integer :: nio              ! restart unit
+      integer :: ier              ! error return from fortran open
+      integer :: i                ! index
+      character(len=256) :: locfn ! Restart pointer file name
       !-------------------------------------
 
       ! Obtain the restart file from the restart pointer file.
@@ -238,17 +235,19 @@ contains
       ! [nrevsn_rtm] contains the full pathname of the restart file.
       ! New history files are always created for branch runs.
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Reading restart pointer file....'
       endif
-
       locfn = './'// trim(rpntfil)//trim(inst_suffix)
-      call opnfil (locfn, 'f', nio)
+      open (newunit=nio, file=trim(locfn), status='unknown', form='formatted', iostat=ier)
+      if (ier /= 0) then
+         write(iulog,'(a,i8)')'(restFile_read_pfile): failed to open file '//trim(locfn)//' ierr=',ier
+         call shr_sys_abort()
+      end if
       read (nio,'(a256)') pnamer
       close(nio)
-
-      if (masterproc) then
-         write(iulog,*) 'Reading restart data.....'
+      if (mainproc) then
+         write(iulog,'(a)') 'Reading restart data.....'
          write(iulog,'(72a1)') ("-",i=1,60)
       end if
 
@@ -261,18 +260,22 @@ contains
       !-------------------------------------
       ! Open restart pointer file. Write names of current netcdf restart file.
       !
-      ! !ARGUMENTS:
+      ! Arguments
       character(len=*), intent(in) :: fnamer
       !
-      ! !LOCAL VARIABLES:
-      integer :: m                    ! index
-      integer :: nio                  ! restart pointer file
+      ! Local variables
+      integer :: nio ! restart pointer file unit number
+      integer :: ier ! error return from fortran open
       character(len=256) :: filename  ! local file name
       !-------------------------------------
 
-      if (masterproc) then
+      if (mainproc) then
          filename= './'// trim(rpntfil)//trim(inst_suffix)
-         call opnfil( filename, 'f', nio)
+         open (newunit=nio, file=trim(filename), status='unknown', form='formatted', iostat=ier)
+         if (ier /= 0) then
+            write(iulog,'(a,i8)')'(restFile_write_pfile): failed to open file '//trim(filename)//' ierr=',ier
+            call shr_sys_abort()
+         end if
          write(nio,'(a)') fnamer
          close(nio)
          write(iulog,*)'Successfully wrote local restart pointer file'
@@ -288,7 +291,7 @@ contains
       character(len=*), intent(in) :: rdate   ! input date for restart file name
 
       RtmRestFileName = "./"//trim(caseid)//".mosart"//trim(inst_suffix)//".r."//trim(rdate)//".nc"
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*)'writing restart file ',trim(RtmRestFileName),' for model date = ',rdate
       end if
 
@@ -301,10 +304,10 @@ contains
       !-------------------------------------
       ! Read/Write initial data from/to netCDF instantaneous initial data file
 
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid
 
-      ! !LOCAL VARIABLES:
+      ! Local Variables:
       integer :: dimid               ! netCDF dimension id
       integer :: ier                 ! error status
       character(len=  8) :: curdate  ! current date
@@ -343,11 +346,11 @@ contains
       !-------------------------------------
       ! Read/write MOSART restart data.
       !
-      ! ARGUMENTS:
+      ! Arguments:
       type(file_desc_t), intent(inout)  :: ncid ! netcdf id
       character(len=*) , intent(in) :: flag   ! 'read' or 'write'
 
-      ! LOCAL VARIABLES:
+      ! Local variables
       logical :: readvar          ! determine if variable is on initial file
       integer :: nt,nv,n          ! indices
       real(r8) , pointer :: dfld(:) ! temporary array

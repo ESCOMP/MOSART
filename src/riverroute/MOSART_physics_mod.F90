@@ -15,10 +15,10 @@ MODULE MOSART_physics_mod
    use shr_kind_mod      , only : r8 => shr_kind_r8
    use shr_const_mod     , only : SHR_CONST_REARTH, SHR_CONST_PI
    use shr_sys_mod       , only : shr_sys_abort
+   use RtmSpmd           , only : mpicom_rof
    use RtmVar            , only : iulog, barrier_timers, nt_rtm, rtm_tracers, &
                                   srcfield, dstfield, rh_eroutUp
    use RunoffMod         , only : Tctl, TUnit, TRunoff, TPara, rtmCTL
-   use RtmSpmd           , only : masterproc, mpicom_rof
    use perf_mod          , only : t_startf, t_stopf
    use nuopc_shr_methods , only : chkerr
    use ESMF              , only : ESMF_FieldGet, ESMF_FieldSMM, ESMF_Finalize, &

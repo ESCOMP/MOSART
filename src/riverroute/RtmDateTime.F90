@@ -10,7 +10,7 @@ contains
       !
       ! A generic Date and Time routine
       !
-      use RtmSpmd, only : mpicom_rof, masterproc, MPI_CHARACTER
+      use RtmSpmd, only : mpicom_rof, mainproc, MPI_CHARACTER
       !
       ! Arguments
       character(len=8), intent(out) :: cdate  !current date
@@ -24,7 +24,7 @@ contains
       integer               :: ier    !MPI error code
       !-----------------------------------------------------------------------
 
-      if (masterproc) then
+      if (mainproc) then
          call date_and_time (date, time, zone, values)
 
          cdate(1:2) = date(5:6)

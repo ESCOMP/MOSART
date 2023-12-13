@@ -12,7 +12,7 @@ module RtmIO
   use shr_kind_mod   , only : r8 => shr_kind_r8, i8=>shr_kind_i8, shr_kind_cl, r4=>shr_kind_r4
   use shr_sys_mod    , only : shr_sys_flush, shr_sys_abort
   use shr_file_mod   , only : shr_file_getunit, shr_file_freeunit
-  use RtmSpmd        , only : masterproc, mpicom_rof, iam, npes, rofid
+  use RtmSpmd        , only : mainproc, mpicom_rof, iam, npes, rofid
   use RunoffMod      , only : rtmCTL
   use RtmVar         , only : spval, ispval, iulog
   use perf_mod       , only : t_startf, t_stopf
@@ -170,7 +170,7 @@ contains
 
     if(ierr/= PIO_NOERR) then
        call shr_sys_abort(subname//'ERROR: Failed to open file')
-    else if(pio_iotask_rank(pio_subsystem)==0 .and. masterproc) then
+    else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
        write(iulog,*) 'Opened existing file ', trim(fname), file%fh
     end if
 
@@ -219,7 +219,7 @@ contains
 
     if(ierr/= PIO_NOERR) then
        call shr_sys_abort( subname//' ERROR: Failed to open file to write: '//trim(fname))
-    else if(pio_iotask_rank(pio_subsystem)==0 .and. masterproc) then
+    else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
        write(iulog,*) 'Opened file ', trim(fname),  ' to write', file%fh
     end if
 
@@ -257,7 +257,7 @@ contains
     ret = PIO_inq_varid (ncid, varname, vardesc)
     if (ret /= PIO_noerr) then
        readvar = .false.
-       if (masterproc .and. log_err) &
+       if (mainproc .and. log_err) &
             write(iulog,*) subname//': variable ',trim(varname),' is not on dataset'
     end if
     call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
@@ -477,7 +477,7 @@ contains
        call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
        ret = PIO_inq_varid(ncid,name,vardesc)
        if (ret /= PIO_noerr) then
-          if (masterproc) write(iulog,*) subname//': variable ',trim(name),' is not on dataset'
+          if (mainproc) write(iulog,*) subname//': variable ',trim(name),' is not on dataset'
           readvar = .false.
        else
           readvar = .true.
@@ -722,7 +722,7 @@ contains
     else
        lxtype = xtype
     end if
-    if (masterproc .and. debug > 1) then
+    if (mainproc .and. debug > 1) then
        write(iulog,*) 'Error in defining variable = ', trim(varname)
        write(iulog,*) subname//' ',trim(varname),lxtype,ndims,ldimid(1:ndims)
     endif
@@ -1529,7 +1529,7 @@ contains
     character(len=*),parameter :: subname='ncd_io_int_var1' ! subroutine name
     !-----------------------------------------------------------------------
 
-    if (masterproc .and. debug > 1) then
+    if (mainproc .and. debug > 1) then
        write(iulog,*) subname//' ',trim(flag),' ',trim(varname),' ',trim(dim1name)
     end if
 
@@ -1584,7 +1584,7 @@ contains
 
     else
 
-       if (masterproc) then
+       if (mainproc) then
           write(iulog,*) subname//' ERROR: unsupported flag ',trim(flag)
           call shr_sys_abort()
        endif
@@ -1632,7 +1632,7 @@ contains
     character(len=*),parameter :: subname='ncd_io_log_var1' ! subroutine name
     !-----------------------------------------------------------------------
 
-    if (masterproc .and. debug > 1) then
+    if (mainproc .and. debug > 1) then
        write(iulog,*) subname//' ',trim(flag),' ',trim(varname)
     end if
 
@@ -1700,7 +1700,7 @@ contains
 
     else
 
-       if (masterproc) then
+       if (mainproc) then
           write(iulog,*) subname//' ERROR: unsupported flag ',trim(flag)
           call shr_sys_abort()
        endif
@@ -1747,7 +1747,7 @@ contains
     character(len=*),parameter :: subname='ncd_io_real_var1' ! subroutine name
     !-----------------------------------------------------------------------
 
-    if (masterproc .and. debug > 1) then
+    if (mainproc .and. debug > 1) then
        write(iulog,*) trim(subname),' ',trim(flag),' ',trim(varname)
     endif
 
@@ -1805,7 +1805,7 @@ contains
        endif
     else
 
-       if (masterproc) then
+       if (mainproc) then
           write(iulog,*) subname,' error: unsupported flag ',trim(flag)
           call shr_sys_abort()
        endif
@@ -1895,7 +1895,7 @@ contains
           call shr_sys_abort()
        endif
        iodnum = num_iodesc
-       if (masterproc .and. debug > 1) then
+       if (mainproc .and. debug > 1) then
           write(iulog,*) trim(subname),' creating iodesc at iodnum,ndims,dims(1:ndims),xtype',&
                iodnum,ndims,dims(1:ndims),xtype
        endif

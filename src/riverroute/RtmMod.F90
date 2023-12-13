@@ -8,10 +8,10 @@ module RtmMod
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
-   use RtmVar             , only : nt_rtm, rtm_tracers
-   use RtmSpmd            , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
-                                   MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
-   use RtmVar             , only : re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
+   use RtmSpmd            , only : mainproc, npes, iam, mpicom_rof, ROFID, &
+                                   MPI_REAL8, MPI_INTEGER, MPI_CHARACTER, MPI_LOGICAL, MPI_MAX
+   use RtmVar             , only : nt_rtm, rtm_tracers, &
+                                   re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
                                    frivinp_rtm, finidat_rtm, nrevsn_rtm, &
                                    nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
@@ -140,7 +140,7 @@ contains
          write(iulog,*) subname // ' ERROR: nlfilename_rof does NOT exist: '//trim(nlfilename_rof)
          call shr_sys_abort(trim(subname)//' ERROR nlfilename_rof does not exist')
       end if
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Reading mosart_inparm namelist from: ', trim(nlfilename_rof)
          open( newunit=unitn, file=trim(nlfilename_rof), status='old' )
          ier = 1
@@ -184,7 +184,7 @@ contains
       runtyp(nsrContinue + 1) = 'restart'
       runtyp(nsrBranch   + 1) = 'branch '
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'define run:'
          write(iulog,*) '   run type              = ',runtyp(nsrest+1)
          write(iulog,*) '   coupling_period       = ',coupling_period
@@ -202,7 +202,7 @@ contains
       if (frivinp_rtm == ' ') then
          call shr_sys_abort( subname//' ERROR: frivinp_rtm NOT set' )
       else
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,*) '   MOSART river data       = ',trim(frivinp_rtm)
          endif
       end if
@@ -327,7 +327,7 @@ contains
       do n = 2,nt_rtm
          rtm_trstr = trim(rtm_trstr)//':'//trim(rtm_tracers(n))
       enddo
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*)'MOSART tracers = ',nt_rtm,trim(rtm_trstr)
       end if
 
@@ -341,7 +341,7 @@ contains
       call t_startf('mosarti_grid')
 
       call getfil(frivinp_rtm, locfn, 0 )
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Read in MOSART file name: ',trim(frivinp_rtm)
       endif
 
@@ -351,7 +351,7 @@ contains
       call ncd_inqdid(ncid,'lat',dimid)
       call ncd_inqdlen(ncid,dimid,rtmlat)
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Values for rtmlon/rtmlat: ',rtmlon,rtmlat
          write(iulog,*) 'Successfully read MOSART dimensions'
       endif
@@ -380,54 +380,54 @@ contains
 
       call ncd_io(ncid=ncid, varname='longxy', flag='read', data=tempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read MOSART longitudes')
-      if (masterproc) write(iulog,*) 'Read longxy ',minval(tempr),maxval(tempr)
+      if (mainproc) write(iulog,*) 'Read longxy ',minval(tempr),maxval(tempr)
       do i=1,rtmlon
          rtmCTL%rlon(i) = tempr(i,1)
          rlonc(i) = tempr(i,1)
       enddo
-      if (masterproc) write(iulog,*) 'rlonc ',minval(rlonc),maxval(rlonc)
+      if (mainproc) write(iulog,*) 'rlonc ',minval(rlonc),maxval(rlonc)
 
       call ncd_io(ncid=ncid, varname='latixy', flag='read', data=tempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read MOSART latitudes')
-      if (masterproc) write(iulog,*) 'Read latixy ',minval(tempr),maxval(tempr)
+      if (mainproc) write(iulog,*) 'Read latixy ',minval(tempr),maxval(tempr)
       do j=1,rtmlat
          rtmCTL%rlat(j) = tempr(1,j)
          rlatc(j) = tempr(1,j)
       end do
-      if (masterproc) write(iulog,*) 'rlatc ',minval(rlatc),maxval(rlatc)
+      if (mainproc) write(iulog,*) 'rlatc ',minval(rlatc),maxval(rlatc)
 
       call ncd_io(ncid=ncid, varname='area', flag='read', data=tempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read MOSART area')
-      if (masterproc) write(iulog,*) 'Read area ',minval(tempr),maxval(tempr)
+      if (mainproc) write(iulog,*) 'Read area ',minval(tempr),maxval(tempr)
       do j=1,rtmlat
          do i=1,rtmlon
             n = (j-1)*rtmlon + i
             area_global(n) = tempr(i,j)
          end do
       end do
-      if (masterproc) write(iulog,*) 'area ',minval(tempr),maxval(tempr)
+      if (mainproc) write(iulog,*) 'area ',minval(tempr),maxval(tempr)
 
       call ncd_io(ncid=ncid, varname='ID', flag='read', data=itempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read MOSART ID')
-      if (masterproc) write(iulog,*) 'Read ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read ID ',minval(itempr),maxval(itempr)
       do j=1,rtmlat
          do i=1,rtmlon
             n = (j-1)*rtmlon + i
             ID0_global(n) = itempr(i,j)
          end do
       end do
-      if (masterproc) write(iulog,*) 'ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'ID ',minval(itempr),maxval(itempr)
 
       call ncd_io(ncid=ncid, varname='dnID', flag='read', data=itempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read MOSART dnID')
-      if (masterproc) write(iulog,*) 'Read dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read dnID ',minval(itempr),maxval(itempr)
       do j=1,rtmlat
          do i=1,rtmlon
             n = (j-1)*rtmlon + i
             dnID_global(n) = itempr(i,j)
          end do
       end do
-      if (masterproc) write(iulog,*) 'dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'dnID ',minval(itempr),maxval(itempr)
 
       deallocate(tempr)
       deallocate(itempr)
@@ -486,16 +486,16 @@ contains
       edgew = minval(rlonc) - 0.5*abs(rlonc(1) - rlonc(2))
 
       if ( edgen .ne.  90._r8 )then
-         if ( masterproc ) write(iulog,*) 'Regional grid: edgen = ', edgen
+         if ( mainproc ) write(iulog,*) 'Regional grid: edgen = ', edgen
       end if
       if ( edges .ne. -90._r8 )then
-         if ( masterproc ) write(iulog,*) 'Regional grid: edges = ', edges
+         if ( mainproc ) write(iulog,*) 'Regional grid: edges = ', edges
       end if
       if ( edgee .ne. 180._r8 )then
-         if ( masterproc ) write(iulog,*) 'Regional grid: edgee = ', edgee
+         if ( mainproc ) write(iulog,*) 'Regional grid: edgee = ', edgee
       end if
       if ( edgew .ne.-180._r8 )then
-         if ( masterproc ) write(iulog,*) 'Regional grid: edgew = ', edgew
+         if ( mainproc ) write(iulog,*) 'Regional grid: edgew = ', edgew
       end if
 
       ! Set edge latitudes (assumes latitudes are constant for a given longitude)
@@ -573,7 +573,7 @@ contains
             nrof = nrof + 1
          endif
       enddo
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'Number of outlet basins = ',nout
          write(iulog,*) 'Number of total  basins = ',nbas
          write(iulog,*) 'Number of mosart points = ',nmos
@@ -635,7 +635,7 @@ contains
       nbas_chk = 0
       nrof_chk = 0
       do nr=1,rtmlon*rtmlat
-         !      !if (masterproc) write(iulog,*) 'nupstrm check ',nr,gmask(nr),nupstrm(nr),idxocn(nr)
+         !      !if (mainproc) write(iulog,*) 'nupstrm check ',nr,gmask(nr),nupstrm(nr),idxocn(nr)
          if (gmask(nr) >= 2 .and. nupstrm(nr) > 0) then
             nbas_chk = nbas_chk + 1
             nrof_chk = nrof_chk + nupstrm(nr)
@@ -762,7 +762,7 @@ contains
          call shr_sys_abort(subname//' ERROR pocn lnd')
       endif  ! decomp_option
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'MOSART cells and basins total  = ',nrof,nbas
          write(iulog,*) 'MOSART cells per basin avg/max = ',nrof/nbas,maxval(nupstrm)
          write(iulog,*) 'MOSART cells per pe    min/max = ',minval(nop),maxval(nop)
@@ -832,7 +832,7 @@ contains
             dx = (rlone(i) - rlonw(i)) * deg2rad
             dy = sin(rlatn(j)*deg2rad) - sin(rlats(j)*deg2rad)
             area_global(n) = abs(1.e6_r8 * dx*dy*re*re)
-            if (masterproc .and. area_global(n) <= 0) then
+            if (mainproc .and. area_global(n) <= 0) then
                write(iulog,*) 'Warning! Zero area for unit ', n, area_global(n),dx,dy,re
             end if
          end if
@@ -846,7 +846,7 @@ contains
 
       call t_startf('mosarti_print')
 
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) 'total runoff cells numr  = ',rtmCTL%numr
       endif
       call mpi_barrier(mpicom_rof,ier)
@@ -995,7 +995,7 @@ contains
       deallocate(idxocn)
 
       call shr_mpi_sum(lrtmarea, rtmCTL%totarea, mpicom_rof, 'mosart totarea', all=.true.)
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) subname,'  earth area ',4.0_r8*shr_const_pi*1.0e6_r8*re*re
          write(iulog,*) subname,' MOSART area ',rtmCTL%totarea
       end if
@@ -1075,7 +1075,7 @@ contains
       deallocate(factorList)
       deallocate(factorIndexList)
 
-      if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
+      if (mainproc) write(iulog,*) subname," Done initializing rh_direct "
 
       ! ---------------------------------------
       ! Read in data from frivinp_rtm
@@ -1113,7 +1113,7 @@ contains
          allocate(TUnit%frac(begr:endr))
          ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%frac, ier)
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,FORMR) trim(subname),' read frac ',minval(Tunit%frac),maxval(Tunit%frac)
          end if
 
@@ -1124,7 +1124,7 @@ contains
          allocate(TUnit%mask(begr:endr))
          ier = pio_inq_varid(ncid, name='fdir', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%mask, ier)
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,'(2A,2i10)') trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
          end if
 
@@ -1151,12 +1151,12 @@ contains
          allocate(TUnit%ID0(begr:endr))
          ier = pio_inq_varid(ncid, name='ID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ID0, ier)
-         if (masterproc) write(iulog,'(2A,2i10)') trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
+         if (mainproc) write(iulog,'(2A,2i10)') trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
 
          allocate(TUnit%dnID(begr:endr))
          ier = pio_inq_varid(ncid, name='dnID', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%dnID, ier)
-         if (masterproc) write(iulog,'(2A,2i10)') trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
+         if (mainproc) write(iulog,'(2A,2i10)') trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
 
          !-------------------------------------------------------
          ! RESET ID0 and dnID indices using the IDkey to be consistent
@@ -1177,7 +1177,7 @@ contains
          allocate(TUnit%area(begr:endr))
          ier = pio_inq_varid(ncid, name='area', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%area, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read area ',minval(Tunit%area),maxval(Tunit%area)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read area ',minval(Tunit%area),maxval(Tunit%area)
 
          do n=rtmCtl%begr, rtmCTL%endr
             if (TUnit%area(n) < 0._r8) TUnit%area(n) = rtmCTL%area(n)
@@ -1190,7 +1190,7 @@ contains
          allocate(TUnit%areaTotal(begr:endr))
          ier = pio_inq_varid(ncid, name='areaTotal', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%areaTotal, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read areaTotal ',minval(Tunit%areaTotal),maxval(Tunit%areaTotal)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read areaTotal ',minval(Tunit%areaTotal),maxval(Tunit%areaTotal)
 
          allocate(TUnit%rlenTotal(begr:endr))
          TUnit%rlenTotal = 0._r8
@@ -1198,12 +1198,12 @@ contains
          allocate(TUnit%nh(begr:endr))
          ier = pio_inq_varid(ncid, name='nh', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nh, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nh ',minval(Tunit%nh),maxval(Tunit%nh)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read nh ',minval(Tunit%nh),maxval(Tunit%nh)
 
          allocate(TUnit%hslp(begr:endr))
          ier = pio_inq_varid(ncid, name='hslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%hslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read hslp ',minval(Tunit%hslp),maxval(Tunit%hslp)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read hslp ',minval(Tunit%hslp),maxval(Tunit%hslp)
 
          allocate(TUnit%hslpsqrt(begr:endr))
          TUnit%hslpsqrt = 0._r8
@@ -1211,7 +1211,7 @@ contains
          allocate(TUnit%gxr(begr:endr))
          ier = pio_inq_varid(ncid, name='gxr', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%gxr, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read gxr ',minval(Tunit%gxr),maxval(Tunit%gxr)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read gxr ',minval(Tunit%gxr),maxval(Tunit%gxr)
 
          allocate(TUnit%hlen(begr:endr))
          TUnit%hlen = 0._r8
@@ -1219,7 +1219,7 @@ contains
          allocate(TUnit%tslp(begr:endr))
          ier = pio_inq_varid(ncid, name='tslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%tslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read tslp ',minval(Tunit%tslp),maxval(Tunit%tslp)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read tslp ',minval(Tunit%tslp),maxval(Tunit%tslp)
 
          allocate(TUnit%tslpsqrt(begr:endr))
          TUnit%tslpsqrt = 0._r8
@@ -1230,7 +1230,7 @@ contains
          allocate(TUnit%twidth(begr:endr))
          ier = pio_inq_varid(ncid, name='twid', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%twidth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
 
          ! save twidth before adjusted below
          allocate(TUnit%twidth0(begr:endr))
@@ -1239,17 +1239,17 @@ contains
          allocate(TUnit%nt(begr:endr))
          ier = pio_inq_varid(ncid, name='nt', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nt, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nt ',minval(Tunit%nt),maxval(Tunit%nt)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read nt ',minval(Tunit%nt),maxval(Tunit%nt)
 
          allocate(TUnit%rlen(begr:endr))
          ier = pio_inq_varid(ncid, name='rlen', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rlen, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rlen ',minval(Tunit%rlen),maxval(Tunit%rlen)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read rlen ',minval(Tunit%rlen),maxval(Tunit%rlen)
 
          allocate(TUnit%rslp(begr:endr))
          ier = pio_inq_varid(ncid, name='rslp', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rslp ',minval(Tunit%rslp),maxval(Tunit%rslp)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read rslp ',minval(Tunit%rslp),maxval(Tunit%rslp)
 
          allocate(TUnit%rslpsqrt(begr:endr))
          TUnit%rslpsqrt = 0._r8
@@ -1257,22 +1257,22 @@ contains
          allocate(TUnit%rwidth(begr:endr))
          ier = pio_inq_varid(ncid, name='rwid', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
 
          allocate(TUnit%rwidth0(begr:endr))
          ier = pio_inq_varid(ncid, name='rwid0', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth0, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth0 ',minval(Tunit%rwidth0),maxval(Tunit%rwidth0)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read rwidth0 ',minval(Tunit%rwidth0),maxval(Tunit%rwidth0)
 
          allocate(TUnit%rdepth(begr:endr))
          ier = pio_inq_varid(ncid, name='rdep', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rdepth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
 
          allocate(TUnit%nr(begr:endr))
          ier = pio_inq_varid(ncid, name='nr', vardesc=vardesc)
          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nr, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
+         if (mainproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
 
          allocate(TUnit%nUp(begr:endr))
          TUnit%nUp = 0
@@ -1470,7 +1470,7 @@ contains
             factorIndexList(2,cnt) = TUnit%dnID(iunit)
          endif
       enddo
-      if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
+      if (mainproc) write(iulog,*) subname," Done initializing rh_eroutUp"
 
       call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, &
            ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
@@ -1525,7 +1525,7 @@ contains
          enddo
          call shr_mpi_sum(areatot_tmp, areatot_new, mpicom_rof, 'areatot_new', all=.true.)
 
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,*) trim(subname),' areatot calc ',tcnt,areatot_new
          endif
       enddo
@@ -1558,7 +1558,7 @@ contains
 
       call shr_mpi_max(maxval(Tunit%numDT_r),numDT_r,mpicom_rof,'numDT_r',all=.false.)
       call shr_mpi_max(maxval(Tunit%numDT_t),numDT_t,mpicom_rof,'numDT_t',all=.false.)
-      if (masterproc) then
+      if (mainproc) then
          write(iulog,*) subname,' DLevelH2R = ',Tctl%DlevelH2R
          write(iulog,*) subname,' numDT_r   = ',minval(Tunit%numDT_r),maxval(Tunit%numDT_r)
          write(iulog,*) subname,' numDT_r max  = ',numDT_r
@@ -1601,7 +1601,7 @@ contains
          call RtmHistHtapesBuild()
       end if
       call RtmHistFldsSet()
-      if (masterproc) write(iulog,*) subname,' done'
+      if (mainproc) write(iulog,*) subname,' done'
       call t_stopf('mosarti_histinit')
 
    end subroutine MOSART_init2
@@ -1661,7 +1661,7 @@ contains
 
       call get_curr_date(yr, mon, day, tod)
       ymd = yr*10000 + mon*100 + day
-      if (tod == 0 .and. masterproc) then
+      if (tod == 0 .and. mainproc) then
          write(iulog,*) ' '
          write(iulog,'(2a,i10,i6)') trim(subname),' model date is',ymd,tod
       endif
@@ -1671,7 +1671,7 @@ contains
          budget_accum = 0._r8
          budget_accum_cnt = 0
          delt_save = delt_mosart
-         if (masterproc) write(iulog,'(2a,g20.12)') trim(subname),' MOSART coupling period ',delt_coupling
+         if (mainproc) write(iulog,'(2a,g20.12)') trim(subname),' MOSART coupling period ',delt_coupling
       end if
 
       budget_check = .false.
@@ -2007,7 +2007,7 @@ contains
 
       call t_startf('mosartr_subcycling')
 
-      if (first_call .and. masterproc) then
+      if (first_call .and. mainproc) then
          do nt = 1,nt_rtm
             write(iulog,'(2a,i6,l4)') trim(subname),' euler_calc for nt = ',nt,TUnit%euler_calc(nt)
          enddo
@@ -2019,7 +2019,7 @@ contains
       end if
       delt = delt_coupling/float(nsub)
       if (delt /= delt_save) then
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,'(2a,2g20.12,2i12)') trim(subname),' MOSART delt update from/to',&
                  delt_save,delt,nsub_save,nsub
          end if
@@ -2178,7 +2178,7 @@ contains
          call shr_mpi_sum(budget_terms,budget_global,mpicom_rof,'mosart global budget',all=.false.)
 
          ! write budget
-         if (masterproc) then
+         if (mainproc) then
             write(iulog,'(2a,i10,i6)') trim(subname),' MOSART BUDGET diagnostics (million m3) for ',ymd,tod
             do nt = 1,nt_rtm
                budget_volume = (budget_global( 2,nt) - budget_global( 1,nt))
@@ -2324,7 +2324,7 @@ contains
       call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
       ier = pio_inq_varid(ncid, name='SLOPE', vardesc=vardesc)
       if (ier /= PIO_noerr) then
-         if (masterproc) write(iulog,*) subname//' variable SLOPE is not on dataset'
+         if (mainproc) write(iulog,*) subname//' variable SLOPE is not on dataset'
          readvar = .false.
       else
          readvar = .true.

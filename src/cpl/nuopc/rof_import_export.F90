@@ -9,10 +9,9 @@ module rof_import_export
   use NUOPC_Model     , only : NUOPC_ModelGet
   use shr_kind_mod    , only : r8 => shr_kind_r8
   use shr_sys_mod     , only : shr_sys_abort
-  use nuopc_shr_methods , only : chkerr
   use RunoffMod       , only : rtmCTL, TRunoff, TUnit
   use RtmVar          , only : iulog, nt_rtm, rtm_tracers
-  use RtmSpmd         , only : masterproc, mpicom_rof
+  use RtmSpmd         , only : mainproc, mpicom_rof
   use RtmTimeManager  , only : get_nstep
   use nuopc_shr_methods , only : chkerr
 
@@ -220,7 +219,7 @@ contains
     call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom_rof)
     call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom_rof)
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
             min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'MOSART'
        write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
@@ -348,7 +347,7 @@ contains
     endif
 
     if (first_time) then
-       if (masterproc) then
+       if (mainproc) then
           if ( ice_runoff )then
              write(iulog,*)'Snow capping will flow out in frozen river runoff'
           else
@@ -432,7 +431,7 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
-    if (debug > 0 .and. masterproc .and. get_nstep() <  5) then
+    if (debug > 0 .and. mainproc .and. get_nstep() <  5) then
        do n = begr,endr
           write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, flood(n)
           write(iulog,F01)'export: nstep, n, Flrr_volr    = ',get_nstep(), n, volr(n)
