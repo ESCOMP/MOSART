@@ -42,14 +42,14 @@ module RtmMod
    private
    !
    ! !PUBLIC MEMBER FUNCTIONS:
-   public :: Rtminit_namelist ! Initialize MOSART grid
-   public :: Rtmini           ! Initialize MOSART grid
-   public :: MOSART_init
-   public :: Rtmrun           ! River routing model
+   public :: MOSART_read_namelist ! Read in MOSART namelist
+   public :: MOSART_init1         ! Initialize MOSART grid
+   public :: MOSART_init2         ! Initialize MOSART maps
+   public :: MOSART_run           ! River routing model
    !
    ! !PRIVATE MEMBER FUNCTIONS:
-   private :: RtmFloodInit
-   private :: SubTimestep
+   private :: MOSART_FloodInit
+   private :: MOSART_SubTimestep
 
    ! MOSART tracers
    character(len=256) :: rtm_trstr   ! tracer string
@@ -93,7 +93,7 @@ module RtmMod
 contains
 
    !-----------------------------------------------------------------------
-   subroutine Rtminit_namelist(flood_active)
+   subroutine MOSART_read_namelist(flood_active)
       !
       ! Read and distribute mosart namelist
       !
@@ -106,7 +106,7 @@ contains
       integer           :: unitn     ! unit for namelist file
       logical           :: lexist    ! File exists
       character(len= 7) :: runtyp(4) ! run type
-      character(len=*),parameter :: subname = '(Rtminit_namelist) '
+      character(len=*),parameter :: subname = '(MOSART_read_namelist) '
       !-----------------------------------------------------------------------
 
       !-------------------------------------------------------
@@ -236,11 +236,11 @@ contains
          endif
       end do
 
-   end subroutine Rtminit_namelist
+   end subroutine MOSART_read_namelist
 
    !-----------------------------------------------------------------------
 
-   subroutine Rtmini(rc)
+   subroutine MOSART_init1(rc)
 
       !-------------------------------------------------
       ! Initialize MOSART grid, mask, decomp
@@ -295,7 +295,7 @@ contains
 #else
       integer,parameter          :: dbug = 3                 ! 0 = none, 1=normal, 2=much, 3=max
 #endif
-      character(len=*),parameter :: subname = '(Rtmini) '
+      character(len=*),parameter :: subname = '(MOSART_init1) '
       !-------------------------------------------------
 
       rc = ESMF_SUCCESS
@@ -921,7 +921,7 @@ contains
       if (do_rtmflood) then
          write(iulog,*) subname,' Flood not validated in this version, abort'
          call shr_sys_abort(subname//' Flood feature unavailable')
-         call RtmFloodInit (frivinp_rtm, rtmCTL%begr, rtmCTL%endr, rtmCTL%fthresh, evel)
+         call MOSART_FloodInit (frivinp_rtm, rtmCTL%begr, rtmCTL%endr, rtmCTL%fthresh, evel)
       else
          effvel(:) = effvel0  ! downstream velocity (m/s)
          rtmCTL%fthresh(:) = abs(spval)
@@ -1001,12 +1001,624 @@ contains
          call shr_sys_abort(subname//' ERROR rtmCTL mask')
       endif
 
-   end subroutine Rtmini
+   end subroutine MOSART_init1
 
    !-----------------------------------------------------------------------
-   subroutine Rtmrun(rstwr, nlend, rdate, rc)
+
+   subroutine MOSART_init2(rc)
+
+      ! initialize MOSART variables
+      ! Author: Hongyi Li
       !
-      ! River routing model
+      ! Arguments
+      integer, intent(out) :: rc
+      !
+      ! Local variables
+      type(file_desc_t)    :: ncid          ! pio file desc
+      type(var_desc_t)     :: vardesc       ! pio variable desc
+      type(io_desc_t)      :: iodesc_dbl    ! pio io desc
+      type(io_desc_t)      :: iodesc_int    ! pio io desc
+      integer, pointer     :: compdof(:)    ! computational degrees of freedom for pio
+      integer              :: dids(2)       ! variable dimension ids
+      integer              :: dsizes(2)     ! variable dimension lengths
+      integer              :: ier           ! error code
+      integer              :: begr, endr, iunit, nn, n, cnt, nr, nt
+      integer              :: numDT_r, numDT_t
+      integer              :: igrow, igcol, iwgt
+      real(r8)             :: areatot_prev, areatot_tmp, areatot_new
+      real(r8)             :: hlen_max, rlen_min
+      integer              :: tcnt
+      character(len=16384) :: rList         ! list of fields for SM multiply
+      character(len=1000)  :: fname
+      real(r8), pointer    :: src_direct(:,:)
+      real(r8), pointer    :: dst_direct(:,:)
+      real(r8), pointer    :: src_eroutUp(:,:)
+      real(r8), pointer    :: dst_eroutUp(:,:)
+      real(r8),allocatable :: factorList(:)
+      integer ,allocatable :: factorIndexList(:,:)
+      integer              :: srcTermProcessing_Value = 0
+      character(len=*),parameter :: FORMI = '(2A,2i10)'
+      character(len=*),parameter :: FORMR = '(2A,2g15.7)'
+      character(len=*),parameter :: subname = '(MOSART_init2)'
+      !-----------------------------------------------------------------------
+
+      rc = ESMF_SUCCESS
+
+      ! Set up pointer arrays into srcfield and dstfield
+      call ESMF_FieldGet(srcfield, farrayPtr=src_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_FieldGet(dstfield, farrayPtr=dst_direct, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      src_direct(:,:) = 0._r8
+      dst_direct(:,:) = 0._r8
+
+      ! Calculate map for direct to outlet mapping
+      ! The route handle rh_direct will then be used in Rtmrun
+      cnt = rtmCTL%endr - rtmCTL%begr + 1
+      allocate(factorList(cnt))
+      allocate(factorIndexList(2,cnt))
+      cnt = 0
+      do nr = rtmCTL%begr,rtmCTL%endr
+         cnt = cnt + 1
+         if (rtmCTL%outletg(nr) > 0) then
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
+            factorIndexList(2,cnt) = rtmCTL%outletg(nr)
+         else
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
+            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
+         endif
+      enddo
+
+      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, &
+           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+      deallocate(factorList)
+      deallocate(factorIndexList)
+
+      if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
+
+      ! ---------------------------------------
+      ! Read in data from frivinp_rtm
+      ! ---------------------------------------
+
+      begr = rtmCTL%begr
+      endr = rtmCTL%endr
+
+      if(endr >= begr) then
+
+         ! routing parameters
+         call ncd_pio_openfile (ncid, trim(frivinp_rtm), 0)
+         call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+
+         allocate(compdof(rtmCTL%lnumr))
+         cnt = 0
+         do n = rtmCTL%begr,rtmCTL%endr
+            cnt = cnt + 1
+            compDOF(cnt) = rtmCTL%gindex(n)
+         enddo
+
+         ! setup iodesc based on frac dids
+         ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
+         ier = pio_inq_vardimid(ncid, vardesc, dids)
+         ier = pio_inq_dimlen(ncid, dids(1),dsizes(1))
+         ier = pio_inq_dimlen(ncid, dids(2),dsizes(2))
+         call pio_initdecomp(pio_subsystem, pio_double, dsizes, compDOF, iodesc_dbl)
+         call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compDOF, iodesc_int)
+         deallocate(compdof)
+         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+
+         allocate(TUnit%euler_calc(nt_rtm))
+         Tunit%euler_calc = .true.
+
+         allocate(TUnit%frac(begr:endr))
+         ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%frac, ier)
+         if (masterproc) then
+            write(iulog,FORMR) trim(subname),' read frac ',minval(Tunit%frac),maxval(Tunit%frac)
+         end if
+
+         ! read fdir, convert to mask
+         ! fdir <0 ocean, 0=outlet, >0 land
+         ! tunit mask is 0=ocean, 1=land, 2=outlet for mosart calcs
+
+         allocate(TUnit%mask(begr:endr))
+         ier = pio_inq_varid(ncid, name='fdir', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%mask, ier)
+         if (masterproc) then
+            write(iulog,FORMI) trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
+         end if
+
+         do n = rtmCtl%begr, rtmCTL%endr
+            if (Tunit%mask(n) < 0) then
+               Tunit%mask(n) = 0
+            elseif (Tunit%mask(n) == 0) then
+               Tunit%mask(n) = 2
+               if (abs(Tunit%frac(n)-1.0_r8)>1.0e-9) then
+                  write(iulog,*) subname,' ERROR frac ne 1.0',n,Tunit%frac(n)
+                  call shr_sys_abort(subname//' ERROR frac ne 1.0')
+               endif
+            elseif (Tunit%mask(n) > 0) then
+               Tunit%mask(n) = 1
+               if (abs(Tunit%frac(n)-1.0_r8)>1.0e-9) then
+                  write(iulog,*) subname,' ERROR frac ne 1.0',n,Tunit%frac(n)
+                  call shr_sys_abort(subname//' ERROR frac ne 1.0')
+               endif
+            else
+               call shr_sys_abort(subname//' Tunit mask error')
+            endif
+         enddo
+
+         allocate(TUnit%ID0(begr:endr))
+         ier = pio_inq_varid(ncid, name='ID', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ID0, ier)
+         if (masterproc) write(iulog,FORMI) trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
+
+         allocate(TUnit%dnID(begr:endr))
+         ier = pio_inq_varid(ncid, name='dnID', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%dnID, ier)
+         if (masterproc) write(iulog,FORMI) trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
+
+         !-------------------------------------------------------
+         ! RESET ID0 and dnID indices using the IDkey to be consistent
+         ! with standard gindex order
+         !-------------------------------------------------------
+         do n=rtmCtl%begr, rtmCTL%endr
+            TUnit%ID0(n)  = IDkey(TUnit%ID0(n))
+            if (Tunit%dnID(n) > 0 .and. TUnit%dnID(n) <= rtmlon*rtmlat) then
+               if (IDkey(TUnit%dnID(n)) > 0 .and. IDkey(TUnit%dnID(n)) <= rtmlon*rtmlat) then
+                  TUnit%dnID(n) = IDkey(TUnit%dnID(n))
+               else
+                  write(iulog,*) subname,' ERROR bad IDkey for TUnit%dnID',n,TUnit%dnID(n),IDkey(TUnit%dnID(n))
+                  call shr_sys_abort(subname//' ERROR bad IDkey for TUnit%dnID')
+               endif
+            endif
+         enddo
+
+         allocate(TUnit%area(begr:endr))
+         ier = pio_inq_varid(ncid, name='area', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%area, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read area ',minval(Tunit%area),maxval(Tunit%area)
+
+         do n=rtmCtl%begr, rtmCTL%endr
+            if (TUnit%area(n) < 0._r8) TUnit%area(n) = rtmCTL%area(n)
+            if (TUnit%area(n) /= rtmCTL%area(n)) then
+               write(iulog,*) subname,' ERROR area mismatch',TUnit%area(n),rtmCTL%area(n)
+               call shr_sys_abort(subname//' ERROR area mismatch')
+            endif
+         enddo
+
+         allocate(TUnit%areaTotal(begr:endr))
+         ier = pio_inq_varid(ncid, name='areaTotal', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%areaTotal, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read areaTotal ',minval(Tunit%areaTotal),maxval(Tunit%areaTotal)
+
+         allocate(TUnit%rlenTotal(begr:endr))
+         TUnit%rlenTotal = 0._r8
+
+         allocate(TUnit%nh(begr:endr))
+         ier = pio_inq_varid(ncid, name='nh', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nh, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read nh ',minval(Tunit%nh),maxval(Tunit%nh)
+
+         allocate(TUnit%hslp(begr:endr))
+         ier = pio_inq_varid(ncid, name='hslp', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%hslp, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read hslp ',minval(Tunit%hslp),maxval(Tunit%hslp)
+
+         allocate(TUnit%hslpsqrt(begr:endr))
+         TUnit%hslpsqrt = 0._r8
+
+         allocate(TUnit%gxr(begr:endr))
+         ier = pio_inq_varid(ncid, name='gxr', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%gxr, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read gxr ',minval(Tunit%gxr),maxval(Tunit%gxr)
+
+         allocate(TUnit%hlen(begr:endr))
+         TUnit%hlen = 0._r8
+
+         allocate(TUnit%tslp(begr:endr))
+         ier = pio_inq_varid(ncid, name='tslp', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%tslp, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read tslp ',minval(Tunit%tslp),maxval(Tunit%tslp)
+
+         allocate(TUnit%tslpsqrt(begr:endr))
+         TUnit%tslpsqrt = 0._r8
+
+         allocate(TUnit%tlen(begr:endr))
+         TUnit%tlen = 0._r8
+
+         allocate(TUnit%twidth(begr:endr))
+         ier = pio_inq_varid(ncid, name='twid', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%twidth, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
+
+         ! save twidth before adjusted below
+         allocate(TUnit%twidth0(begr:endr))
+         TUnit%twidth0(begr:endr)=TUnit%twidth(begr:endr)
+
+         allocate(TUnit%nt(begr:endr))
+         ier = pio_inq_varid(ncid, name='nt', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nt, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read nt ',minval(Tunit%nt),maxval(Tunit%nt)
+
+         allocate(TUnit%rlen(begr:endr))
+         ier = pio_inq_varid(ncid, name='rlen', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rlen, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read rlen ',minval(Tunit%rlen),maxval(Tunit%rlen)
+
+         allocate(TUnit%rslp(begr:endr))
+         ier = pio_inq_varid(ncid, name='rslp', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rslp, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read rslp ',minval(Tunit%rslp),maxval(Tunit%rslp)
+
+         allocate(TUnit%rslpsqrt(begr:endr))
+         TUnit%rslpsqrt = 0._r8
+
+         allocate(TUnit%rwidth(begr:endr))
+         ier = pio_inq_varid(ncid, name='rwid', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
+
+         allocate(TUnit%rwidth0(begr:endr))
+         ier = pio_inq_varid(ncid, name='rwid0', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth0, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth0 ',minval(Tunit%rwidth0),maxval(Tunit%rwidth0)
+
+         allocate(TUnit%rdepth(begr:endr))
+         ier = pio_inq_varid(ncid, name='rdep', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rdepth, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
+
+         allocate(TUnit%nr(begr:endr))
+         ier = pio_inq_varid(ncid, name='nr', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nr, ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
+
+         allocate(TUnit%nUp(begr:endr))
+         TUnit%nUp = 0
+         allocate(TUnit%iUp(begr:endr,8))
+         TUnit%iUp = 0
+         allocate(TUnit%indexDown(begr:endr))
+         TUnit%indexDown = 0
+
+         ! initialize water states and fluxes
+         allocate (TRunoff%wh(begr:endr,nt_rtm))
+         TRunoff%wh = 0._r8
+         allocate (TRunoff%dwh(begr:endr,nt_rtm))
+         TRunoff%dwh = 0._r8
+         allocate (TRunoff%yh(begr:endr,nt_rtm))
+         TRunoff%yh = 0._r8
+         allocate (TRunoff%qsur(begr:endr,nt_rtm))
+         TRunoff%qsur = 0._r8
+         allocate (TRunoff%qsub(begr:endr,nt_rtm))
+         TRunoff%qsub = 0._r8
+         allocate (TRunoff%qgwl(begr:endr,nt_rtm))
+         TRunoff%qgwl = 0._r8
+         allocate (TRunoff%ehout(begr:endr,nt_rtm))
+         TRunoff%ehout = 0._r8
+         allocate (TRunoff%tarea(begr:endr,nt_rtm))
+         TRunoff%tarea = 0._r8
+         allocate (TRunoff%wt(begr:endr,nt_rtm))
+         TRunoff%wt= 0._r8
+         allocate (TRunoff%dwt(begr:endr,nt_rtm))
+         TRunoff%dwt = 0._r8
+         allocate (TRunoff%yt(begr:endr,nt_rtm))
+         TRunoff%yt = 0._r8
+         allocate (TRunoff%mt(begr:endr,nt_rtm))
+         TRunoff%mt = 0._r8
+         allocate (TRunoff%rt(begr:endr,nt_rtm))
+         TRunoff%rt = 0._r8
+         allocate (TRunoff%pt(begr:endr,nt_rtm))
+         TRunoff%pt = 0._r8
+         allocate (TRunoff%vt(begr:endr,nt_rtm))
+         TRunoff%vt = 0._r8
+         allocate (TRunoff%tt(begr:endr,nt_rtm))
+         TRunoff%tt = 0._r8
+         allocate (TRunoff%etin(begr:endr,nt_rtm))
+         TRunoff%etin = 0._r8
+         allocate (TRunoff%etout(begr:endr,nt_rtm))
+         TRunoff%etout = 0._r8
+         allocate (TRunoff%rarea(begr:endr,nt_rtm))
+         TRunoff%rarea = 0._r8
+         allocate (TRunoff%wr(begr:endr,nt_rtm))
+         TRunoff%wr = 0._r8
+         allocate (TRunoff%dwr(begr:endr,nt_rtm))
+         TRunoff%dwr = 0._r8
+         allocate (TRunoff%yr(begr:endr,nt_rtm))
+         TRunoff%yr = 0._r8
+         allocate (TRunoff%mr(begr:endr,nt_rtm))
+         TRunoff%mr = 0._r8
+         allocate (TRunoff%rr(begr:endr,nt_rtm))
+         TRunoff%rr = 0._r8
+         allocate (TRunoff%pr(begr:endr,nt_rtm))
+         TRunoff%pr = 0._r8
+         allocate (TRunoff%vr(begr:endr,nt_rtm))
+         TRunoff%vr = 0._r8
+         allocate (TRunoff%tr(begr:endr,nt_rtm))
+         TRunoff%tr = 0._r8
+         allocate (TRunoff%erlg(begr:endr,nt_rtm))
+         TRunoff%erlg = 0._r8
+         allocate (TRunoff%erlateral(begr:endr,nt_rtm))
+         TRunoff%erlateral = 0._r8
+         allocate (TRunoff%erin(begr:endr,nt_rtm))
+         TRunoff%erin = 0._r8
+         allocate (TRunoff%erout(begr:endr,nt_rtm))
+         TRunoff%erout = 0._r8
+         allocate (TRunoff%erout_prev(begr:endr,nt_rtm))
+         TRunoff%erout_prev = 0._r8
+         allocate (TRunoff%eroutUp(begr:endr,nt_rtm))
+         TRunoff%eroutUp = 0._r8
+         allocate (TRunoff%eroutUp_avg(begr:endr,nt_rtm))
+         TRunoff%eroutUp_avg = 0._r8
+         allocate (TRunoff%erlat_avg(begr:endr,nt_rtm))
+         TRunoff%erlat_avg = 0._r8
+         allocate (TRunoff%ergwl(begr:endr,nt_rtm))
+         TRunoff%ergwl = 0._r8
+         allocate (TRunoff%flow(begr:endr,nt_rtm))
+         TRunoff%flow = 0._r8
+         allocate (TPara%c_twid(begr:endr))
+         TPara%c_twid = 1.0_r8
+
+         call pio_freedecomp(ncid, iodesc_dbl)
+         call pio_freedecomp(ncid, iodesc_int)
+         call pio_closefile(ncid)
+
+         ! control parameters and some other derived parameters
+         ! estimate derived input variables
+
+         ! add minimum value to rlen (length of main channel); rlen values can
+         ! be too small, leading to tlen values that are too large
+
+         do iunit=rtmCTL%begr,rtmCTL%endr
+            rlen_min = sqrt(TUnit%area(iunit))
+            if(TUnit%rlen(iunit) < rlen_min) then
+               TUnit%rlen(iunit) = rlen_min
+            end if
+         end do
+
+         do iunit=rtmCTL%begr,rtmCTL%endr
+            if(TUnit%Gxr(iunit) > 0._r8) then
+               TUnit%rlenTotal(iunit) = TUnit%area(iunit)*TUnit%Gxr(iunit)
+            end if
+         end do
+
+         do iunit=rtmCTL%begr,rtmCTL%endr
+            if(TUnit%rlen(iunit) > TUnit%rlenTotal(iunit)) then
+               TUnit%rlenTotal(iunit) = TUnit%rlen(iunit)
+            end if
+         end do
+
+         do iunit=rtmCTL%begr,rtmCTL%endr
+
+            if(TUnit%rlen(iunit) > 0._r8) then
+               TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
+
+               ! constrain hlen (hillslope length) values based on cell area
+               hlen_max = max(1000.0_r8, sqrt(TUnit%area(iunit)))
+               if(TUnit%hlen(iunit) > hlen_max) then
+                  TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainag\e density estimation. TO DO
+               end if
+
+               TUnit%tlen(iunit) = TUnit%area(iunit) / TUnit%rlen(iunit) / 2._r8 - TUnit%hlen(iunit)
+
+               if (TUnit%twidth(iunit) < 0._r8) then
+                  TUnit%twidth(iunit) = 0._r8
+               end if
+               if ( TUnit%tlen(iunit) > 0._r8 .and. &
+                   (TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit) > 1._r8 ) then
+                  TUnit%twidth(iunit) = TPara%c_twid(iunit)*TUnit%twidth(iunit) * &
+                       ((TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit))
+               end if
+
+               if (TUnit%tlen(iunit) > 0._r8 .and. TUnit%twidth(iunit) <= 0._r8) then
+                  TUnit%twidth(iunit) = 0._r8
+               end if
+            else
+               TUnit%hlen(iunit) = 0._r8
+               TUnit%tlen(iunit) = 0._r8
+               TUnit%twidth(iunit) = 0._r8
+            end if
+
+            if(TUnit%rslp(iunit) <= 0._r8) then
+               TUnit%rslp(iunit) = 0.0001_r8
+            end if
+
+            if(TUnit%tslp(iunit) <= 0._r8) then
+               TUnit%tslp(iunit) = 0.0001_r8
+            end if
+
+            if(TUnit%hslp(iunit) <= 0._r8) then
+               TUnit%hslp(iunit) = 0.005_r8
+            end if
+
+            TUnit%rslpsqrt(iunit) = sqrt(Tunit%rslp(iunit))
+            TUnit%tslpsqrt(iunit) = sqrt(Tunit%tslp(iunit))
+            TUnit%hslpsqrt(iunit) = sqrt(Tunit%hslp(iunit))
+
+         end do
+
+         cnt = 0
+         do iunit=rtmCTL%begr,rtmCTL%endr
+            if(TUnit%dnID(iunit) > 0) cnt = cnt + 1
+         enddo
+
+      end if  ! endr >= begr
+
+      ! Set up pointer arrays into srcfield and dstfield
+      call ESMF_FieldGet(srcfield, farrayPtr=src_eroutUp, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+      src_eroutUp(:,:) = 0._r8
+      dst_eroutUp(:,:) = 0._r8
+
+      ! Compute route handle rh_eroutUp
+      cnt = 0
+      do iunit = rtmCTL%begr,rtmCTL%endr
+         if (TUnit%dnID(iunit) > 0) then
+            cnt = cnt + 1
+         end if
+      end do
+      allocate(factorList(cnt))
+      allocate(factorIndexList(2,cnt))
+      cnt = 0
+      do iunit = rtmCTL%begr,rtmCTL%endr
+         if (TUnit%dnID(iunit) > 0) then
+            cnt = cnt + 1
+            factorList(cnt) = 1.0_r8
+            factorIndexList(1,cnt) = TUnit%ID0(iunit)
+            factorIndexList(2,cnt) = TUnit%dnID(iunit)
+         endif
+      enddo
+      if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
+
+      call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, &
+           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
+      if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
+
+      deallocate(factorList)
+      deallocate(factorIndexList)
+
+      !--- compute areatot from area using dnID ---
+      !--- this basically advects upstream areas downstream and
+      !--- adds them up as it goes until all upstream areas are accounted for
+
+      allocate(Tunit%areatotal2(rtmCTL%begr:rtmCTL%endr))
+      Tunit%areatotal2 = 0._r8
+
+      ! initialize dst_eroutUp to local area and add that to areatotal2
+      cnt = 0
+      dst_eroutUp(:,:) = 0._r8
+      do nr = rtmCTL%begr,rtmCTL%endr
+         cnt = cnt + 1
+         dst_eroutUp(1,cnt) = rtmCTL%area(nr)
+         Tunit%areatotal2(nr) = rtmCTL%area(nr)
+      enddo
+
+      tcnt = 0
+      areatot_prev = -99._r8
+      areatot_new = -50._r8
+      do while (areatot_new /= areatot_prev .and. tcnt < rtmlon*rtmlat)
+
+         tcnt = tcnt + 1
+
+         ! copy dst_eroutUp to src_eroutUp for next downstream step
+         src_eroutUp(:,:) = 0._r8
+         cnt = 0
+         do nr = rtmCTL%begr,rtmCTL%endr
+            cnt = cnt + 1
+            src_eroutUp(1,cnt) = dst_eroutUp(1,cnt)
+         enddo
+
+         dst_eroutUp(:,:) = 0._r8
+         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+         if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+         ! add dst_eroutUp to areatot and compute new global sum
+         cnt = 0
+         areatot_prev = areatot_new
+         areatot_tmp = 0._r8
+         do nr = rtmCTL%begr,rtmCTL%endr
+            cnt = cnt + 1
+            Tunit%areatotal2(nr) = Tunit%areatotal2(nr) + dst_eroutUp(1,cnt)
+            areatot_tmp = areatot_tmp + Tunit%areatotal2(nr)
+         enddo
+         call shr_mpi_sum(areatot_tmp, areatot_new, mpicom_rof, 'areatot_new', all=.true.)
+
+         if (masterproc) then
+            write(iulog,*) trim(subname),' areatot calc ',tcnt,areatot_new
+         endif
+      enddo
+
+      if (areatot_new /= areatot_prev) then
+         write(iulog,*) trim(subname),' MOSART ERROR: areatot incorrect ',areatot_new, areatot_prev
+         call shr_sys_abort(trim(subname)//' ERROR areatot incorrect')
+      endif
+
+      !  do nr = rtmCTL%begr,rtmCTL%endr
+      !     if (TUnit%areatotal(nr) > 0._r8 .and. Tunit%areatotal2(nr) /= TUnit%areatotal(nr)) then
+      !        write(iulog,'(2a,i12,2e16.4,f16.4)') trim(subname),' areatot diff ',&
+      !           nr,TUnit%areatotal(nr),Tunit%areatota!l2(nr),&
+      !           abs(TUnit%areatotal(nr)-Tunit%areatotal2(nr))/(TUnit%areatotal(nr))
+      !     endif
+      !  enddo
+
+      ! control parameters
+      Tctl%RoutingMethod = 1
+
+      ! Tctl%DATAH = rtm_nsteps*get_step_size()
+      ! Tctl%DeltaT = 60._r8  !
+      ! if(Tctl%DATAH > 0 .and. Tctl%DATAH < Tctl%DeltaT) then
+      !    Tctl%DeltaT = Tctl%DATAH
+      ! end if
+
+      Tctl%DLevelH2R = 5
+      Tctl%DLevelR = 3
+      call MOSART_SubTimestep ! prepare for numerical computation
+
+      call shr_mpi_max(maxval(Tunit%numDT_r),numDT_r,mpicom_rof,'numDT_r',all=.false.)
+      call shr_mpi_max(maxval(Tunit%numDT_t),numDT_t,mpicom_rof,'numDT_t',all=.false.)
+      if (masterproc) then
+         write(iulog,*) subname,' DLevelH2R = ',Tctl%DlevelH2R
+         write(iulog,*) subname,' numDT_r   = ',minval(Tunit%numDT_r),maxval(Tunit%numDT_r)
+         write(iulog,*) subname,' numDT_r max  = ',numDT_r
+         write(iulog,*) subname,' numDT_t   = ',minval(Tunit%numDT_t),maxval(Tunit%numDT_t)
+         write(iulog,*) subname,' numDT_t max  = ',numDT_t
+      endif
+
+      !-------------------------------------------------------
+      ! Read restart/initial info
+      !-------------------------------------------------------
+
+      call t_startf('mosarti_restart')
+      if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
+          (nsrest == nsrContinue) .or. &
+          (nsrest == nsrBranch  )) then
+         call RtmRestFileRead( file=fnamer )
+         TRunoff%wh   = rtmCTL%wh
+         TRunoff%wt   = rtmCTL%wt
+         TRunoff%wr   = rtmCTL%wr
+         TRunoff%erout= rtmCTL%erout
+      endif
+
+      do nt = 1,nt_rtm
+         do nr = rtmCTL%begr,rtmCTL%endr
+            call UpdateState_hillslope(nr,nt)
+            call UpdateState_subnetwork(nr,nt)
+            call UpdateState_mainchannel(nr,nt)
+            rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + TRunoff%wh(nr,nt)*rtmCTL%area(nr))
+         enddo
+      enddo
+      call t_stopf('mosarti_restart')
+
+      !-------------------------------------------------------
+      ! Initialize mosart history handler and fields
+      !-------------------------------------------------------
+
+      call t_startf('mosarti_histinit')
+      call RtmHistFldsInit()
+      if (nsrest==nsrStartup .or. nsrest==nsrBranch) then
+         call RtmHistHtapesBuild()
+      end if
+      call RtmHistFldsSet()
+      if (masterproc) write(iulog,*) subname,' done'
+      call t_stopf('mosarti_histinit')
+
+      !if(masterproc) then
+      !    fname = '/lustre/liho745/DCLM_model/ccsm_hy/run/clm_MOSART_subw2/run/test.dat'
+      !    call createFile(1111,fname)
+      !end if
+
+   end subroutine MOSART_init2
+
+   !-----------------------------------------------------------------------
+
+   subroutine MOSART_run(rstwr, nlend, rdate, rc)
+
+      ! Run MOSART river routing model
       !
       ! Arguments
       logical ,         intent(in) :: rstwr          ! true => write restart file this step)
@@ -1046,7 +1658,7 @@ contains
       real(r8)           :: river_volume_minimum        ! gridcell area multiplied by average river_depth_minimum [m3]
       real(r8)           :: qgwl_volume                 ! volume of runoff during time step [m3]
       real(r8)           :: irrig_volume                ! volume of irrigation demand during time step [m3]
-      character(len=*),parameter :: subname = '(Rtmrun) '
+      character(len=*),parameter :: subname = ' (MOSART_run) '
       !-----------------------------------------------------------------------
 
       call t_startf('mosartr_tot')
@@ -1679,14 +2291,13 @@ contains
 
       call t_stopf('mosartr_tot')
 
-   end subroutine Rtmrun
+   end subroutine MOSART_run
 
    !-----------------------------------------------------------------------
 
-   subroutine RtmFloodInit(frivinp, begr, endr, fthresh, evel )
+   subroutine MOSART_FloodInit(frivinp, begr, endr, fthresh, evel )
 
-      !-----------------------------------------------------------------------
-      ! Input variables
+      ! Arguments
       character(len=*) , intent(in)  :: frivinp
       integer          , intent(in)  :: begr, endr
       real(r8)         , intent(out) :: fthresh(begr:endr)
@@ -1709,7 +2320,7 @@ contains
       real(r8) :: effvel(nt_rtm) = 0.7_r8   ! downstream velocity (m/s)
       real(r8) :: min_ev(nt_rtm) = 0.35_r8  ! minimum downstream velocity (m/s)
       real(r8) :: fslope = 1.0_r8           ! maximum slope for which flooding can occur
-      character(len=*),parameter :: subname = '(RtmFloodInit) '
+      character(len=*),parameter :: subname = '(MOSART_FloodInit) '
       !-----------------------------------------------------------------------
 
       allocate(rslope(begr:endr), max_volr(begr:endr), stat=ier)
@@ -1759,633 +2370,11 @@ contains
 
       deallocate(rslope, max_volr)
 
-   end subroutine RtmFloodInit
-
-   !-----------------------------------------------------------------------
-
-   subroutine MOSART_init(rc)
-
-      !-----------------------------------------------------------------------
-      ! initialize MOSART variables
-      ! Author: Hongyi Li
-      !
-      ! Arguments
-      integer, intent(out) :: rc
-      !
-      ! Local variables
-      type(file_desc_t)    :: ncid          ! pio file desc
-      type(var_desc_t)     :: vardesc       ! pio variable desc
-      type(io_desc_t)      :: iodesc_dbl    ! pio io desc
-      type(io_desc_t)      :: iodesc_int    ! pio io desc
-      integer, pointer     :: compdof(:)    ! computational degrees of freedom for pio
-      integer              :: dids(2)       ! variable dimension ids
-      integer              :: dsizes(2)     ! variable dimension lengths
-      integer              :: ier           ! error code
-      integer              :: begr, endr, iunit, nn, n, cnt, nr, nt
-      integer              :: numDT_r, numDT_t
-      integer              :: igrow, igcol, iwgt
-      real(r8)             :: areatot_prev, areatot_tmp, areatot_new
-      real(r8)             :: areatot_tmp2, areatot_new2
-      real(r8)             :: hlen_max, rlen_min
-      integer              :: tcnt
-      character(len=16384) :: rList         ! list of fields for SM multiply
-      character(len=1000)  :: fname
-      real(r8), pointer    :: src_direct(:,:)
-      real(r8), pointer    :: dst_direct(:,:)
-      real(r8), pointer    :: src_eroutUp(:,:)
-      real(r8), pointer    :: dst_eroutUp(:,:)
-      real(r8),allocatable :: factorList(:)
-      integer ,allocatable :: factorIndexList(:,:)
-      integer              :: srcTermProcessing_Value = 0
-      character(len=*),parameter :: subname = '(MOSART_init)'
-      character(len=*),parameter :: FORMI = '(2A,2i10)'
-      character(len=*),parameter :: FORMR = '(2A,2g15.7)'
-      !-----------------------------------------------------------------------
-
-      rc = ESMF_SUCCESS
-
-      ! Set up pointer arrays into srcfield and dstfield
-      call ESMF_FieldGet(srcfield, farrayPtr=src_direct, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      call ESMF_FieldGet(dstfield, farrayPtr=dst_direct, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      src_direct(:,:) = 0._r8
-      dst_direct(:,:) = 0._r8
-
-      ! Calculate map for direct to outlet mapping
-      ! The route handle rh_direct will then be used in Rtmrun
-      cnt = rtmCTL%endr - rtmCTL%begr + 1
-      allocate(factorList(cnt))
-      allocate(factorIndexList(2,cnt))
-      cnt = 0
-      do nr = rtmCTL%begr,rtmCTL%endr
-         cnt = cnt + 1
-         if (rtmCTL%outletg(nr) > 0) then
-            factorList(cnt) = 1.0_r8
-            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
-            factorIndexList(2,cnt) = rtmCTL%outletg(nr)
-         else
-            factorList(cnt) = 1.0_r8
-            factorIndexList(1,cnt) = rtmCTL%gindex(nr)
-            factorIndexList(2,cnt) = rtmCTL%gindex(nr)
-         endif
-      enddo
-
-      call ESMF_FieldSMMStore(srcField, dstField, rh_direct, factorList, factorIndexList, &
-           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-      deallocate(factorList)
-      deallocate(factorIndexList)
-
-      if (masterproc) write(iulog,*) subname," Done initializing rh_direct "
-
-      ! ---------------------------------------
-      ! Read in data from frivinp_rtm
-      ! ---------------------------------------
-
-      begr = rtmCTL%begr
-      endr = rtmCTL%endr
-
-      if(endr >= begr) then
-
-         ! routing parameters
-         call ncd_pio_openfile (ncid, trim(frivinp_rtm), 0)
-         call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
-
-         allocate(compdof(rtmCTL%lnumr))
-         cnt = 0
-         do n = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            compDOF(cnt) = rtmCTL%gindex(n)
-         enddo
-
-         ! setup iodesc based on frac dids
-         ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
-         ier = pio_inq_vardimid(ncid, vardesc, dids)
-         ier = pio_inq_dimlen(ncid, dids(1),dsizes(1))
-         ier = pio_inq_dimlen(ncid, dids(2),dsizes(2))
-         call pio_initdecomp(pio_subsystem, pio_double, dsizes, compDOF, iodesc_dbl)
-         call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compDOF, iodesc_int)
-         deallocate(compdof)
-         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
-
-         allocate(TUnit%euler_calc(nt_rtm))
-         Tunit%euler_calc = .true.
-
-         allocate(TUnit%frac(begr:endr))
-         ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%frac, ier)
-         if (masterproc) then
-            write(iulog,FORMR) trim(subname),' read frac ',minval(Tunit%frac),maxval(Tunit%frac)
-         end if
-
-         ! read fdir, convert to mask
-         ! fdir <0 ocean, 0=outlet, >0 land
-         ! tunit mask is 0=ocean, 1=land, 2=outlet for mosart calcs
-
-         allocate(TUnit%mask(begr:endr))
-         ier = pio_inq_varid(ncid, name='fdir', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%mask, ier)
-         if (masterproc) then
-            write(iulog,FORMI) trim(subname),' read fdir mask ',minval(Tunit%mask),maxval(Tunit%mask)
-         end if
-
-         do n = rtmCtl%begr, rtmCTL%endr
-            if (Tunit%mask(n) < 0) then
-               Tunit%mask(n) = 0
-            elseif (Tunit%mask(n) == 0) then
-               Tunit%mask(n) = 2
-               if (abs(Tunit%frac(n)-1.0_r8)>1.0e-9) then
-                  write(iulog,*) subname,' ERROR frac ne 1.0',n,Tunit%frac(n)
-                  call shr_sys_abort(subname//' ERROR frac ne 1.0')
-               endif
-            elseif (Tunit%mask(n) > 0) then
-               Tunit%mask(n) = 1
-               if (abs(Tunit%frac(n)-1.0_r8)>1.0e-9) then
-                  write(iulog,*) subname,' ERROR frac ne 1.0',n,Tunit%frac(n)
-                  call shr_sys_abort(subname//' ERROR frac ne 1.0')
-               endif
-            else
-               call shr_sys_abort(subname//' Tunit mask error')
-            endif
-         enddo
-
-         allocate(TUnit%ID0(begr:endr))
-         ier = pio_inq_varid(ncid, name='ID', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ID0, ier)
-         if (masterproc) write(iulog,FORMI) trim(subname),' read ID0 ',minval(Tunit%ID0),maxval(Tunit%ID0)
-
-         allocate(TUnit%dnID(begr:endr))
-         ier = pio_inq_varid(ncid, name='dnID', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%dnID, ier)
-         if (masterproc) write(iulog,FORMI) trim(subname),' read dnID ',minval(Tunit%dnID),maxval(Tunit%dnID)
-
-         !-------------------------------------------------------
-         ! RESET ID0 and dnID indices using the IDkey to be consistent
-         ! with standard gindex order
-         !-------------------------------------------------------
-         do n=rtmCtl%begr, rtmCTL%endr
-            TUnit%ID0(n)  = IDkey(TUnit%ID0(n))
-            if (Tunit%dnID(n) > 0 .and. TUnit%dnID(n) <= rtmlon*rtmlat) then
-               if (IDkey(TUnit%dnID(n)) > 0 .and. IDkey(TUnit%dnID(n)) <= rtmlon*rtmlat) then
-                  TUnit%dnID(n) = IDkey(TUnit%dnID(n))
-               else
-                  write(iulog,*) subname,' ERROR bad IDkey for TUnit%dnID',n,TUnit%dnID(n),IDkey(TUnit%dnID(n))
-                  call shr_sys_abort(subname//' ERROR bad IDkey for TUnit%dnID')
-               endif
-            endif
-         enddo
-
-         allocate(TUnit%area(begr:endr))
-         ier = pio_inq_varid(ncid, name='area', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%area, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read area ',minval(Tunit%area),maxval(Tunit%area)
-
-         do n=rtmCtl%begr, rtmCTL%endr
-            if (TUnit%area(n) < 0._r8) TUnit%area(n) = rtmCTL%area(n)
-            if (TUnit%area(n) /= rtmCTL%area(n)) then
-               write(iulog,*) subname,' ERROR area mismatch',TUnit%area(n),rtmCTL%area(n)
-               call shr_sys_abort(subname//' ERROR area mismatch')
-            endif
-         enddo
-
-         allocate(TUnit%areaTotal(begr:endr))
-         ier = pio_inq_varid(ncid, name='areaTotal', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%areaTotal, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read areaTotal ',minval(Tunit%areaTotal),maxval(Tunit%areaTotal)
-
-         allocate(TUnit%rlenTotal(begr:endr))
-         TUnit%rlenTotal = 0._r8
-
-         allocate(TUnit%nh(begr:endr))
-         ier = pio_inq_varid(ncid, name='nh', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nh, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nh ',minval(Tunit%nh),maxval(Tunit%nh)
-
-         allocate(TUnit%hslp(begr:endr))
-         ier = pio_inq_varid(ncid, name='hslp', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%hslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read hslp ',minval(Tunit%hslp),maxval(Tunit%hslp)
-
-         allocate(TUnit%hslpsqrt(begr:endr))
-         TUnit%hslpsqrt = 0._r8
-
-         allocate(TUnit%gxr(begr:endr))
-         ier = pio_inq_varid(ncid, name='gxr', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%gxr, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read gxr ',minval(Tunit%gxr),maxval(Tunit%gxr)
-
-         allocate(TUnit%hlen(begr:endr))
-         TUnit%hlen = 0._r8
-
-         allocate(TUnit%tslp(begr:endr))
-         ier = pio_inq_varid(ncid, name='tslp', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%tslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read tslp ',minval(Tunit%tslp),maxval(Tunit%tslp)
-
-         allocate(TUnit%tslpsqrt(begr:endr))
-         TUnit%tslpsqrt = 0._r8
-
-         allocate(TUnit%tlen(begr:endr))
-         TUnit%tlen = 0._r8
-
-         allocate(TUnit%twidth(begr:endr))
-         ier = pio_inq_varid(ncid, name='twid', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%twidth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read twidth ',minval(Tunit%twidth),maxval(Tunit%twidth)
-
-         ! save twidth before adjusted below
-         allocate(TUnit%twidth0(begr:endr))
-         TUnit%twidth0(begr:endr)=TUnit%twidth(begr:endr)
-
-         allocate(TUnit%nt(begr:endr))
-         ier = pio_inq_varid(ncid, name='nt', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nt, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nt ',minval(Tunit%nt),maxval(Tunit%nt)
-
-         allocate(TUnit%rlen(begr:endr))
-         ier = pio_inq_varid(ncid, name='rlen', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rlen, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rlen ',minval(Tunit%rlen),maxval(Tunit%rlen)
-
-         allocate(TUnit%rslp(begr:endr))
-         ier = pio_inq_varid(ncid, name='rslp', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rslp, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rslp ',minval(Tunit%rslp),maxval(Tunit%rslp)
-
-         allocate(TUnit%rslpsqrt(begr:endr))
-         TUnit%rslpsqrt = 0._r8
-
-         allocate(TUnit%rwidth(begr:endr))
-         ier = pio_inq_varid(ncid, name='rwid', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth ',minval(Tunit%rwidth),maxval(Tunit%rwidth)
-
-         allocate(TUnit%rwidth0(begr:endr))
-         ier = pio_inq_varid(ncid, name='rwid0', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rwidth0, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rwidth0 ',minval(Tunit%rwidth0),maxval(Tunit%rwidth0)
-
-         allocate(TUnit%rdepth(begr:endr))
-         ier = pio_inq_varid(ncid, name='rdep', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%rdepth, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
-
-         allocate(TUnit%nr(begr:endr))
-         ier = pio_inq_varid(ncid, name='nr', vardesc=vardesc)
-         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%nr, ier)
-         if (masterproc) write(iulog,FORMR) trim(subname),' read nr ',minval(Tunit%nr),maxval(Tunit%nr)
-
-         allocate(TUnit%nUp(begr:endr))
-         TUnit%nUp = 0
-         allocate(TUnit%iUp(begr:endr,8))
-         TUnit%iUp = 0
-         allocate(TUnit%indexDown(begr:endr))
-         TUnit%indexDown = 0
-
-         ! initialize water states and fluxes
-         allocate (TRunoff%wh(begr:endr,nt_rtm))
-         TRunoff%wh = 0._r8
-         allocate (TRunoff%dwh(begr:endr,nt_rtm))
-         TRunoff%dwh = 0._r8
-         allocate (TRunoff%yh(begr:endr,nt_rtm))
-         TRunoff%yh = 0._r8
-         allocate (TRunoff%qsur(begr:endr,nt_rtm))
-         TRunoff%qsur = 0._r8
-         allocate (TRunoff%qsub(begr:endr,nt_rtm))
-         TRunoff%qsub = 0._r8
-         allocate (TRunoff%qgwl(begr:endr,nt_rtm))
-         TRunoff%qgwl = 0._r8
-         allocate (TRunoff%ehout(begr:endr,nt_rtm))
-         TRunoff%ehout = 0._r8
-         allocate (TRunoff%tarea(begr:endr,nt_rtm))
-         TRunoff%tarea = 0._r8
-         allocate (TRunoff%wt(begr:endr,nt_rtm))
-         TRunoff%wt= 0._r8
-         allocate (TRunoff%dwt(begr:endr,nt_rtm))
-         TRunoff%dwt = 0._r8
-         allocate (TRunoff%yt(begr:endr,nt_rtm))
-         TRunoff%yt = 0._r8
-         allocate (TRunoff%mt(begr:endr,nt_rtm))
-         TRunoff%mt = 0._r8
-         allocate (TRunoff%rt(begr:endr,nt_rtm))
-         TRunoff%rt = 0._r8
-         allocate (TRunoff%pt(begr:endr,nt_rtm))
-         TRunoff%pt = 0._r8
-         allocate (TRunoff%vt(begr:endr,nt_rtm))
-         TRunoff%vt = 0._r8
-         allocate (TRunoff%tt(begr:endr,nt_rtm))
-         TRunoff%tt = 0._r8
-         allocate (TRunoff%etin(begr:endr,nt_rtm))
-         TRunoff%etin = 0._r8
-         allocate (TRunoff%etout(begr:endr,nt_rtm))
-         TRunoff%etout = 0._r8
-         allocate (TRunoff%rarea(begr:endr,nt_rtm))
-         TRunoff%rarea = 0._r8
-         allocate (TRunoff%wr(begr:endr,nt_rtm))
-         TRunoff%wr = 0._r8
-         allocate (TRunoff%dwr(begr:endr,nt_rtm))
-         TRunoff%dwr = 0._r8
-         allocate (TRunoff%yr(begr:endr,nt_rtm))
-         TRunoff%yr = 0._r8
-         allocate (TRunoff%mr(begr:endr,nt_rtm))
-         TRunoff%mr = 0._r8
-         allocate (TRunoff%rr(begr:endr,nt_rtm))
-         TRunoff%rr = 0._r8
-         allocate (TRunoff%pr(begr:endr,nt_rtm))
-         TRunoff%pr = 0._r8
-         allocate (TRunoff%vr(begr:endr,nt_rtm))
-         TRunoff%vr = 0._r8
-         allocate (TRunoff%tr(begr:endr,nt_rtm))
-         TRunoff%tr = 0._r8
-         allocate (TRunoff%erlg(begr:endr,nt_rtm))
-         TRunoff%erlg = 0._r8
-         allocate (TRunoff%erlateral(begr:endr,nt_rtm))
-         TRunoff%erlateral = 0._r8
-         allocate (TRunoff%erin(begr:endr,nt_rtm))
-         TRunoff%erin = 0._r8
-         allocate (TRunoff%erout(begr:endr,nt_rtm))
-         TRunoff%erout = 0._r8
-         allocate (TRunoff%erout_prev(begr:endr,nt_rtm))
-         TRunoff%erout_prev = 0._r8
-         allocate (TRunoff%eroutUp(begr:endr,nt_rtm))
-         TRunoff%eroutUp = 0._r8
-         allocate (TRunoff%eroutUp_avg(begr:endr,nt_rtm))
-         TRunoff%eroutUp_avg = 0._r8
-         allocate (TRunoff%erlat_avg(begr:endr,nt_rtm))
-         TRunoff%erlat_avg = 0._r8
-         allocate (TRunoff%ergwl(begr:endr,nt_rtm))
-         TRunoff%ergwl = 0._r8
-         allocate (TRunoff%flow(begr:endr,nt_rtm))
-         TRunoff%flow = 0._r8
-         allocate (TPara%c_twid(begr:endr))
-         TPara%c_twid = 1.0_r8
-
-         call pio_freedecomp(ncid, iodesc_dbl)
-         call pio_freedecomp(ncid, iodesc_int)
-         call pio_closefile(ncid)
-
-         ! control parameters and some other derived parameters
-         ! estimate derived input variables
-
-         ! add minimum value to rlen (length of main channel); rlen values can
-         ! be too small, leading to tlen values that are too large
-
-         do iunit=rtmCTL%begr,rtmCTL%endr
-            rlen_min = sqrt(TUnit%area(iunit))
-            if(TUnit%rlen(iunit) < rlen_min) then
-               TUnit%rlen(iunit) = rlen_min
-            end if
-         end do
-
-         do iunit=rtmCTL%begr,rtmCTL%endr
-            if(TUnit%Gxr(iunit) > 0._r8) then
-               TUnit%rlenTotal(iunit) = TUnit%area(iunit)*TUnit%Gxr(iunit)
-            end if
-         end do
-
-         do iunit=rtmCTL%begr,rtmCTL%endr
-            if(TUnit%rlen(iunit) > TUnit%rlenTotal(iunit)) then
-               TUnit%rlenTotal(iunit) = TUnit%rlen(iunit)
-            end if
-         end do
-
-         do iunit=rtmCTL%begr,rtmCTL%endr
-
-            if(TUnit%rlen(iunit) > 0._r8) then
-               TUnit%hlen(iunit) = TUnit%area(iunit) / TUnit%rlenTotal(iunit) / 2._r8
-
-               ! constrain hlen (hillslope length) values based on cell area
-               hlen_max = max(1000.0_r8, sqrt(TUnit%area(iunit)))
-               if(TUnit%hlen(iunit) > hlen_max) then
-                  TUnit%hlen(iunit) = hlen_max   ! allievate the outlier in drainag\e density estimation. TO DO
-               end if
-
-               TUnit%tlen(iunit) = TUnit%area(iunit) / TUnit%rlen(iunit) / 2._r8 - TUnit%hlen(iunit)
-
-               if(TUnit%twidth(iunit) < 0._r8) then
-                  TUnit%twidth(iunit) = 0._r8
-               end if
-               if(TUnit%tlen(iunit) > 0._r8 .and. (TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit) > 1._r8) then
-                  TUnit%twidth(iunit) = TPara%c_twid(iunit)*TUnit%twidth(iunit)* &
-                       ((TUnit%rlenTotal(iunit)-TUnit%rlen(iunit))/TUnit%tlen(iunit))
-               end if
-
-               if(TUnit%tlen(iunit) > 0._r8 .and. TUnit%twidth(iunit) <= 0._r8) then
-                  TUnit%twidth(iunit) = 0._r8
-               end if
-            else
-               TUnit%hlen(iunit) = 0._r8
-               TUnit%tlen(iunit) = 0._r8
-               TUnit%twidth(iunit) = 0._r8
-            end if
-
-            if(TUnit%rslp(iunit) <= 0._r8) then
-               TUnit%rslp(iunit) = 0.0001_r8
-            end if
-            if(TUnit%tslp(iunit) <= 0._r8) then
-               TUnit%tslp(iunit) = 0.0001_r8
-            end if
-            if(TUnit%hslp(iunit) <= 0._r8) then
-               TUnit%hslp(iunit) = 0.005_r8
-            end if
-            TUnit%rslpsqrt(iunit) = sqrt(Tunit%rslp(iunit))
-            TUnit%tslpsqrt(iunit) = sqrt(Tunit%tslp(iunit))
-            TUnit%hslpsqrt(iunit) = sqrt(Tunit%hslp(iunit))
-         end do
-
-         cnt = 0
-         do iunit=rtmCTL%begr,rtmCTL%endr
-            if(TUnit%dnID(iunit) > 0) cnt = cnt + 1
-         enddo
-
-      else
-         write(6,*)'DEBUG: endr < begr'
-      end if  ! endr >= begr
-
-      ! Set up pointer arrays into srcfield and dstfield
-      call ESMF_FieldGet(srcfield, farrayPtr=src_eroutUp, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      call ESMF_FieldGet(dstfield, farrayPtr=dst_eroutUp, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-      src_eroutUp(:,:) = 0._r8
-      dst_eroutUp(:,:) = 0._r8
-
-      ! Compute route handle rh_eroutUp
-      cnt = 0
-      do iunit = rtmCTL%begr,rtmCTL%endr
-         if (TUnit%dnID(iunit) > 0) then
-            cnt = cnt + 1
-         end if
-      end do
-      allocate(factorList(cnt))
-      allocate(factorIndexList(2,cnt))
-      cnt = 0
-      do iunit = rtmCTL%begr,rtmCTL%endr
-         if (TUnit%dnID(iunit) > 0) then
-            cnt = cnt + 1
-            factorList(cnt) = 1.0_r8
-            factorIndexList(1,cnt) = TUnit%ID0(iunit)
-            factorIndexList(2,cnt) = TUnit%dnID(iunit)
-         endif
-      enddo
-      if (masterproc) write(iulog,*) subname," Done initializing rh_eroutUp"
-
-      call ESMF_FieldSMMStore(srcfield, dstfield, rh_eroutUp, factorList, factorIndexList, &
-           ignoreUnmatchedIndices=.true., srcTermProcessing=srcTermProcessing_Value, rc=rc)
-      if (rc /= ESMF_SUCCESS) call ESMF_Finalize(endflag=ESMF_END_ABORT)
-
-      deallocate(factorList)
-      deallocate(factorIndexList)
-
-      !--- compute areatot from area using dnID ---
-      !--- this basically advects upstream areas downstream and
-      !--- adds them up as it goes until all upstream areas are accounted for
-
-      allocate(Tunit%areatotal2(rtmCTL%begr:rtmCTL%endr))
-      Tunit%areatotal2 = 0._r8
-
-      ! initialize dst_eroutUp to local area and add that to areatotal2
-      cnt = 0
-      dst_eroutUp(:,:) = 0._r8
-      do nr = rtmCTL%begr,rtmCTL%endr
-         cnt = cnt + 1
-         dst_eroutUp(1,cnt) = rtmCTL%area(nr)
-         Tunit%areatotal2(nr) = rtmCTL%area(nr)
-      enddo
-
-      tcnt = 0
-      areatot_prev = -99._r8
-      areatot_new = -50._r8
-      do while (areatot_new /= areatot_prev .and. tcnt < rtmlon*rtmlat)
-
-         tcnt = tcnt + 1
-
-         ! copy dst_eroutUp to src_eroutUp for next downstream step
-         src_eroutUp(:,:) = 0._r8
-         cnt = 0
-         do nr = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            src_eroutUp(1,cnt) = dst_eroutUp(1,cnt)
-         enddo
-
-         dst_eroutUp(:,:) = 0._r8
-         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-         if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-         ! add dst_eroutUp to areatot and compute new global sum
-         cnt = 0
-         areatot_prev = areatot_new
-         areatot_tmp = 0._r8
-         areatot_tmp2 = 0._r8
-         do nr = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            Tunit%areatotal2(nr) = Tunit%areatotal2(nr) + dst_eroutUp(1,cnt)
-            areatot_tmp = areatot_tmp + Tunit%areatotal2(nr)
-            areatot_tmp2 = areatot_tmp2 + dst_eroutUp(1,cnt)
-         enddo
-         call shr_mpi_sum(areatot_tmp, areatot_new, mpicom_rof, 'areatot_new', all=.true.)
-         call shr_mpi_sum(areatot_tmp2, areatot_new2, mpicom_rof, 'areatot_new2', all=.true.)
-
-         if (masterproc) then
-            write(iulog,*) trim(subname),' areatot calc ',tcnt,areatot_new
-            write(iulog,*) trim(subname),' areatot calc2 ',tcnt,areatot_new2
-         endif
-
-         cnt = 0
-         do nr = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            if (dst_eroutUp(1,cnt) /= 0._r8) then
-               write(6,'(a,i8,2x,i8,2x,i8,2x,d25.16)')' DEBUG: iam , cnt, nr, dst_eroutUp(1,cnt= ',iam,cnt,nr,dst_eroutUp(1,cnt)
-            end if
-         end do
-      enddo
-
-      if (areatot_new /= areatot_prev) then
-         write(iulog,*) trim(subname),' MOSART ERROR: areatot incorrect ',areatot_new, areatot_prev
-         call shr_sys_abort(trim(subname)//' ERROR areatot incorrect')
-      endif
-
-      !  do nr = rtmCTL%begr,rtmCTL%endr
-      !     if (TUnit%areatotal(nr) > 0._r8 .and. Tunit%areatotal2(nr) /= TUnit%areatotal(nr)) then
-      !        write(iulog,'(2a,i12,2e16.4,f16.4)') trim(subname),' areatot diff ',&
-      !           nr,TUnit%areatotal(nr),Tunit%areatota!l2(nr),&
-      !           abs(TUnit%areatotal(nr)-Tunit%areatotal2(nr))/(TUnit%areatotal(nr))
-      !     endif
-      !  enddo
-
-      ! control parameters
-      Tctl%RoutingMethod = 1
-
-      ! Tctl%DATAH = rtm_nsteps*get_step_size()
-      ! Tctl%DeltaT = 60._r8  !
-      ! if(Tctl%DATAH > 0 .and. Tctl%DATAH < Tctl%DeltaT) then
-      !    Tctl%DeltaT = Tctl%DATAH
-      ! end if
-
-      Tctl%DLevelH2R = 5
-      Tctl%DLevelR = 3
-      call SubTimestep ! prepare for numerical computation
-
-      call shr_mpi_max(maxval(Tunit%numDT_r),numDT_r,mpicom_rof,'numDT_r',all=.false.)
-      call shr_mpi_max(maxval(Tunit%numDT_t),numDT_t,mpicom_rof,'numDT_t',all=.false.)
-      if (masterproc) then
-         write(iulog,*) subname,' DLevelH2R = ',Tctl%DlevelH2R
-         write(iulog,*) subname,' numDT_r   = ',minval(Tunit%numDT_r),maxval(Tunit%numDT_r)
-         write(iulog,*) subname,' numDT_r max  = ',numDT_r
-         write(iulog,*) subname,' numDT_t   = ',minval(Tunit%numDT_t),maxval(Tunit%numDT_t)
-         write(iulog,*) subname,' numDT_t max  = ',numDT_t
-      endif
-
-      !-------------------------------------------------------
-      ! Read restart/initial info
-      !-------------------------------------------------------
-
-      call t_startf('mosarti_restart')
-      if ((nsrest == nsrStartup .and. finidat_rtm /= ' ') .or. &
-          (nsrest == nsrContinue) .or. &
-          (nsrest == nsrBranch  )) then
-         call RtmRestFileRead( file=fnamer )
-         TRunoff%wh   = rtmCTL%wh
-         TRunoff%wt   = rtmCTL%wt
-         TRunoff%wr   = rtmCTL%wr
-         TRunoff%erout= rtmCTL%erout
-      endif
-
-      do nt = 1,nt_rtm
-         do nr = rtmCTL%begr,rtmCTL%endr
-            call UpdateState_hillslope(nr,nt)
-            call UpdateState_subnetwork(nr,nt)
-            call UpdateState_mainchannel(nr,nt)
-            rtmCTL%volr(nr,nt) = (TRunoff%wt(nr,nt) + TRunoff%wr(nr,nt) + TRunoff%wh(nr,nt)*rtmCTL%area(nr))
-         enddo
-      enddo
-      call t_stopf('mosarti_restart')
-
-      !-------------------------------------------------------
-      ! Initialize mosart history handler and fields
-      !-------------------------------------------------------
-
-      call t_startf('mosarti_histinit')
-      call RtmHistFldsInit()
-      if (nsrest==nsrStartup .or. nsrest==nsrBranch) then
-         call RtmHistHtapesBuild()
-      end if
-      call RtmHistFldsSet()
-      if (masterproc) write(iulog,*) subname,' done'
-      call t_stopf('mosarti_histinit')
-
-      !if(masterproc) then
-      !    fname = '/lustre/liho745/DCLM_model/ccsm_hy/run/clm_MOSART_subw2/run/test.dat'
-      !    call createFile(1111,fname)
-      !end if
-
-   end subroutine MOSART_init
+   end subroutine MOSART_FloodInit
 
    !----------------------------------------------------------------------------
 
-   subroutine SubTimestep
+   subroutine MOSART_SubTimestep
 
       ! predescribe the sub-time-steps for channel routing
 
@@ -2420,6 +2409,7 @@ contains
          end if
          if(TUnit%numDT_t(iunit) < 1) TUnit%numDT_t(iunit) = 1
       end do
-   end subroutine SubTimestep
+
+   end subroutine MOSART_SubTimestep
 
 end module RtmMod

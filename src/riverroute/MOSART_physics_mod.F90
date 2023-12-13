@@ -22,7 +22,7 @@ MODULE MOSART_physics_mod
    use perf_mod          , only : t_startf, t_stopf
    use nuopc_shr_methods , only : chkerr
    use ESMF              , only : ESMF_FieldGet, ESMF_FieldSMM, ESMF_Finalize, &
-                                  ESMF_SUCCESS, ESMF_END_ABORT
+                                  ESMF_SUCCESS, ESMF_END_ABORT, ESMF_TERMORDER_SRCSEQ
 
    implicit none
    private
@@ -152,7 +152,7 @@ contains
          enddo
 
          ! --- map src_eroutUp to dst_eroutUp
-         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, rc=rc)
+         call ESMF_FieldSMM(srcfield, dstField, rh_eroutUp, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
          if (chkerr(rc,__LINE__,u_FILE_u)) return
 
          !--- copy mapped eroutUp to TRunoff ---

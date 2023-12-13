@@ -24,7 +24,7 @@ module rof_comp_nuopc
   use RtmVar                , only : srcfield, dstfield
   use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
   use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : Rtminit_namelist, Rtmini, MOSART_init, Rtmrun
+  use RtmMod                , only : MOSART_read_namelist, MOSART_init1, MOSART_init2, MOSART_run
   use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
@@ -56,7 +56,7 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
 
-  logical                 :: do_rtmflood
+  logical                 :: do_flood
   integer                 :: nthrds
 
   integer     , parameter :: debug = 1
@@ -282,7 +282,7 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    ! Need to run the initial phase of rtm here to determine if do_flood is true in order to
+    ! Need to run the initial phase of MOSART here to determine if do_flood is true in order to
     ! get the advertise phase correct
 
     !----------------------
@@ -416,13 +416,13 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    call Rtminit_namelist(do_rtmflood)
+    call MOSART_read_namelist(do_flood)
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
+    call advertise_fields(gcomp, flds_scalar_name, do_flood, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -498,7 +498,7 @@ contains
     endif
 #endif
 
-    call Rtmini(rc)
+    call MOSART_init1(rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
@@ -550,11 +550,12 @@ contains
 
 
     !-------------------------------------------------------
-    ! Initialize mosart
+    ! Initialize mosart maps and restart
+    ! This must be called after the ESMF mesh is read in
     !-------------------------------------------------------
 
     call t_startf('mosarti_mosart_init')
-    call MOSART_init(rc)
+    call MOSART_init2(rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call t_stopf('mosarti_mosart_init')
 
@@ -718,7 +719,7 @@ contains
 
     ! Advance mosart time step then run MOSART (export data is in rtmCTL and Trunoff data types)
     call advance_timestep()
-    call Rtmrun(rstwr, nlend, rdate, rc)
+    call MOSART_run(rstwr, nlend, rdate, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------

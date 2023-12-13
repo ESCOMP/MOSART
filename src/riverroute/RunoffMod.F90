@@ -89,7 +89,6 @@ module RunoffMod
      real(r8), pointer :: qsub_nt2(:)
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
-
   end type runoff_flow
 
 
@@ -142,7 +141,6 @@ module RunoffMod
      real(r8), pointer :: Gxr(:)       ! drainage density within the cell, [1/m]
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      logical , pointer :: euler_calc(:) ! flag for calculating tracers in euler
-
 
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded)
