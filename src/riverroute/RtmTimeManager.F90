@@ -1000,7 +1000,7 @@ logical function is_first_step()
    call ESMF_ClockGet( tm_clock, advanceCount=step_no, rc=rc )
    call chkrc(rc, sub//': error return from ESMF_ClockGet')
    nstep = step_no
-   is_first_step = (nstep == 0)
+   is_first_step = (nstep == 1)
 
 end function is_first_step
 
