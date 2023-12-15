@@ -30,6 +30,7 @@ contains
       !
       ! Local variables
       integer :: ier  ! return error status
+      integer :: maintask
       !-----------------------------------------------------------------------
 
       ! Initialize mpi communicator group
@@ -37,7 +38,8 @@ contains
 
       ! Get my processor id
       call mpi_comm_rank(mpicom_rof, iam, ier)
-      if (iam == 0) then
+      maintask = 0
+      if (iam == maintask) then
          mainproc = .true.
       else
          mainproc = .false.
