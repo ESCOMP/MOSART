@@ -8,8 +8,7 @@ module RtmMod
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
-   use RtmSpmd            , only : mainproc, npes, iam, mpicom_rof, ROFID, &
-                                   MPI_REAL8, MPI_INTEGER, MPI_CHARACTER, MPI_LOGICAL, MPI_MAX
+   use RtmSpmd            , only : mainproc, npes, iam, mpicom_rof, ROFID
    use RtmVar             , only : nt_rtm, rtm_tracers, &
                                    re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
                                    frivinp_rtm, finidat_rtm, nrevsn_rtm, &
@@ -37,6 +36,7 @@ module RtmMod
                                    ESMF_TERMORDER_SRCSEQ
    use RtmIO
    use pio
+   use mpi
 
    implicit none
    private

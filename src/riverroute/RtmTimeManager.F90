@@ -2,10 +2,11 @@ module RtmTimeManager
 
    use shr_kind_mod, only: r8 => shr_kind_r8
    use shr_sys_mod , only: shr_sys_abort
-   use RtmSpmd     , only: mpicom_rof, MPI_INTEGER, MPI_CHARACTER, mainproc
+   use RtmSpmd     , only: mpicom_rof, mainproc
    use RtmVar      , only: isecspday, iulog, nsrest, nsrContinue
    use RtmIO
    use ESMF
+   use mpi
 
    implicit none
    private

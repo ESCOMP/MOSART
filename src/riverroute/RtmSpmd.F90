@@ -5,8 +5,6 @@ module RtmSpmd
    implicit none
    private
 
-#include <mpif.h>
-
    ! Default settings valid even if there is no mpi
 
    logical, public :: mainproc              ! proc 0 logical for printing msgs
@@ -14,20 +12,9 @@ module RtmSpmd
    integer, public :: npes                  ! number of processors for rtm
    integer, public :: mpicom_rof            ! communicator group for rtm
    integer, public :: ROFID                 ! component id needed for PIO
-   integer, public, parameter :: MAINTASK=0 ! the value of iam which is assigned
-                                            ! the mainproc duties
 
    ! Public methods
    public :: RtmSpmdInit                ! Initialization
-
-   ! Values from mpif.h that can be used
-   public :: MPI_INTEGER
-   public :: MPI_REAL8
-   public :: MPI_LOGICAL
-   public :: MPI_CHARACTER
-   public :: MPI_SUM
-   public :: MPI_MIN
-   public :: MPI_MAX
 
 contains
 
@@ -50,7 +37,7 @@ contains
 
       ! Get my processor id
       call mpi_comm_rank(mpicom_rof, iam, ier)
-      if (iam == MAINTASK) then
+      if (iam == 0) then
          mainproc = .true.
       else
          mainproc = .false.

@@ -10,16 +10,17 @@ contains
       !
       ! A generic Date and Time routine
       !
-      use RtmSpmd, only : mpicom_rof, mainproc, MPI_CHARACTER
+      use RtmSpmd, only : mpicom_rof, mainproc
+      use mpi
       !
       ! Arguments
       character(len=8), intent(out) :: cdate  !current date
       character(len=8), intent(out) :: ctime  !current time
       !
       ! Local variables
-      character(len=8)      :: date       !current date
-      character(len=10)     :: time       !current time
-      character(len=5)      :: zone       !zone
+      character(len=8)      :: date   !current date
+      character(len=10)     :: time   !current time
+      character(len=5)      :: zone   !zone
       integer, dimension(8) :: values !temporary
       integer               :: ier    !MPI error code
       !-----------------------------------------------------------------------
