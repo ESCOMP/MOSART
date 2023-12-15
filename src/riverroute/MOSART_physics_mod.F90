@@ -1,4 +1,4 @@
-MODULE MOSART_physics_mod
+module MOSART_physics_mod
 
    !-----------------------------------------------------------------------
    ! Description: core code of MOSART. Can be incoporated within any
@@ -184,10 +184,6 @@ contains
                         call mainchannelRouting(iunit,nt,localDeltaT)
                         TRunoff%wr(iunit,nt) = TRunoff%wr(iunit,nt) + TRunoff%dwr(iunit,nt) * localDeltaT
                         ! check for negative channel storage
-                        ! if(TRunoff%wr(iunit,1) < -1.e-10) then
-                        !    write(iulog,*) 'Negative channel storage! ', iunit, TRunoff%wr(iunit,1)
-                        !    call shr_sys_abort('mosart: negative channel storage')
-                        ! end if
                         call UpdateState_mainchannel(iunit,nt)
                         ! erout here might be inflow to some downstream subbasin, so treat it differently than erlateral
                         temp_erout = temp_erout + TRunoff%erout(iunit,nt)
@@ -225,7 +221,6 @@ contains
       integer, intent(in) :: iunit, nt
       real(r8), intent(in) :: theDeltaT
 
-      !  !TRunoff%ehout(iunit,nt) = -CREHT(TUnit%hslp(iunit), TUnit%nh(iunit), TUnit%Gxr(iunit), TRunoff%yh(iunit,nt))
       TRunoff%ehout(iunit,nt) = -CREHT_nosqrt(TUnit%hslpsqrt(iunit), TUnit%nh(iunit), TUnit%Gxr(iunit), TRunoff%yh(iunit,nt))
       if(TRunoff%ehout(iunit,nt) < 0._r8 .and. &
            TRunoff%wh(iunit,nt) + (TRunoff%qsur(iunit,nt) + TRunoff%ehout(iunit,nt)) * theDeltaT < TINYVALUE) then
@@ -244,11 +239,9 @@ contains
       integer, intent(in) :: iunit,nt
       real(r8), intent(in) :: theDeltaT
 
-      !  !if(TUnit%tlen(iunit) <= 1e100_r8) then ! if no tributaries, not subnetwork channel routing
       if(TUnit%tlen(iunit) <= TUnit%hlen(iunit)) then ! if no tributaries, not subnetwork channel routing
          TRunoff%etout(iunit,nt) = -TRunoff%etin(iunit,nt)
       else
-         !     !TRunoff%vt(iunit,nt) = CRVRMAN(TUnit%tslp(iunit), TUnit%nt(iunit), TRunoff%rt(iunit,nt))
          TRunoff%vt(iunit,nt) = CRVRMAN_nosqrt(TUnit%tslpsqrt(iunit), TUnit%nt(iunit), TRunoff%rt(iunit,nt))
          TRunoff%etout(iunit,nt) = -TRunoff%vt(iunit,nt) * TRunoff%mt(iunit,nt)
          if(TRunoff%wt(iunit,nt) + (TRunoff%etin(iunit,nt) + TRunoff%etout(iunit,nt)) * theDeltaT < TINYVALUE) then
@@ -259,11 +252,6 @@ contains
          end if
       end if
       TRunoff%dwt(iunit,nt) = TRunoff%etin(iunit,nt) + TRunoff%etout(iunit,nt)
-
-      ! check stability
-      !    if(TRunoff%vt(iunit,nt) < -TINYVALUE .or. TRunoff%vt(iunit,nt) > 30) then
-      !       write(iulog,*) "Numerical error in subnetworkRouting, ", iunit,nt,TRunoff%vt(iunit,nt)
-      !    end if
 
    end subroutine subnetworkRouting
 
@@ -303,12 +291,6 @@ contains
 
       ! estimate the inflow from upstream units
       TRunoff%erin(iunit,nt) = 0._r8
-
-      ! tcraig, moved this out of the inner main channel loop to before main channel call
-      ! now it's precomputed as TRunoff%eroutUp
-      !    do k=1,TUnit%nUp(iunit)
-      !       TRunoff%erin(iunit,nt) = TRunoff%erin(iunit,nt) - TRunoff%erout(TUnit%iUp(iunit,k),nt)
-      !    end do
       TRunoff%erin(iunit,nt) = TRunoff%erin(iunit,nt) - TRunoff%eroutUp(iunit,nt)
 
       ! estimate the outflow
@@ -319,7 +301,6 @@ contains
          if(TUnit%areaTotal2(iunit)/TUnit%rwidth(iunit)/TUnit%rlen(iunit) > 1e6_r8) then
             TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
          else
-            !        !TRunoff%vr(iunit,nt) = CRVRMAN(TUnit%rslp(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
             TRunoff%vr(iunit,nt) = CRVRMAN_nosqrt(TUnit%rslpsqrt(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
             TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
             if(-TRunoff%erout(iunit,nt) > TINYVALUE .and. TRunoff%wr(iunit,nt) + &
@@ -343,20 +324,7 @@ contains
          write(iulog,*) theDeltaT, TRunoff%wr(iunit,nt), &
               TRunoff%wr(iunit,nt)/theDeltaT, TRunoff%dwr(iunit,nt), temp_gwl
          write(iulog,*) ' '
-         !       call shr_sys_abort('mosart: ERROR main channel going negative')
       endif
-
-      ! check for stability
-      !    if(TRunoff%vr(iunit,nt) < -TINYVALUE .or. TRunoff%vr(iunit,nt) > 30) then
-      !       write(iulog,*) "Numerical error inRouting_KW, ", iunit,nt,TRunoff%vr(iunit,nt)
-      !    end if
-
-      ! check for negative wr
-      !    if(TRunoff%wr(iunit,nt) > 1._r8 .and. &
-      !      (TRunoff%wr(iunit,nt)/theDeltaT + TRunoff%dwr(iunit,nt))/TRunoff%wr(iunit,nt) < -TINYVALUE) then
-      !       write(iulog,*) 'negative wr!', TRunoff%wr(iunit,nt), TRunoff%dwr(iunit,nt), temp_dwr, temp_gwl, temp_gwl0, theDeltaT
-      !       stop
-      !    end if
 
    end subroutine Routing_KW
 
@@ -460,19 +428,8 @@ contains
       if(rr_ <= 0._r8) then
          v_ = 0._r8
       else
-         !tcraig, original code
-         !       ftemp = 2._r8/3._r8
-         !       v_ = (rr_**ftemp) * sqrt(slp_) / n_
-         !tcraig, produces same answer as original in same time
-         !       v_ = (rr_**(2._r8/3._r8)) * sqrt(slp_) / n_
-
-         !tcraig, this is faster but NOT bit-for-bit
          v_ = ((rr_*rr_)**(1._r8/3._r8)) * sqrt(slp_) / n_
-         !debug       if (abs(vtemp - v_)/vtemp > 1.0e-14) then
-         !debug          write(iulog,*) 'tcx check crvrman ',vtemp, v_
-         !debug       endif
       end if
-      return
    end function CRVRMAN
 
    !-----------------------------------------------------------------------
@@ -489,20 +446,8 @@ contains
       if(rr_ <= 0._r8) then
          v_ = 0._r8
       else
-         !tcraig, original code
-         !       ftemp = 2._r8/3._r8
-         !       v_ = (rr_**ftemp) * sqrtslp_ / n_
-         !tcraig, produces same answer as original in same time
-         !       v_ = (rr_**(2._r8/3._r8)) * sqrtslp_ / n_
-
-         !tcraig, this is faster but NOT bit-for-bit
          v_ = ((rr_*rr_)**(1._r8/3._r8)) * sqrtslp_ / n_
-
-         !debug       if (abs(vtemp - v_)/vtemp > 1.0e-14) then
-         !debug          write(iulog,*) 'tcx check crvrman_nosqrt ',vtemp, v_
-         !debug       endif
       end if
-      return
    end function CRVRMAN_nosqrt
 
    !-----------------------------------------------------------------------
@@ -627,12 +572,10 @@ contains
                hr_ = rdepth_ + SLOPE1*((rwidth0_ - rwidth_)/2._r8) + deltamr_/(rwidth0_);
             else
                deltamr_ = mr_ - rdepth_*rwidth_;
-               !           !hr_ = rdepth_ + (-rwidth_+sqrt( rwidth_**2._r8  +4._r8*deltamr_/SLOPE1))*SLOPE1/2._r8
                hr_ = rdepth_ + (-rwidth_+sqrt((rwidth_*rwidth_)+4._r8*deltamr_/SLOPE1))*SLOPE1/2._r8
             end if
          end if
       end if
-      return
    end function GRHR
 
    !-----------------------------------------------------------------------
@@ -666,7 +609,6 @@ contains
          else
             if(hr_ > rdepth_ + ((rwidth0_-rwidth_)/2._r8)*SLOPE1 + TINYVALUE) then
                deltahr_ = hr_ - rdepth_ - ((rwidth0_-rwidth_)/2._r8)*SLOPE1
-               ! pr_ = rwidth_ + 2._r8*(rdepth_ + ((rwidth0_-rwidth_)/2._r8)*SLOPE1/sin(atan(SLOPE1)) + deltahr_)
                pr_ = rwidth_ + 2._r8*(rdepth_ + ((rwidth0_-rwidth_)/2._r8)*SLOPE1*sinatanSLOPE1defr + deltahr_)
             else
                ! pr_ = rwidth_ + 2._r8*(rdepth_ + (hr_ - rdepth_)/sin(atan(SLOPE1)))
@@ -691,8 +633,6 @@ contains
       character(len=1000) :: cmd
       inquire (file=fname, exist=filefound)
       if(filefound) then
-         !cmd = 'rm '//trim(fname)
-         !call system(cmd)
          open (unit=nio, file=fname, status="replace", action="write", iostat=ios)
       else
          open (unit=nio, file=fname, status="new", action="write", iostat=ios)
@@ -727,4 +667,4 @@ contains
 
    end subroutine printTest
 
-end MODULE MOSART_physics_mod
+end module MOSART_physics_mod

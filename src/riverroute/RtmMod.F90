@@ -37,18 +37,17 @@ module RtmMod
                                    ESMF_TERMORDER_SRCSEQ
    use RtmIO
    use pio
-   !
-   ! !PUBLIC TYPES:
+
    implicit none
    private
-   !
-   ! !PUBLIC MEMBER FUNCTIONS:
+
+   ! public member functions
    public :: MOSART_read_namelist ! Read in MOSART namelist
    public :: MOSART_init1         ! Initialize MOSART grid
    public :: MOSART_init2         ! Initialize MOSART maps
    public :: MOSART_run           ! River routing model
-   !
-   ! !PRIVATE MEMBER FUNCTIONS:
+
+   ! private member functions
    private :: MOSART_FloodInit
    private :: MOSART_SubTimestep
 
@@ -677,17 +676,8 @@ contains
             do nr=1,rtmlon*rtmlat
                if (gmask(nr) >= 2 .and. nupstrm(nr) > 0 .and. nupstrm(nr) >= minbas .and. nupstrm(nr) <= maxbas) then
                   ! Decomp options
-                  !   find min pe (implemented but scales poorly)
                   !   use increasing thresholds (implemented, ok load balance for l2r or calc)
                   !   distribute basins using above methods but work from max to min basin size
-                  !
-                  !--------------
-                  ! find min pe
-                  !             baspe = 0
-                  !             do n = 1,npes-1
-                  !                if (nop(n) < nop(baspe)) baspe = n
-                  !             enddo
-                  !--------------
                   ! find next pe below maxrtm threshhold and increment
                   do while (nop(baspe) > maxrtm)
                      baspe = baspe + 1
@@ -1105,7 +1095,6 @@ contains
          call pio_initdecomp(pio_subsystem, pio_double, dsizes, compDOF, iodesc_dbl)
          call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compDOF, iodesc_int)
          deallocate(compdof)
-         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
 
          allocate(TUnit%euler_calc(nt_rtm))
          Tunit%euler_calc = .true.
@@ -1535,23 +1524,8 @@ contains
          call shr_sys_abort(trim(subname)//' ERROR areatot incorrect')
       endif
 
-      !  do nr = rtmCTL%begr,rtmCTL%endr
-      !     if (TUnit%areatotal(nr) > 0._r8 .and. Tunit%areatotal2(nr) /= TUnit%areatotal(nr)) then
-      !        write(iulog,'(2a,i12,2e16.4,f16.4)') trim(subname),' areatot diff ',&
-      !           nr,TUnit%areatotal(nr),Tunit%areatota!l2(nr),&
-      !           abs(TUnit%areatotal(nr)-Tunit%areatotal2(nr))/(TUnit%areatotal(nr))
-      !     endif
-      !  enddo
-
       ! control parameters
       Tctl%RoutingMethod = 1
-
-      ! Tctl%DATAH = rtm_nsteps*get_step_size()
-      ! Tctl%DeltaT = 60._r8  !
-      ! if(Tctl%DATAH > 0 .and. Tctl%DATAH < Tctl%DeltaT) then
-      !    Tctl%DeltaT = Tctl%DATAH
-      ! end if
-
       Tctl%DLevelH2R = 5
       Tctl%DLevelR = 3
       call MOSART_SubTimestep ! prepare for numerical computation
@@ -1747,9 +1721,6 @@ contains
             irrig_volume = TRunoff%wr(nr,nt)
          endif
 
-         !scs: how to deal with sink points / river outlets?
-         !       if (rtmCTL%mask(nr) == 1) then
-
          ! actual irrigation rate [m3/s]
          ! i.e. the rate actually removed from the main channel
          ! if irrig_volume is greater than TRunoff%wr
@@ -1757,8 +1728,6 @@ contains
 
          ! remove irrigation from wr (main channel)
          TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) - irrig_volume
-
-         !scs       endif
 
       enddo
       call t_stopf('mosartr_irrig')
@@ -1777,8 +1746,7 @@ contains
          ! initialize rtmCTL%flood to zero
          if (rtmCTL%mask(nr) == 1) then
             if (rtmCTL%volr(nr,nt) > rtmCTL%fthresh(nr)) then
-               ! determine flux that is sent back to the land
-               ! this is in m3/s
+               ! determine flux that is sent back to the land this is in m3/s
                rtmCTL%flood(nr) = (rtmCTL%volr(nr,nt)-rtmCTL%fthresh(nr)) / (delt_coupling)
 
                ! rtmCTL%flood will be sent back to land - so must subtract this
@@ -2192,48 +2160,20 @@ contains
                write(iulog,'(2a,i4)')       trim(subname),'  tracer = ',nt
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume   init = ',nt,budget_global(1,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   volume  final = ',nt,budget_global(2,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumeh  init = ',nt,budget_global(7,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumeh final = ',nt,budget_global(8,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumet  init = ',nt,budget_global(3,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumet final = ',nt,budget_global(4,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumer  init = ',nt,budget_global(5,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   volumer final = ',nt,budget_global(6,nt)
-               !write(iulog,'(2a)') trim(subname),'----------------'
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   input surface = ',nt,budget_global(13,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   input subsurf = ',nt,budget_global(14,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   input gwl     = ',nt,budget_global(15,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   input irrig   = ',nt,budget_global(16,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   input total   = ',nt,budget_global(17,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input check   = ',nt,budget_input - budget_global(17,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   input euler   = ',nt,budget_global(20,nt)
-               !write(iulog,'(2a)') trim(subname),'----------------'
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flow   = ',nt,budget_global(18,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   output direct = ',nt,budget_global(21,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   output flood  = ',nt,budget_global(19,nt)
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   output total  = ',nt,budget_global(22,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   output check  = ',nt,budget_output - budget_global(22,nt)
-               !write(iulog,'(2a)') trim(subname),'----------------'
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   sum input     = ',nt,budget_input
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   sum dvolume   = ',nt,budget_volume
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   sum output    = ',nt,budget_output
-               !write(iulog,'(2a)') trim(subname),'----------------'
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   net (dv-i+o)  = ',nt,budget_total
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   net euler     = ',nt,budget_euler
                write(iulog,'(2a,i4,f22.6)') trim(subname),'   eul erout lag = ',nt,budget_eroutlag
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   accum (dv-i+o)= ',nt,budget_global(30,nt)
-               !write(iulog,'(2a)') trim(subname),'----------------'
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev  no= ',nt,budget_global(23,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout       no= ',nt,budget_global(24,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   eroutup_avg   = ',nt,budget_global(25,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout_prev out= ',nt,budget_global(26,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erout      out= ',nt,budget_global(27,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   erlateral     = ',nt,budget_global(28,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   euler gwl     = ',nt,budget_global(29,nt)
-               !write(iulog,'(2a,i4,f22.6)') trim(subname),'   net main chan = ',nt,&
-               !   budget_global(6,nt)-budget_global(5,nt)+budget_global(24,nt)&
-               !  -budget_global(23,nt)+budget_global(27,nt)+budget_global(28,nt)+budget_global(29,nt)
-               !write(iulog,'(2a)') trim(subname),'----------------'
-
                if ((budget_total-budget_eroutlag) > 1.0e-6) then
                   write(iulog,'(2a,i4)') trim(subname),' ***** BUDGET WARNING error gt 1. m3 for nt = ',nt
                endif
