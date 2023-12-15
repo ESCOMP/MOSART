@@ -76,8 +76,8 @@ module RtmMod
    real(r8), pointer :: erlat_avg(:,:)  ! erlateral average over coupling period (m3/s)
 
    ! global MOSART grid
-   real(r8),pointer :: rlatc(:)    ! latitude of 1d grid cell (deg)
-   real(r8),pointer :: rlonc(:)    ! longitude of 1d grid cell (deg)
+   real(r8),pointer :: rlatc(:)    ! latitude of center of 1d grid cell (deg)
+   real(r8),pointer :: rlonc(:)    ! longitude of center of 1d grid cell (deg)
    real(r8),pointer :: rlats(:)    ! latitude of 1d south grid cell edge (deg)
    real(r8),pointer :: rlatn(:)    ! latitude of 1d north grid cell edge (deg)
    real(r8),pointer :: rlonw(:)    ! longitude of 1d west grid cell edge (deg)
