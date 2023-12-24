@@ -17,14 +17,12 @@ module RtmHistFile
   use RtmFileUtils  , only : get_filename, getfil
   use RtmTimeManager, only : get_nstep, get_curr_date, get_curr_time, get_ref_date, &
                              get_prev_time, get_prev_date, is_last_step, get_step_size
-  use RtmSpmd       , only : masterproc
+  use RtmSpmd       , only : mainproc
   use RtmIO
   use RtmDateTime
 
   implicit none
-  save
   private
-
 !
 ! !PUBLIC TYPES:
 !
@@ -196,7 +194,7 @@ contains
     integer nf
     character(len=*),parameter :: subname = 'RTM_hist_printflds'
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*) trim(subname),' : number of master fields = ',nfmaster
        write(iulog,*)' ******* MASTER FIELD LIST *******'
        do nf = 1,nfmaster
@@ -227,7 +225,7 @@ contains
     character(len=*),parameter :: subname = 'hist_htapes_build'
     !----------------------------------------------------------
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*)  trim(subname),' Initializing MOSART history files'
        write(iulog,'(72a1)') ("-",i=1,60)
        call shr_sys_flush(iulog)
@@ -293,7 +291,7 @@ contains
        tape(t)%begtime = day + sec/secspday
     end do
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*)  trim(subname),' Successfully initialized MOSART history files'
        write(iulog,'(72a1)') ("-",i=1,60)
        call shr_sys_flush(iulog)
@@ -410,7 +408,7 @@ contains
           end do
        end do
 
-       if (masterproc) then
+       if (mainproc) then
           if (tape(t)%nflds > 0) then
              write(iulog,*) trim(subname),' : Included fields tape ',t,'=',tape(t)%nflds
           end if
@@ -449,7 +447,7 @@ contains
        call shr_sys_abort()
     end if
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*) 'There will be a total of ',ntapes,'MOSART  history tapes'
        do t=1,ntapes
           write(iulog,*)
@@ -669,7 +667,7 @@ contains
 
     ! Create new netCDF file. It will be in define mode
     if ( .not. lhistrest )then
-       if (masterproc) then
+       if (mainproc) then
           write(iulog,*) trim(subname),' : Opening netcdf htape ', &
                                       trim(locfnh(t))
           call shr_sys_flush(iulog)
@@ -679,7 +677,7 @@ contains
        call ncd_putatt(lnfid, ncd_global, 'comment', &
           "NOTE: None of the variables are weighted by land fraction!" )
     else
-       if (masterproc) then
+       if (mainproc) then
           write(iulog,*) trim(subname),' : Opening netcdf rhtape ', &
                                       trim(locfnhr(t))
           call shr_sys_flush(iulog)
@@ -750,13 +748,13 @@ contains
     if ( .not. lhistrest )then
        call ncd_defdim(lnfid, 'hist_interval', 2, hist_interval_dimid)
        call ncd_defdim(lnfid, 'time', ncd_unlimited, time_dimid)
-       if (masterproc)then
+       if (mainproc)then
           write(iulog,*) trim(subname), &
                           ' : Successfully defined netcdf history file ',t
           call shr_sys_flush(iulog)
        end if
     else
-       if (masterproc)then
+       if (mainproc)then
           write(iulog,*) trim(subname), &
                           ' : Successfully defined netcdf restart history file ',t
           call shr_sys_flush(iulog)
@@ -1024,7 +1022,7 @@ contains
           if (tape(t)%ntimes == 1) then
              locfnh(t) = set_hist_filename (hist_freq=tape(t)%nhtfrq, &
                                             rtmhist_mfilt=tape(t)%mfilt, hist_file=t)
-             if (masterproc) then
+             if (mainproc) then
                 write(iulog,*) trim(subname),' : Creating history file ', trim(locfnh(t)), &
                      ' at nstep = ',get_nstep()
                 write(iulog,*)'calling htape_create for file t = ',t
@@ -1070,7 +1068,7 @@ contains
           ! Write time constant history variables
           call htape_timeconst(t, mode='write')
 
-          if (masterproc) then
+          if (mainproc) then
              write(iulog,*)
              write(iulog,*) trim(subname),' : Writing current time sample to local history file ', &
                   trim(locfnh(t)),' at nstep = ',get_nstep(), &
@@ -1120,7 +1118,7 @@ contains
        endif
        if (if_close(t)) then
           if (tape(t)%ntimes /= 0) then
-             if (masterproc) then
+             if (mainproc) then
                 write(iulog,*)
                 write(iulog,*)  trim(subname),' : Closing local history file ',&
                      trim(locfnh(t)),' at nstep = ', get_nstep()
@@ -1131,7 +1129,7 @@ contains
                 call ncd_pio_openfile (nfid(t), trim(locfnh(t)), ncd_write)
              end if
           else
-             if (masterproc) then
+             if (mainproc) then
                 write(iulog,*) trim(subname),' : history tape ',t,': no open file to close'
              end if
           endif

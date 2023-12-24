@@ -18,19 +18,21 @@ module rof_comp_nuopc
   use shr_sys_mod           , only : shr_sys_abort
   use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_cal_mod           , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use RtmVar                , only : rtmlon, rtmlat, iulog
+  use RtmVar                , only : rtmlon, rtmlat, iulog, nt_rtm
   use RtmVar                , only : nsrStartup, nsrContinue, nsrBranch
   use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
-  use RtmSpmd               , only : RtmSpmdInit, masterproc, mpicom_rof, ROFID, iam, npes
+  use RtmVar                , only : srcfield, dstfield
+  use RtmSpmd               , only : RtmSpmdInit, mainproc, mpicom_rof, ROFID, iam, npes
   use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : Rtminit_namelist, Rtmini, Rtmrun
+  use RtmMod                , only : MOSART_read_namelist, MOSART_init1, MOSART_init2, MOSART_run
   use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use perf_mod              , only : t_startf, t_stopf, t_barrierf
   use rof_import_export     , only : advertise_fields, realize_fields
   use rof_import_export     , only : import_fields, export_fields
-  use nuopc_shr_methods       , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use nuopc_shr_methods       , only : set_component_logging, get_component_instance, log_clock_advance
+  use nuopc_shr_methods     , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+  use nuopc_shr_methods     , only : set_component_logging, get_component_instance, log_clock_advance
 !$ use omp_lib              , only : omp_set_num_threads
+
   implicit none
   private ! except
 
@@ -54,7 +56,7 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
 
-  logical                 :: do_rtmflood
+  logical                 :: do_flood
   integer                 :: nthrds
 
   integer     , parameter :: debug = 1
@@ -201,7 +203,7 @@ contains
     ! The following call initializees the module variable mpicom_rof in RtmSpmd
     call RtmSpmdInit(mpicom)
 
-    ! Set ROFID - needed for the mosart code that requires MCT
+    ! Set ROFID
     call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) ROFID  ! convert from string to integer
@@ -219,7 +221,7 @@ contains
     ! reset shr logging to my log file
     !----------------------------------------------------------------------------
 
-    call set_component_logging(gcomp, masterproc, iulog, shrlogunit, rc)
+    call set_component_logging(gcomp, mainproc, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -280,7 +282,7 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    ! Need to run the initial phase of rtm here to determine if do_flood is true in order to
+    ! Need to run the initial phase of MOSART here to determine if do_flood is true in order to
     ! get the advertise phase correct
 
     !----------------------
@@ -366,7 +368,7 @@ contains
     ! Read namelist, grid and surface data
     !----------------------
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*) "MOSART river model initialization"
        write(iulog,*) ' mosart npes = ',npes
        write(iulog,*) ' mosart iam  = ',iam
@@ -414,13 +416,13 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    call Rtminit_namelist(do_rtmflood)
+    call MOSART_read_namelist(do_flood)
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
+    call advertise_fields(gcomp, flds_scalar_name, do_flood, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -490,12 +492,15 @@ contains
     !$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
-    if (masterproc) then
+    if (mainproc) then
        lbnum=1
        call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:start::',lbnum)
     endif
 #endif
-    call Rtmini()
+
+    ! Call first phase of MOSART initialization (set decomp, grid)
+    call MOSART_init1()
+
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------
@@ -517,7 +522,7 @@ contains
     ! read in the mesh
     call NUOPC_CompAttributeGet(gcomp, name='mesh_rof', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,*)'mesh file for domain is ',trim(cvalue)
     end if
 
@@ -530,6 +535,29 @@ contains
 
     call realize_fields(gcomp,  Emesh, flds_scalar_name, flds_scalar_num, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !-------------------------------------------------------
+    ! create srcfield and dstfield - needed for mapping
+    !-------------------------------------------------------
+
+    srcfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
+         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    dstfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
+         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+
+    !-------------------------------------------------------
+    ! Initialize mosart maps and restart
+    ! This must be called after the ESMF mesh is read in
+    !-------------------------------------------------------
+
+    call t_startf('mosarti_mosart_init')
+    call MOSART_init2(rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call t_stopf('mosarti_mosart_init')
 
     !--------------------------------
     ! Create MOSART export state
@@ -564,7 +592,7 @@ contains
     endif
 
 #if (defined _MEMTRACE)
-    if(masterproc) then
+    if(mainproc) then
        write(iulog,*) TRIM(Sub) // ':end::'
        lbnum=1
        call memmon_dump_fort('memmon.out','rof_comp_nuopc_InitializeRealize:end::',lbnum)
@@ -617,7 +645,7 @@ contains
 !$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
-    if(masterproc) then
+    if(mainproc) then
        lbnum=1
        call memmon_dump_fort('memmon.out','mosart_comp_nuopc_ModelAdvance:start::',lbnum)
     endif
@@ -691,7 +719,8 @@ contains
 
     ! Advance mosart time step then run MOSART (export data is in rtmCTL and Trunoff data types)
     call advance_timestep()
-    call Rtmrun(rstwr, nlend, rdate)
+    call MOSART_run(rstwr, nlend, rdate, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! Pack export state to mediator
@@ -699,14 +728,12 @@ contains
 
     ! (input is rtmCTL%runoff, output is r2x)
     call t_startf ('lc_rof_export')
-
     call export_fields(gcomp, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
     call t_stopf ('lc_rof_export')
 
     !--------------------------------
-    ! Check that internal clock is in sync with master clock
+    ! Check that internal clock is in sync with sync clock
     !--------------------------------
 
     dtime = get_step_size()
@@ -718,7 +745,7 @@ contains
        write(iulog,*)' mosart ymd=',ymd     ,'  mosart tod= ',tod
        write(iulog,*)'   sync ymd=',ymd_sync,'    sync tod= ',tod_sync
        rc = ESMF_FAILURE
-       call ESMF_LogWrite(subname//" MOSART clock not in sync with Master Sync clock",ESMF_LOGMSG_ERROR)
+       call ESMF_LogWrite(subname//" MOSART clock not in sync with sync clock",ESMF_LOGMSG_ERROR)
     end if
 
     !--------------------------------
@@ -743,7 +770,7 @@ contains
     call shr_file_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
-    if(masterproc) then
+    if(mainproc) then
        lbnum=1
        call memmon_dump_fort('memmon.out','mosart_comp_nuopc_ModelAdvance:end::',lbnum)
        call memmon_reset_addr()
@@ -896,7 +923,7 @@ contains
     rc = ESMF_SUCCESS
     call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
-    if (masterproc) then
+    if (mainproc) then
        write(iulog,F91)
        write(iulog,F00) 'MOSART: end of main integration loop'
        write(iulog,F91)

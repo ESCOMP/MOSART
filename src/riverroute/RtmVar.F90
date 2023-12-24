@@ -3,7 +3,8 @@ module RtmVar
   use shr_kind_mod , only : r8 => shr_kind_r8, CL => SHR_KIND_CL
   use shr_const_mod, only : SHR_CONST_CDAY,SHR_CONST_REARTH
   use shr_sys_mod  , only : shr_sys_abort
-  use RtmSpmd      , only : masterproc
+  use RtmSpmd      , only : mainproc
+  use ESMF
 
   implicit none
 
@@ -32,13 +33,9 @@ module RtmVar
   logical, public :: brnch_retain_casename = .false.           ! true => allow case name to remain the same for branch run
                                                                ! by default this is not allowed
   logical, public :: noland = .false.                          ! true => no valid land points -- do NOT run
-  character(len=32) , public :: decomp_option                  ! decomp option
-  character(len=32) , public :: bypass_routing_option          ! bypass routing model method
-  character(len=32) , public :: qgwl_runoff_option             ! method for handling qgwl runoff
-  character(len=32) , public :: smat_option                    ! smatrix multiply option (opt, Xonly, Yonly)
-                                                               ! opt   = XandY in MCT
-                                                               ! Xonly = Xonly in MCT, should be bfb on different pe counts
-                                                               ! Yonly = Yonly in MCT
+  character(len=32), public :: decomp_option                   ! decomp option
+  character(len=32), public :: bypass_routing_option           ! bypass routing model method
+  character(len=32), public :: qgwl_runoff_option              ! method for handling qgwl runoff
   character(len=CL), public :: hostname = ' '                  ! Hostname of machine running on
   character(len=CL), public :: username = ' '                  ! username of user running program
   character(len=CL), public :: version  = " "                  ! version of program
@@ -58,8 +55,8 @@ module RtmVar
   character(len=CL), public :: nrevsn_rtm   = ' '    ! restart data file name for branch run
   character(len=CL), public :: finidat_rtm  = ' '    ! initial conditions file name
   character(len=CL), public :: frivinp_rtm  = ' '    ! MOSART input data file name
-  logical,            public :: ice_runoff = .true.  ! true => runoff is split into liquid and ice, 
-                                                     ! otherwise just liquid
+  logical,            public :: ice_runoff = .true.  ! true => runoff is split into liquid and ice, otherwise just liquid
+
   ! Rtm grid size
   integer :: rtmlon = 1 ! number of mosart longitudes (initialize)
   integer :: rtmlat = 1 ! number of mosart latitudes  (initialize)
@@ -67,6 +64,12 @@ module RtmVar
   character(len=CL), public :: rpntfil = 'rpointer.rof' ! file name for local restart pointer file
 
   logical, private :: RtmVar_isset = .false.
+
+  type(ESMF_Field)       , public :: srcField
+  type(ESMF_Field)       , public :: dstField
+  type(ESMF_RouteHandle) , public :: rh_dnstream
+  type(ESMF_RouteHandle) , public :: rh_direct
+  type(ESMF_RouteHandle) , public :: rh_eroutUp
 
 !================================================================================
 contains
@@ -108,7 +111,7 @@ contains
 !================================================================================
 
   subroutine RtmVarInit( )
-    if (masterproc) then
+    if (mainproc) then
        if (nsrest == iundef) then
           call shr_sys_abort( 'RtmVarInit ERROR:: must set nsrest' )
        end if
@@ -124,7 +127,7 @@ contains
        if (nsrest /= nsrStartup .and. nsrest /= nsrContinue .and. nsrest /= nsrBranch ) then
           call shr_sys_abort( 'RtmVarInit ERROR: nsrest NOT set to a valid value' )
        end if
-    endif   
+    endif
     RtmVar_isset = .true.
   end subroutine RtmVarInit
 
