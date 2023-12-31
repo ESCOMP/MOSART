@@ -1,19 +1,18 @@
 module rof_import_export
 
-  use ESMF            , only : ESMF_GridComp, ESMF_State, ESMF_Mesh, ESMF_StateGet
-  use ESMF            , only : ESMF_KIND_R8, ESMF_SUCCESS, ESMF_MAXSTR, ESMF_LOGMSG_INFO
-  use ESMF            , only : ESMF_LogWrite, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
-  use ESMF            , only : ESMF_STATEITEM_NOTFOUND, ESMF_StateItem_Flag
-  use ESMF            , only : operator(/=), operator(==)
-  use NUOPC           , only : NUOPC_CompAttributeGet, NUOPC_Advertise, NUOPC_IsConnected
-  use NUOPC_Model     , only : NUOPC_ModelGet
-  use shr_kind_mod    , only : r8 => shr_kind_r8
-  use shr_sys_mod     , only : shr_sys_abort
-  use RunoffMod       , only : rtmCTL, TRunoff, TUnit
-  use RtmVar          , only : iulog, nt_rtm, rtm_tracers
-  use RtmSpmd         , only : mainproc, mpicom_rof
-  use RtmTimeManager  , only : get_nstep
-  use nuopc_shr_methods , only : chkerr
+  use ESMF                , only : ESMF_GridComp, ESMF_State, ESMF_Mesh, ESMF_StateGet
+  use ESMF                , only : ESMF_KIND_R8, ESMF_SUCCESS, ESMF_MAXSTR, ESMF_LOGMSG_INFO
+  use ESMF                , only : ESMF_LogWrite, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
+  use ESMF                , only : ESMF_STATEITEM_NOTFOUND, ESMF_StateItem_Flag
+  use ESMF                , only : operator(/=), operator(==)
+  use NUOPC               , only : NUOPC_CompAttributeGet, NUOPC_Advertise, NUOPC_IsConnected
+  use NUOPC_Model         , only : NUOPC_ModelGet
+  use shr_kind_mod        , only : r8 => shr_kind_r8
+  use shr_sys_mod         , only : shr_sys_abort
+  use mosart_vars         , only : iulog, mainproc, mpicom_rof, ice_runoff
+  use mosart_data         , only : ctl, TRunoff, TUnit
+  use mosart_timemanager  , only : get_nstep
+  use nuopc_shr_methods   , only : chkerr
 
   implicit none
   private ! except
@@ -44,7 +43,6 @@ module rof_import_export
   real(r8), allocatable :: mod2med_areacor(:)
   real(r8), allocatable :: med2mod_areacor(:)
 
-  integer     ,parameter :: debug = 0 ! internal debug level
   character(*),parameter :: F01 = "('(mosart_import_export) ',a,i5,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
@@ -53,18 +51,16 @@ module rof_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
+  subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    logical          , intent(in)  :: do_rtmflood
     integer          , intent(out) :: rc
 
     ! local variables
     type(ESMF_State)       :: importState
     type(ESMF_State)       :: exportState
-    character(ESMF_MAXSTR) :: stdname
     character(ESMF_MAXSTR) :: cvalue          ! Character string read from driver attribute
     logical                :: isPresent       ! Atribute is present
     logical                :: isSet           ! Atribute is set
@@ -201,9 +197,9 @@ contains
     allocate(mod2med_areacor(numOwnedElements))
     allocate(med2mod_areacor(numOwnedElements))
     n = 0
-    do g = rtmCTL%begr,rtmCTL%endr
+    do g = ctl%begr,ctl%endr
        n = n + 1
-       model_areas(n) = rtmCTL%area(g)*1.0e-6_r8/(re*re)
+       model_areas(n) = ctl%area(g)*1.0e-6_r8/(re*re)
        mod2med_areacor(n) = model_areas(n) / mesh_areas(n)
        med2mod_areacor(n) = mesh_areas(n) / model_areas(n)
     end do
@@ -229,7 +225,7 @@ contains
   end subroutine realize_fields
 
   !===============================================================================
-  subroutine import_fields( gcomp, rc )
+  subroutine import_fields( gcomp, begr, endr, rc )
 
     !---------------------------------------------------------------------------
     ! Obtain the runoff input from the mediator and convert from kg/m2s to m3/s
@@ -237,12 +233,12 @@ contains
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
+    integer, intent(in)  :: begr, endr
     integer, intent(out) :: rc
 
     ! Local variables
     type(ESMF_State) :: importState
     integer          :: n,nt
-    integer          :: begr, endr
     integer          :: nliq, nfrz
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
@@ -257,73 +253,67 @@ contains
     ! Set tracers
     nliq = 0
     nfrz = 0
-    do nt = 1,nt_rtm
-       if (trim(rtm_tracers(nt)) == 'LIQ') nliq = nt
-       if (trim(rtm_tracers(nt)) == 'ICE') nfrz = nt
+    do nt = 1,ctl%ntracers
+       if (trim(ctl%tracer_names(nt)) == 'LIQ') nliq = nt
+       if (trim(ctl%tracer_names(nt)) == 'ICE') nfrz = nt
     enddo
     if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(subname),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
+       write(iulog,*) trim(subname),': ERROR in tracers LIQ ICE ',nliq,nfrz,ctl%tracer_names(:)
        call shr_sys_abort()
     endif
-
-    begr = rtmCTL%begr
-    endr = rtmCTL%endr
 
     ! determine output array and scale by unit convertsion
     ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
 
-    call state_getimport(importState, 'Flrl_rofsur', begr, endr, rtmCTL%area, output=rtmCTL%qsur(:,nliq), &
+    call state_getimport(importState, 'Flrl_rofsur', begr, endr, ctl%area, output=ctl%qsur(:,nliq), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_rofsub', begr, endr, rtmCTL%area, output=rtmCTL%qsub(:,nliq), &
+    call state_getimport(importState, 'Flrl_rofsub', begr, endr, ctl%area, output=ctl%qsub(:,nliq), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_rofgwl', begr, endr, rtmCTL%area, output=rtmCTL%qgwl(:,nliq), &
+    call state_getimport(importState, 'Flrl_rofgwl', begr, endr, ctl%area, output=ctl%qgwl(:,nliq), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_rofi', begr, endr, rtmCTL%area, output=rtmCTL%qsur(:,nfrz), &
+    call state_getimport(importState, 'Flrl_rofi', begr, endr, ctl%area, output=ctl%qsur(:,nfrz), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_irrig', begr, endr, rtmCTL%area, output=rtmCTL%qirrig(:), &
+    call state_getimport(importState, 'Flrl_irrig', begr, endr, ctl%area, output=ctl%qirrig(:), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    rtmCTL%qsub(begr:endr, nfrz) = 0.0_r8
-    rtmCTL%qgwl(begr:endr, nfrz) = 0.0_r8
+    ctl%qsub(begr:endr, nfrz) = 0.0_r8
+    ctl%qgwl(begr:endr, nfrz) = 0.0_r8
 
   end subroutine import_fields
 
   !====================================================================================
-  subroutine export_fields (gcomp, rc)
+  subroutine export_fields (gcomp, begr, endr, rc)
 
     !---------------------------------------------------------------------------
     ! Send the runoff model export state to the mediator and convert from m3/s to kg/m2s
     !---------------------------------------------------------------------------
 
-    ! uses
-    use RtmVar, only : ice_runoff
-
     ! input/output/variables
     type(ESMF_GridComp)  :: gcomp
+    integer, intent(in)  :: begr, endr
     integer, intent(out) :: rc
 
     ! Local variables
-    type(ESMF_State)  :: exportState
-    integer           :: n,nt
-    integer           :: begr,endr
-    integer           :: nliq, nfrz
-    real(r8), pointer :: rofl(:)
-    real(r8), pointer :: rofi(:)
-    real(r8), pointer :: flood(:)
-    real(r8), pointer :: volr(:)
-    real(r8), pointer :: volrmch(:)
-    real(r8), pointer :: tdepth(:)
-    real(r8), pointer :: tdepth_max(:)
-    logical, save     :: first_time = .true.
+    type(ESMF_State) :: exportState
+    integer          :: n,nt
+    integer          :: nliq, nfrz
+    real(r8)         :: rofl(begr:endr)
+    real(r8)         :: rofi(begr:endr)
+    real(r8)         :: flood(begr:endr)
+    real(r8)         :: volr(begr:endr)
+    real(r8)         :: volrmch(begr:endr)
+    real(r8)         :: tdepth(begr:endr)
+    real(r8)         :: tdepth_max(begr:endr)
+    logical, save    :: first_time = .true.
     character(len=*), parameter :: subname='(rof_import_export:export_fields)'
     !---------------------------------------------------------------------------
 
@@ -337,12 +327,12 @@ contains
     ! Set tracers
     nliq = 0
     nfrz = 0
-    do nt = 1,nt_rtm
-       if (trim(rtm_tracers(nt)) == 'LIQ') nliq = nt
-       if (trim(rtm_tracers(nt)) == 'ICE') nfrz = nt
+    do nt = 1,ctl%ntracers
+       if (trim(ctl%tracer_names(nt)) == 'LIQ') nliq = nt
+       if (trim(ctl%tracer_names(nt)) == 'ICE') nfrz = nt
     enddo
     if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(subname),': ERROR in rtm_tracers LIQ ICE ',nliq,nfrz,rtm_tracers
+       write(iulog,*) trim(subname),': ERROR in tracers LIQ ICE ',nliq,nfrz,ctl%tracer_names(:)
        call shr_sys_abort()
     endif
 
@@ -357,36 +347,23 @@ contains
        first_time = .false.
     end if
 
-    begr = rtmCTL%begr
-    endr = rtmCTL%endr
-
-    allocate(rofl(begr:endr))
-    allocate(rofi(begr:endr))
-    allocate(flood(begr:endr))
-    allocate(volr(begr:endr))
-    allocate(volrmch(begr:endr))
-    if ( flds_r2l_stream_channel_depths )then
-       allocate(tdepth(begr:endr))
-       allocate(tdepth_max(begr:endr))
-    end if
-
     if ( ice_runoff )then
        ! separate liquid and ice runoff
        do n = begr,endr
-          rofl(n) =  rtmCTL%direct(n,nliq) / (rtmCTL%area(n)*0.001_r8)
-          rofi(n) =  rtmCTL%direct(n,nfrz) / (rtmCTL%area(n)*0.001_r8)
-          if (rtmCTL%mask(n) >= 2) then
+          rofl(n) =  ctl%direct(n,nliq) / (ctl%area(n)*0.001_r8)
+          rofi(n) =  ctl%direct(n,nfrz) / (ctl%area(n)*0.001_r8)
+          if (ctl%mask(n) >= 2) then
              ! liquid and ice runoff are treated separately - this is what goes to the ocean
-             rofl(n) = rofl(n) + rtmCTL%runoff(n,nliq) / (rtmCTL%area(n)*0.001_r8)
-             rofi(n) = rofi(n) + rtmCTL%runoff(n,nfrz) / (rtmCTL%area(n)*0.001_r8)
+             rofl(n) = rofl(n) + ctl%runoff(n,nliq) / (ctl%area(n)*0.001_r8)
+             rofi(n) = rofi(n) + ctl%runoff(n,nfrz) / (ctl%area(n)*0.001_r8)
           end if
        end do
     else
        ! liquid and ice runoff added to liquid runoff, ice runoff is zero
        do n = begr,endr
-          rofl(n) = (rtmCTL%direct(n,nfrz) + rtmCTL%direct(n,nliq)) / (rtmCTL%area(n)*0.001_r8)
-          if (rtmCTL%mask(n) >= 2) then
-             rofl(n) = rofl(n) + (rtmCTL%runoff(n,nfrz) + rtmCTL%runoff(n,nliq)) / (rtmCTL%area(n)*0.001_r8)
+          rofl(n) = (ctl%direct(n,nfrz) + ctl%direct(n,nliq)) / (ctl%area(n)*0.001_r8)
+          if (ctl%mask(n) >= 2) then
+             rofl(n) = rofl(n) + (ctl%runoff(n,nfrz) + ctl%runoff(n,nliq)) / (ctl%area(n)*0.001_r8)
           endif
           rofi(n) = 0._r8
        end do
@@ -395,12 +372,12 @@ contains
     ! Flooding back to land, sign convention is positive in land->rof direction
     ! so if water is sent from rof to land, the flux must be negative.
     ! scs: is there a reason for the wr+wt rather than volr (wr+wt+wh)?
-    ! volr(n) = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
+    ! volr(n) = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / ctl%area(n)
 
     do n = begr, endr
-       flood(n)   = -rtmCTL%flood(n)    / (rtmCTL%area(n)*0.001_r8)
-       volr(n)    =  rtmCTL%volr(n,nliq)/ rtmCTL%area(n)
-       volrmch(n) =  Trunoff%wr(n,nliq) / rtmCTL%area(n)
+       flood(n)   = -ctl%flood(n)    / (ctl%area(n)*0.001_r8)
+       volr(n)    =  ctl%volr(n,nliq)/ ctl%area(n)
+       volrmch(n) =  Trunoff%wr(n,nliq) / ctl%area(n)
        if ( flds_r2l_stream_channel_depths )then
           tdepth(n)  = Trunoff%yt(n,nliq)
           ! assume height to width ratio is the same for tributaries and main channel
@@ -429,21 +406,6 @@ contains
 
        call state_setexport(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
-
-    if (debug > 0 .and. mainproc .and. get_nstep() <  5) then
-       do n = begr,endr
-          write(iulog,F01)'export: nstep, n, Flrr_flood   = ',get_nstep(), n, flood(n)
-          write(iulog,F01)'export: nstep, n, Flrr_volr    = ',get_nstep(), n, volr(n)
-          write(iulog,F01)'export: nstep, n, Flrr_volrmch = ',get_nstep(), n, volrmch(n)
-          write(iulog,F01)'export: nstep, n, Forr_rofl    = ',get_nstep() ,n, rofl(n)
-          write(iulog,F01)'export: nstep, n, Forr_rofi    = ',get_nstep() ,n, rofi(n)
-       end do
-    end if
-
-    deallocate(rofl, rofi, flood, volr, volrmch)
-    if ( flds_r2l_stream_channel_depths ) then
-       deallocate(tdepth, tdepth_max)
     end if
 
   end subroutine export_fields
@@ -670,7 +632,7 @@ contains
     use shr_infnan_mod, only : isnan => shr_infnan_isnan
 
     ! input/output variables
-    real(r8), pointer             :: array(:)
+    real(r8)         , pointer    :: array(:)
     character(len=*) , intent(in) :: fname
     integer          , intent(in) :: begg
 

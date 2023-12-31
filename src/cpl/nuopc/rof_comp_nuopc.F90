@@ -5,33 +5,33 @@ module rof_comp_nuopc
   !----------------------------------------------------------------------------
 
   use ESMF
-  use NUOPC                 , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
-  use NUOPC                 , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
-  use NUOPC_Model           , only : model_routine_SS           => SetServices
-  use NUOPC_Model           , only : SetVM
-  use NUOPC_Model           , only : model_label_Advance        => label_Advance
-  use NUOPC_Model           , only : model_label_DataInitialize => label_DataInitialize
-  use NUOPC_Model           , only : model_label_SetRunClock    => label_SetRunClock
-  use NUOPC_Model           , only : model_label_Finalize       => label_Finalize
-  use NUOPC_Model           , only : NUOPC_ModelGet
-  use shr_kind_mod          , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL
-  use shr_sys_mod           , only : shr_sys_abort
-  use shr_file_mod          , only : shr_file_getlogunit, shr_file_setlogunit
-  use shr_cal_mod           , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use RtmVar                , only : rtmlon, rtmlat, iulog, nt_rtm
-  use RtmVar                , only : nsrStartup, nsrContinue, nsrBranch
-  use RtmVar                , only : inst_index, inst_suffix, inst_name, RtmVarSet
-  use RtmVar                , only : srcfield, dstfield
-  use RtmSpmd               , only : RtmSpmdInit, mainproc, mpicom_rof, ROFID, iam, npes
-  use RunoffMod             , only : rtmCTL
-  use RtmMod                , only : MOSART_read_namelist, MOSART_init1, MOSART_init2, MOSART_run
-  use RtmTimeManager        , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
-  use perf_mod              , only : t_startf, t_stopf, t_barrierf
-  use rof_import_export     , only : advertise_fields, realize_fields
-  use rof_import_export     , only : import_fields, export_fields
-  use nuopc_shr_methods     , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use nuopc_shr_methods     , only : set_component_logging, get_component_instance, log_clock_advance
-!$ use omp_lib              , only : omp_set_num_threads
+  use NUOPC              , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
+  use NUOPC              , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
+  use NUOPC_Model        , only : model_routine_SS           => SetServices
+  use NUOPC_Model        , only : SetVM
+  use NUOPC_Model        , only : model_label_Advance        => label_Advance
+  use NUOPC_Model        , only : model_label_DataInitialize => label_DataInitialize
+  use NUOPC_Model        , only : model_label_SetRunClock    => label_SetRunClock
+  use NUOPC_Model        , only : model_label_Finalize       => label_Finalize
+  use NUOPC_Model        , only : NUOPC_ModelGet
+  use shr_kind_mod       , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL
+  use shr_sys_mod        , only : shr_sys_abort
+  use shr_file_mod       , only : shr_file_getlogunit, shr_file_setlogunit
+  use shr_cal_mod        , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
+  use mosart_vars        , only : nsrStartup, nsrContinue, nsrBranch
+  use mosart_vars        , only : inst_index, inst_suffix, inst_name
+  use mosart_vars        , only : mainproc, mpicom_rof, iam, npes, iulog
+  use mosart_vars        , only : nsrest, caseid, ctitle, version, hostname, username
+  use mosart_data        , only : ctl
+  use mosart_mod         , only : mosart_read_namelist, mosart_init1, mosart_init2, mosart_run
+  use mosart_timemanager , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
+  use mosart_io          , only : ncd_pio_init
+  use mosart_restfile    , only : brnch_retain_casename
+  use rof_import_export  , only : advertise_fields, realize_fields
+  use rof_import_export  , only : import_fields, export_fields
+  use nuopc_shr_methods  , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+  use nuopc_shr_methods  , only : set_component_logging, get_component_instance, log_clock_advance
+  use perf_mod           , only : t_startf, t_stopf, t_barrierf
 
   implicit none
   private ! except
@@ -55,8 +55,6 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_nx = 0
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
-
-  logical                 :: do_flood
   integer                 :: nthrds
 
   integer     , parameter :: debug = 1
@@ -152,9 +150,6 @@ contains
     type(ESMF_TimeInterval) :: timeStep              ! Model timestep
     type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
     type(ESMF_VM)           :: vm                    ! esmf virtual machine
-    integer                 :: mpicom
-    character(CL)           :: cvalue
-    character(len=CL)       :: logmsg
     integer                 :: ref_ymd               ! reference date (YYYYMMDD)
     integer                 :: ref_tod               ! reference time of day (sec)
     integer                 :: yy,mm,dd              ! Temporaries for time query
@@ -164,21 +159,13 @@ contains
     integer                 :: stop_tod              ! stop time of day (sec)
     integer                 :: curr_ymd              ! Start date (YYYYMMDD)
     integer                 :: curr_tod              ! Start time of day (sec)
-    logical                 :: flood_present         ! flag
-    logical                 :: rof_prognostic        ! flag
     integer                 :: shrlogunit            ! original log unit
-    integer                 :: n,ni                  ! indices
-    integer                 :: nsrest                ! restart type
+    integer                 :: n                     ! indices
     character(CL)           :: calendar              ! calendar type name
-    character(CL)           :: username              ! user name
-    character(CL)           :: caseid                ! case identifier name
-    character(CL)           :: ctitle                ! case description title
-    character(CL)           :: hostname              ! hostname of machine running on
-    character(CL)           :: model_version         ! model version
     character(CL)           :: starttype             ! start-type (startup, continue, branch, hybrid)
-    character(CL)           :: stdname, shortname    ! needed for advertise
-    logical                 :: brnch_retain_casename ! flag if should retain the case name on a branch start type
     logical                 :: isPresent, isSet
+    character(CL)           :: cvalue
+    character(len=CL)       :: logmsg
     character(len=*), parameter :: subname=trim(modName)//':(InitializeAdvertise) '
     character(len=*), parameter :: format = "('("//trim(subname)//") :',A)"
     !-------------------------------------------------------------------------------
@@ -193,20 +180,10 @@ contains
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call ESMF_VMGet(vm, mpiCommunicator=mpicom, rc=rc)
+    call ESMF_VMGet(vm, mpiCommunicator=mpicom_rof, peCount=npes, localPet=iam, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    !----------------------------------------------------------------------------
-    ! initialize MOSART MPI communicator
-    !----------------------------------------------------------------------------
-
-    ! The following call initializees the module variable mpicom_rof in RtmSpmd
-    call RtmSpmdInit(mpicom)
-
-    ! Set ROFID
-    call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    read(cvalue,*) ROFID  ! convert from string to integer
+    mainproc = (iam == 0)
 
     !----------------------------------------------------------------------------
     ! determine instance information
@@ -282,7 +259,7 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    ! Need to run the initial phase of MOSART here to determine if do_flood is true in order to
+    ! Need to run the initial phase of mosart here in order to
     ! get the advertise phase correct
 
     !----------------------
@@ -302,9 +279,19 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) starttype
 
+    if (     trim(starttype) == trim('startup')) then
+       nsrest = nsrStartup
+    else if (trim(starttype) == trim('continue') ) then
+       nsrest = nsrContinue
+    else if (trim(starttype) == trim('branch')) then
+       nsrest = nsrBranch
+    else
+       call shr_sys_abort( subname//' ERROR: unknown starttype' )
+    end if
+
     call NUOPC_CompAttributeGet(gcomp, name='model_version', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    read(cvalue,*) model_version
+    read(cvalue,*) version
 
     call NUOPC_CompAttributeGet(gcomp, name='hostname', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -375,54 +362,17 @@ contains
        write(iulog,*) ' inst_name = ',trim(inst_name)
     endif
 
-    ! Initialize RtmVar module variables
-    ! TODO: the following strings must not be hard-wired - must have module variables
-    ! like seq_infodata_start_type_type - maybe another entry in seq_flds_mod?
-    if (     trim(starttype) == trim('startup')) then
-       nsrest = nsrStartup
-    else if (trim(starttype) == trim('continue') ) then
-       nsrest = nsrContinue
-    else if (trim(starttype) == trim('branch')) then
-       nsrest = nsrBranch
-    else
-       call shr_sys_abort( subname//' ERROR: unknown starttype' )
-    end if
-
-    call RtmVarSet(&
-         caseid_in=caseid, &
-         ctitle_in=ctitle,   &
-         brnch_retain_casename_in=brnch_retain_casename, &
-         nsrest_in=nsrest, &
-         version_in=model_version,     &
-         hostname_in=hostname, &
-         username_in=username)
-
     !----------------------
-    ! Initialize Mosart
+    ! Read in mosart namelist
     !----------------------
 
-    ! - Read in mosart namelist
-    ! - Initialize mosart time manager
-    ! - Initialize number of mosart tracers
-    ! - Read input data (river direction file) (global)
-    ! - Deriver gridbox edges (global)
-    ! - Determine mosart ocn/land mask (global)
-    ! - Compute total number of basins and runoff ponts
-    ! - Compute river basins, actually compute ocean outlet gridcell
-    ! - Allocate basins to pes
-    ! - Count and distribute cells to rglo2gdc (determine rtmCTL%begr, rtmCTL%endr)
-    ! - Adjust area estimation from DRT algorithm for those outlet grids
-    !     - useful for grid-based representation only
-    !     - need to compute areas where they are not defined in input file
-    ! - Initialize runoff datatype (rtmCTL)
-
-    call MOSART_read_namelist(do_flood)
+    call mosart_read_namelist()
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, do_flood, rc)
+    call advertise_fields(gcomp, flds_scalar_name, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -447,7 +397,6 @@ contains
 
     ! local variables
     type(ESMF_Mesh)       :: Emesh
-    type(ESMF_DistGrid)   :: DistGrid              ! esmf global index space descriptor
     type(ESMF_VM)         :: vm
     integer , allocatable :: gindex(:)             ! global index space on my processor
     integer               :: lbnum                 ! input to memory diagnostic
@@ -457,6 +406,7 @@ contains
     integer               :: n,ni
     integer               :: localPet
     integer               :: localPeCount
+    integer               :: rofid                 ! component id for pio
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
     !---------------------------------------------------------------------------
 
@@ -489,7 +439,6 @@ contains
     else
        nthrds = localPeCount
     endif
-    !$  call omp_set_num_threads(nthrds)
 
 #if (defined _MEMTRACE)
     if (mainproc) then
@@ -498,24 +447,51 @@ contains
     endif
 #endif
 
-    ! Call first phase of MOSART initialization (set decomp, grid)
-    call MOSART_init1()
+    !-------------------------------------------------------
+    ! Initialize mosart pio
+    !-------------------------------------------------------
+
+    call NUOPC_CompAttributeGet(gcomp, name='MCTID', value=cvalue, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    read(cvalue,*) rofid  ! convert from string to integer
+
+    call ncd_pio_init(rofid)
+
+    !-------------------------------------------------------
+    ! Call first phase of mosart initialization (set decomp, grid)
+    !-------------------------------------------------------
+
+    ! - Initialize mosart time manager
+    ! - Initialize number of mosart tracers
+    ! - Read input data (river direction file) (global)
+    ! - Deriver gridbox edges (global)
+    ! - Determine mosart ocn/land mask (global)
+    ! - Compute total number of basins and runoff ponts
+    ! - Compute river basins, actually compute ocean outlet gridcell
+    ! - Allocate basins to pes
+    ! - Count and distribute cells to rglo2gdc (determine ctl%begr, ctl%endr)
+    ! - Adjust area estimation from DRT algorithm for those outlet grids
+    !     - useful for grid-based representation only
+    !     - need to compute areas where they are not defined in input file
+
+    call mosart_init1(rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! generate the mesh and realize fields
     !--------------------------------
 
     ! determine global index array
-    lsize = rtmCTL%endr - rtmCTL%begr + 1
+    lsize = ctl%endr - ctl%begr + 1
     allocate(gindex(lsize))
     ni = 0
-    do n = rtmCTL%begr,rtmCTL%endr
+    do n = ctl%begr,ctl%endr
        ni = ni + 1
-       gindex(ni) = rtmCTL%gindex(n)
+       gindex(ni) = ctl%gindex(n)
     end do
 
     ! create distGrid from global index array
-    DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
+    ctl%DistGrid = ESMF_DistGridCreate(arbSeqIndexList=gindex, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     deallocate(gindex)
 
@@ -526,7 +502,7 @@ contains
        write(iulog,*)'mesh file for domain is ',trim(cvalue)
     end if
 
-    EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=Distgrid, rc=rc)
+    EMesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, elementDistgrid=ctl%Distgrid, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
@@ -537,25 +513,12 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !-------------------------------------------------------
-    ! create srcfield and dstfield - needed for mapping
-    !-------------------------------------------------------
-
-    srcfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
-         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-    dstfield = ESMF_FieldCreate(EMesh, ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, &
-         ungriddedLBound=(/1/), ungriddedUBound=(/nt_rtm/), gridToFieldMap=(/2/), rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-
-    !-------------------------------------------------------
     ! Initialize mosart maps and restart
     ! This must be called after the ESMF mesh is read in
     !-------------------------------------------------------
 
     call t_startf('mosarti_mosart_init')
-    call MOSART_init2(rc)
+    call mosart_init2(Emesh, rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call t_stopf('mosarti_mosart_init')
 
@@ -563,15 +526,15 @@ contains
     ! Create MOSART export state
     !--------------------------------
 
-    call export_fields(gcomp, rc)
+    call export_fields(gcomp, ctl%begr, ctl%endr, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Set global grid size scalars in export state
-    call State_SetScalar(dble(rtmlon), flds_scalar_index_nx, exportState, &
+    call State_SetScalar(dble(ctl%nlon), flds_scalar_index_nx, exportState, &
          flds_scalar_name, flds_scalar_num, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call State_SetScalar(dble(rtmlat), flds_scalar_index_ny, exportState, &
+    call State_SetScalar(dble(ctl%nlat), flds_scalar_index_ny, exportState, &
          flds_scalar_name, flds_scalar_num, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -696,7 +659,7 @@ contains
 
     call t_startf ('lc_mosart_import')
 
-    call import_fields(gcomp, rc)
+    call import_fields(gcomp, ctl%begr, ctl%endr, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call t_stopf ('lc_mosart_import')
@@ -717,18 +680,17 @@ contains
     call shr_cal_ymd2date(yr_sync, mon_sync, day_sync, ymd_sync)
     write(rdate,'(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr_sync, mon_sync, day_sync, tod_sync
 
-    ! Advance mosart time step then run MOSART (export data is in rtmCTL and Trunoff data types)
+    ! Advance mosart time step then run MOSART (export data is in ctl and Trunoff data types)
     call advance_timestep()
-    call MOSART_run(rstwr, nlend, rdate, rc)
+    call mosart_run(ctl%begr, ctl%endr, ctl%ntracers, rstwr, nlend, rdate, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------
     ! Pack export state to mediator
     !--------------------------------
 
-    ! (input is rtmCTL%runoff, output is r2x)
     call t_startf ('lc_rof_export')
-    call export_fields(gcomp, rc)
+    call export_fields(gcomp, ctl%begr, ctl%endr, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call t_stopf ('lc_rof_export')
 

@@ -8,20 +8,6 @@
   <!-- MOSART Namelist -->
   <!-- ========================================================================================  -->
 
-  <entry id="do_rtmflood" modify_via_xml="MOSART_FLOOD_MODE">
-    <type>logical</type>
-    <category>mosart</category>
-    <group>mosart_inparm</group>
-    <values>
-      <value mosart_flood_mode="ACTIVE">.true.</value>
-      <value mosart_flood_mode="NULL">.false.</value>
-    </values>
-    <desc>
-      If .true., turn on mosart flooding back to clm
-      Note that mosart flood is not supported in CESM1.1
-    </desc>
-  </entry>
-
   <entry id="ice_runoff">
     <type>logical</type>
     <category>mosart</category>
@@ -74,6 +60,20 @@
     </desc>
   </entry>
 
+  <entry id="use_halo_option">
+    <type>logical</type>
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>.false.</value>
+    </values>
+    <desc>
+      If true, add capability to have halo option for mosart fields.
+      In particarul these can be used to create derivatives using halo values
+      from neighboring cells.
+    </desc>
+  </entry>
+
   <entry id="bypass_routing_option">
     <type>char</type>
     <category>mosart</category>
@@ -101,7 +101,7 @@
     </desc>
   </entry>
 
-  <entry id="finidat_rtm" skip_default_entry="true">
+  <entry id="finidat" skip_default_entry="true">
     <type>char</type>
     <category>mosart</category>
     <group>mosart_inparm</group>
@@ -110,11 +110,11 @@
       <value>UNSET</value>
     </values>
     <desc>
-      Full pathname of initial rtm file
+      Full pathname of initialfile
     </desc>
   </entry>
 
-  <entry id="nrevsn_rtm" skip_default_entry="true">
+  <entry id="nrevsn" skip_default_entry="true">
     <type>char</type>
     <category>mosart</category>
     <group>mosart_inparm</group>
@@ -126,7 +126,7 @@
     </desc>
   </entry>
 
-  <entry id="frivinp_rtm">
+  <entry id="frivinp">
     <type>char</type>
     <category>mosart</category>
     <input_pathname>abs</input_pathname>
@@ -138,11 +138,11 @@
       <value rof_grid="0.125nldas2">$DIN_LOC_ROOT/rof/mosart/MOSART_routing_0.125nldas2_cdf5_c200727.nc</value>
     </values>
     <desc>
-      Full pathname of input datafile for RTM.
+      Full pathname of input mosart datafile
     </desc>
   </entry>
 
-  <entry id="rtmhist_fexcl1">
+  <entry id="fexcl1">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -154,7 +154,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_fexcl2">
+  <entry id="fexcl2">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -166,7 +166,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_fexcl3">
+  <entry id="fexcl3">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -178,7 +178,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_fincl1">
+  <entry id="fincl1">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -190,7 +190,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_fincl2">
+  <entry id="fincl2">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -202,7 +202,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_fincl3">
+  <entry id="fincl3">
     <type>char(1000)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -214,7 +214,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_mfilt">
+  <entry id="mfilt">
     <type>integer(6)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -226,7 +226,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_ndens">
+  <entry id="ndens">
     <type>integer(6)</type>
     <category>history</category>
     <group>mosart_inparm</group>
@@ -240,7 +240,7 @@
     </desc>
   </entry>
 
-  <entry id="rtmhist_nhtfrq">
+  <entry id="nhtfrq">
     <type>integer(6)</type>
     <category>history</category>
     <group>mosart_inparm</group>

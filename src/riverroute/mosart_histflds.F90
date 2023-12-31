@@ -1,186 +1,175 @@
-module RtmHistFlds
+module mosart_histflds
 
-!-----------------------------------------------------------------------
-! !DESCRIPTION:
-! Module containing initialization of RTM history fields and files
-! This is the module that the user must modify in order to add new
-! history fields or modify defaults associated with existing history
-! fields.
-!
-! !USES:
-  use shr_kind_mod , only : r8 => shr_kind_r8
-  use RunoffMod    , only : rtmCTL
-  use RtmHistFile  , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar       , only : nt_rtm, rtm_tracers  
+   ! Module containing initialization of history fields and files
+   ! This is the module that the user must modify in order to add new
+   ! history fields or modify defaults associated with existing history
+   ! fields.
 
-  implicit none
-!
-! !PUBLIC MEMBER FUNCTIONS:
-  public :: RtmHistFldsInit 
-  public :: RtmHistFldsSet
-!
+   use shr_kind_mod    , only : r8 => shr_kind_r8
+   use mosart_histfile , only : mosart_hist_addfld, mosart_hist_printflds
+   use mosart_data     , only : ctl, Trunoff
+
+   implicit none
+   private
+
+   public :: mosart_histflds_init
+   public :: mosart_histflds_set
+
+  type, public ::  hist_pointer_type
+     real(r8), pointer :: data(:) => null()
+  end type hist_pointer_type
+
+  type(hist_pointer_type), allocatable :: h_runofflnd(:)
+  type(hist_pointer_type), allocatable :: h_runoffocn(:)
+  type(hist_pointer_type), allocatable :: h_runofftot(:)
+  type(hist_pointer_type), allocatable :: h_direct(:)
+  type(hist_pointer_type), allocatable :: h_dvolrdtlnd(:)
+  type(hist_pointer_type), allocatable :: h_dvolrdtocn(:)
+  type(hist_pointer_type), allocatable :: h_volr(:)
+  type(hist_pointer_type), allocatable :: h_qsur(:)
+  type(hist_pointer_type), allocatable :: h_qsub(:)
+  type(hist_pointer_type), allocatable :: h_qgwl(:)
+
+  real(r8), pointer :: h_volr_mch(:)
+
 !------------------------------------------------------------------------
-
 contains
-
 !-----------------------------------------------------------------------
 
-  subroutine RtmHistFldsInit()
+   subroutine mosart_histflds_init(begr, endr, ntracers)
 
-    !-------------------------------------------------------
-    ! DESCRIPTION:
-    ! Build master field list of all possible fields in a history file.
-    ! Each field has associated with it a ``long\_name'' netcdf attribute that
-    ! describes what the field is, and a ``units'' attribute. A subroutine is
-    ! called to add each field to the masterlist.
-    !
-    ! ARGUMENTS:
-    implicit none
-    !-------------------------------------------------------
+      ! Arguments
+      integer, intent(in) :: begr
+      integer, intent(in) :: endr
+      integer, intent(in) :: ntracers
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%runofflnd_nt1, default='active')
+      ! Local variables
+      integer :: nt
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%runofflnd_nt2, default='active')
+      !-------------------------------------------------------
+      ! Allocate memory for module variables
+      !-------------------------------------------------------
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%runoffocn_nt1, default='inactive')
+      allocate(h_runofflnd(ntracers))
+      allocate(h_runoffocn(ntracers))
+      allocate(h_runofftot(ntracers))
+      allocate(h_direct(ntracers))
+      allocate(h_dvolrdtlnd(ntracers))
+      allocate(h_dvolrdtocn(ntracers))
+      allocate(h_volr(ntracers))
+      allocate(h_qsur(ntracers))
+      allocate(h_qsub(ntracers))
+      allocate(h_qgwl(ntracers))
 
-    call RtmHistAddfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART river discharge into ocean: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%runoffocn_nt2, default='inactive')
+      do nt = 1,ntracers
+         allocate(h_runofflnd(nt)%data(begr:endr))
+         allocate(h_runoffocn(nt)%data(begr:endr))
+         allocate(h_runofftot(nt)%data(begr:endr))
+         allocate(h_direct(nt)%data(begr:endr))
+         allocate(h_dvolrdtlnd(nt)%data(begr:endr))
+         allocate(h_dvolrdtocn(nt)%data(begr:endr))
+         allocate(h_volr(nt)%data(begr:endr))
+         allocate(h_qsur(nt)%data(begr:endr))
+         allocate(h_qsub(nt)%data(begr:endr))
+         allocate(h_qgwl(nt)%data(begr:endr))
+      end do
 
-    call RtmHistAddfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s', &
-         avgflag='A', long_name='MOSART total discharge into ocean: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%runofftot_nt1, default='active')
+      allocate(h_volr_mch(begr:endr))
 
-    call RtmHistAddfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s', &
-         avgflag='A', long_name='MOSART total discharge into ocean: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%runofftot_nt2, default='active')
+      !-------------------------------------------------------
+      ! Build master field list of all possible fields in a history file.
+      ! Each field has associated with it a ``long\_name'' netcdf attribute that
+      ! describes what the field is, and a ``units'' attribute. A subroutine is
+      ! called to add each field to the masterlist.
+      !-------------------------------------------------------
 
-    call RtmHistAddfld (fname='DIRECT_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(1)), units='m3/s', &
-         avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%runoffdir_nt1, default='active')
+      do nt = 1,ctl%ntracers
 
-    call RtmHistAddfld (fname='DIRECT_DISCHARGE_TO_OCEAN'//'_'//trim(rtm_tracers(2)), units='m3/s', &
-         avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%runoffdir_nt2, default='active')
+         call mosart_hist_addfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART river basin flow: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_runofflnd(nt)%data, default='active')
 
-    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
-         avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%volr_nt1, default='inactive')
+         call mosart_hist_addfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART river discharge into ocean: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_runoffocn(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(2)), units='m3',  &
-         avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%volr_nt2, default='inactive')
+         call mosart_hist_addfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s', &
+              avgflag='A', long_name='MOSART total discharge into ocean: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_runofftot(nt)%data, default='active')
 
-    call RtmHistAddfld (fname='STORAGE_MCH', units='m3',  &
-         avgflag='A', long_name='MOSART main channelstorage', &
-         ptr_rof=rtmCTL%volr_mch, default='inactive')
+         call mosart_hist_addfld (fname='DIRECT_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s', &
+              avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_direct(nt)%data, default='active')
 
-    call RtmHistAddfld (fname='DVOLRDT_LND'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART land change in storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%dvolrdtlnd_nt1, default='inactive')
+         call mosart_hist_addfld (fname='STORAGE'//'_'//trim(ctl%tracer_names(nt)), units='m3',  &
+              avgflag='A', long_name='MOSART storage: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_volr(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='DVOLRDT_LND'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART land change in storage: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%dvolrdtlnd_nt2, default='inactive')
+         call mosart_hist_addfld (fname='DVOLRDT_LND'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART land change in storage: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_dvolrdtlnd(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='DVOLRDT_OCN'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART ocean change of storage: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%dvolrdtocn_nt1, default='inactive')
+         call mosart_hist_addfld (fname='DVOLRDT_OCN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART ocean change of storage: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_dvolrdtocn(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='DVOLRDT_OCN'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART ocean change of storage: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%dvolrdtocn_nt2, default='inactive')
+         call mosart_hist_addfld (fname='QSUR'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART input surface runoff: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_qsur(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsur_nt1, default='inactive')
+         call mosart_hist_addfld (fname='QSUB'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART input subsurface runoff: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_qsub(nt)%data, default='inactive')
 
-    call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qsur_nt2, default='inactive')
+         call mosart_hist_addfld (fname='QGWL'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
+              avgflag='A', long_name='MOSART input GWL runoff: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_qgwl(nt)%data, default='inactive')
+      end do
 
-    call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qsub_nt1, default='inactive')
+      call mosart_hist_addfld (fname='STORAGE_MCH', units='m3',  &
+           avgflag='A', long_name='MOSART main channelstorage', &
+           ptr_rof=h_volr_mch, default='inactive')
 
-    call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qsub_nt2, default='inactive')
+      call mosart_hist_addfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
+           avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
+           ptr_rof=ctl%qirrig, default='inactive')
 
-    call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(1)), &
-         ptr_rof=rtmCTL%qgwl_nt1, default='inactive')
+      call mosart_hist_addfld (fname='QIRRIG_ACTUAL', units='m3/s',  &
+           avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
+           ptr_rof=ctl%qirrig_actual, default='inactive')
 
-    call RtmHistAddfld (fname='QGWL'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input GWL runoff: '//trim(rtm_tracers(2)), &
-         ptr_rof=rtmCTL%qgwl_nt2, default='inactive')
+      ! print masterlist of history fields
+      call mosart_hist_printflds()
 
-    call RtmHistAddfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
-         avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
-         ptr_rof=rtmCTL%qirrig, default='inactive')
+   end subroutine mosart_histflds_init
 
-    call RtmHistAddfld (fname='QIRRIG_ACTUAL', units='m3/s',  &
-         avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
-         ptr_rof=rtmCTL%qirrig_actual, default='inactive')
+   !-----------------------------------------------------------------------
 
-    ! Print masterlist of history fields
+   subroutine mosart_histflds_set(ntracers)
 
-    call RtmHistPrintflds()
+      !-----------------------------------------------------------------------
+      ! Set mosart history fields as 1d pointer arrays
+      !-----------------------------------------------------------------------
 
-  end subroutine RtmHistFldsInit
+      ! Arguments
+      integer, intent(in) :: ntracers
 
-!-----------------------------------------------------------------------
+      ! Local variables
+      integer :: nt
 
-  subroutine RtmHistFldsSet()
+      do nt = 1,ntracers
+         h_runofflnd(nt)%data(:)  = ctl%runofflnd(:,nt)
+         h_runoffocn(nt)%data(:)  = ctl%runoffocn(:,nt)
+         h_runofftot(nt)%data(:)  = ctl%runofftot(:,nt)
+         h_direct(nt)%data(:)     = ctl%direct(:,nt)
+         h_dvolrdtlnd(nt)%data(:) = ctl%dvolrdtlnd(:,nt)
+         h_dvolrdtocn(nt)%data(:) = ctl%dvolrdtocn(:,nt)
+         h_qsub(nt)%data(:)       = ctl%qsub(:,nt)
+         h_qsur(nt)%data(:)       = ctl%qsur(:,nt)
+         h_qgwl(nt)%data(:)       = ctl%qgwl(:,nt)
+      end do
+      h_volr_mch(:) = Trunoff%wr(:,1)
 
-    !-----------------------------------------------------------------------
-    ! !DESCRIPTION:
-    ! Set mosart history fields as 1d poitner arrays
-    !
-    implicit none
-    !-----------------------------------------------------------------------
+   end subroutine mosart_histflds_set
 
-    ! Currently only have two tracers
-
-    rtmCTL%runofflnd_nt1(:)  = rtmCTL%runofflnd(:,1)
-    rtmCTL%runofflnd_nt2(:)  = rtmCTL%runofflnd(:,2)
-
-    rtmCTL%runoffocn_nt1(:)  = rtmCTL%runoffocn(:,1)
-    rtmCTL%runoffocn_nt2(:)  = rtmCTL%runoffocn(:,2)
-
-    rtmCTL%runofftot_nt1(:)  = rtmCTL%runofftot(:,1)
-    rtmCTL%runofftot_nt2(:)  = rtmCTL%runofftot(:,2)
-
-    rtmCTL%runoffdir_nt1(:)  = rtmCTL%direct(:,1)
-    rtmCTL%runoffdir_nt2(:)  = rtmCTL%direct(:,2)
-
-    rtmCTL%dvolrdtlnd_nt1(:) = rtmCTL%dvolrdtlnd(:,1)
-    rtmCTL%dvolrdtlnd_nt2(:) = rtmCTL%dvolrdtlnd(:,2)
-
-    rtmCTL%dvolrdtocn_nt1(:) = rtmCTL%dvolrdtocn(:,1)
-    rtmCTL%dvolrdtocn_nt2(:) = rtmCTL%dvolrdtocn(:,2)
-
-    rtmCTL%volr_nt1(:)       = rtmCTL%volr(:,1)
-    rtmCTL%volr_nt2(:)       = rtmCTL%volr(:,2)
-    rtmCTL%volr_mch(:)       = rtmCTL%wr(:,1)
-
-    rtmCTL%qsub_nt1(:)       = rtmCTL%qsub(:,1)
-    rtmCTL%qsub_nt2(:)       = rtmCTL%qsub(:,2)
-
-    rtmCTL%qsur_nt1(:)       = rtmCTL%qsur(:,1)
-    rtmCTL%qsur_nt2(:)       = rtmCTL%qsur(:,2)
-
-    rtmCTL%qgwl_nt1(:)       = rtmCTL%qgwl(:,1)
-    rtmCTL%qgwl_nt2(:)       = rtmCTL%qgwl(:,2)
-
-  end subroutine RtmHistFldsSet
-
-
-end module RtmHistFlds
+end module mosart_histflds
