@@ -4,7 +4,7 @@ module mosart_mod
    ! Mosart Routing Model
    !
    ! !USES:
-   use shr_kind_mod       , only : r8 => shr_kind_r8
+   use shr_kind_mod       , only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_CL
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
@@ -27,9 +27,10 @@ module mosart_mod
    use nuopc_shr_methods  , only : chkerr
    use ESMF               , only : ESMF_SUCCESS, ESMF_FieldGet, ESMF_FieldSMMStore, ESMF_FieldSMM, &
                                    ESMF_TERMORDER_SRCSEQ, ESMF_Mesh
-   use mosart_IO ! TODO: put in only here
-   use pio
-   use mpi
+   use mosart_io          , only : ncd_pio_openfile, ncd_inqdid, ncd_inqdlen, ncd_pio_closefile, ncd_decomp_init, &
+                                   pio_subsystem
+   use pio                , only : file_desc_t
+   use mpi                , only : mpi_bcast, mpi_barrier, MPI_CHARACTER, MPI_LOGICAL, MPI_INTEGER
    !
    ! !PUBLIC TYPES:
    implicit none
@@ -57,8 +58,8 @@ module mosart_mod
    real(r8), allocatable :: budget_accum(:)  ! BUDGET accumulator over run
    integer               :: budget_accum_cnt ! counter for budget_accum
 
-   character(len=256) :: nlfilename_rof = 'mosart_in'
-   character(len=256) :: fnamer              ! name of netcdf restart file
+   character(len=CL) :: nlfilename_rof = 'mosart_in'
+   character(len=CL) :: fnamer              ! name of netcdf restart file
 
    character(*), parameter :: u_FILE_u = &
         __FILE__
@@ -76,7 +77,7 @@ contains
       integer           :: ier       ! error code
       integer           :: unitn     ! unit for namelist file
       logical           :: lexist    ! File exists
-      character(len= 7) :: runtyp(4) ! run type
+      character(len=CS) :: runtyp(4) ! run type
       character(len=*),parameter :: subname = '(mosart_read_namelist) '
       !-----------------------------------------------------------------------
 
@@ -134,9 +135,9 @@ contains
       call mpi_bcast (bypass_routing_option, len(bypass_routing_option), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (qgwl_runoff_option, len(qgwl_runoff_option), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (ice_runoff, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
-      call mpi_bcast (nhtfrq, size(nhtfrq), MPI_INTEGER,   0, mpicom_rof, ier)
-      call mpi_bcast (mfilt, size(mfilt), MPI_INTEGER,   0, mpicom_rof, ier)
-      call mpi_bcast (ndens, size(ndens), MPI_INTEGER,   0, mpicom_rof, ier)
+      call mpi_bcast (nhtfrq, size(nhtfrq), MPI_INTEGER, 0, mpicom_rof, ier)
+      call mpi_bcast (mfilt, size(mfilt), MPI_INTEGER, 0, mpicom_rof, ier)
+      call mpi_bcast (ndens, size(ndens), MPI_INTEGER, 0, mpicom_rof, ier)
       call mpi_bcast (fexcl1, (max_namlen+2)*size(fexcl1), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fexcl2, (max_namlen+2)*size(fexcl2), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fexcl3, (max_namlen+2)*size(fexcl3), MPI_CHARACTER, 0, mpicom_rof, ier)
@@ -152,7 +153,7 @@ contains
 
       if (mainproc) then
          write(iulog,*) 'define run:'
-         write(iulog,*) '   run type              = ',runtyp(nsrest+1)
+         write(iulog,*) '   run type              = ',trim(runtyp(nsrest+1))
          write(iulog,*) '   coupling_period       = ',coupling_period
          write(iulog,*) '   delt_mosart           = ',delt_mosart
          write(iulog,*) '   decomp option         = ',trim(decomp_option)
@@ -217,8 +218,8 @@ contains
       ! Local variables
       integer            :: n, nr, nt         ! indices
       type(file_desc_t)  :: ncid              ! netcdf file id
-      character(len=256) :: trstr             ! tracer string
-      character(len=256) :: locfn             ! local file
+      character(len=CL)  :: trstr             ! tracer string
+      character(len=CL)  :: locfn             ! local file
       integer            :: dimid             ! netcdf dimension identifier
       character(len=*), parameter :: subname = '(mosart_init1) '
       !-------------------------------------------------
@@ -389,7 +390,7 @@ contains
       integer            :: nsub                        ! subcyling for cfl
       real(r8)           :: delt                        ! delt associated with subcycling
       real(r8)           :: delt_coupling               ! real value of coupling_period
-      character(len=256) :: filer                       ! restart file name
+      character(len=CL)  :: filer                       ! restart file name
       integer            :: cnt                         ! counter for gridcells
       integer            :: ier                         ! error code
       real(r8), pointer  :: src_direct(:,:)

@@ -4,33 +4,44 @@ module rof_comp_nuopc
   ! This is the NUOPC cap for MOSART
   !----------------------------------------------------------------------------
 
-  use ESMF
+  use ESMF               , only : ESMF_GridComp, ESMF_GridCompGet, ESMF_GridCompSetEntryPoint, ESMF_State, &
+                                  ESMF_Clock, ESMF_ClockGet, ESMF_ClockSet, ESMF_ClockAdvance, &
+                                  ESMF_ClockGetAlarm, ESMF_ClockGetNextTime, ESMF_ClockGet, ESMF_ClockGetAlarm, &
+                                  ESMF_ClockGetAlarmList, ESMF_Alarm, ESMF_AlarmSet, ESMF_AlarmIsRinging, &
+                                  ESMF_AlarmRingerOff, ESMF_Time, ESMF_TimeGet, ESMF_TimeInterval, &
+                                  ESMF_CalKind_Flag, ESMF_CALKIND_NOLEAP, ESMF_CALKIND_GREGORIAN, &
+                                  ESMF_Mesh, ESMF_MeshCreate, ESMF_FILEFORMAT_ESMFMESH, &
+                                  ESMF_DistGrid, ESMF_DistGridCreate, &
+                                  ESMF_MethodRemove,ESMF_VM, ESMF_VMGet, ESMF_LogFoundError, &
+                                  ESMF_SUCCESS, ESMF_LogWrite, ESMF_FAILURE, ESMF_LogFoundError, &
+                                  ESMF_LOGERR_PASSTHRU, ESMF_LOGMSG_ERROR, ESMF_LOGMSG_INFO, &
+                                  ESMF_METHOD_INITIALIZE, ESMF_ALARMLIST_ALL, &
+                                  operator(==), operator(/=), operator(<), operator(<=), &
+                                  operator(>), operator(>=), operator(-), operator(+)
   use NUOPC              , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
   use NUOPC              , only : NUOPC_CompFilterPhaseMap, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
-  use NUOPC_Model        , only : model_routine_SS           => SetServices
-  use NUOPC_Model        , only : SetVM
-  use NUOPC_Model        , only : model_label_Advance        => label_Advance
-  use NUOPC_Model        , only : model_label_DataInitialize => label_DataInitialize
-  use NUOPC_Model        , only : model_label_SetRunClock    => label_SetRunClock
-  use NUOPC_Model        , only : model_label_Finalize       => label_Finalize
-  use NUOPC_Model        , only : NUOPC_ModelGet
-  use shr_kind_mod       , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL
+  use NUOPC_Model        , only : model_routine_SS           => SetServices, &
+                                  model_label_Advance        => label_Advance, &
+                                  model_label_DataInitialize => label_DataInitialize, &
+                                  model_label_SetRunClock    => label_SetRunClock, &
+                                  model_label_Finalize       => label_Finalize, &
+                                  SetVM, NUOPC_ModelGet
+  use shr_kind_mod       , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL, CS=>SHR_KIND_CS
   use shr_sys_mod        , only : shr_sys_abort
-  use shr_file_mod       , only : shr_file_getlogunit, shr_file_setlogunit
+  use shr_log_mod        , only : shr_log_getlogunit, shr_log_setlogunit
   use shr_cal_mod        , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use mosart_vars        , only : nsrStartup, nsrContinue, nsrBranch
-  use mosart_vars        , only : inst_index, inst_suffix, inst_name
-  use mosart_vars        , only : mainproc, mpicom_rof, iam, npes, iulog
-  use mosart_vars        , only : nsrest, caseid, ctitle, version, hostname, username
+  use mosart_vars        , only : nsrStartup, nsrContinue, nsrBranch, &
+                                  inst_index, inst_suffix, inst_name, &
+                                  mainproc, mpicom_rof, iam, npes, iulog, &
+                                  nsrest, caseid, ctitle, version, hostname, username
   use mosart_data        , only : ctl
   use mosart_mod         , only : mosart_read_namelist, mosart_init1, mosart_init2, mosart_run
   use mosart_timemanager , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use mosart_io          , only : ncd_pio_init
   use mosart_restfile    , only : brnch_retain_casename
-  use rof_import_export  , only : advertise_fields, realize_fields
-  use rof_import_export  , only : import_fields, export_fields
-  use nuopc_shr_methods  , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use nuopc_shr_methods  , only : set_component_logging, get_component_instance, log_clock_advance
+  use rof_import_export  , only : import_fields, export_fields, advertise_fields, realize_fields
+  use nuopc_shr_methods  , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit, &
+                                  set_component_logging, get_component_instance, log_clock_advance
   use perf_mod           , only : t_startf, t_stopf, t_barrierf
 
   implicit none
@@ -200,6 +211,7 @@ contains
 
     call set_component_logging(gcomp, mainproc, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! advertise fields
@@ -379,7 +391,6 @@ contains
     ! Reset shr logging to original values
     !----------------------------------------------------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
     call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
 
   end subroutine InitializeAdvertise
@@ -414,12 +425,11 @@ contains
 
     call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
+    call shr_log_setLogUnit (iulog)
+
     !----------------------------------------------------------------------------
     ! Reset shr logging to my log file
     !----------------------------------------------------------------------------
-
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
 
     call ESMF_GridCompGet(gcomp, vm=vm, localPet=localPet, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -542,7 +552,7 @@ contains
     ! Reset shr logging
     !----------------------------------------------------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
     call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
 
     !--------------------------------
@@ -596,16 +606,15 @@ contains
     logical           :: nlend         ! .true. ==> signaling last time-step
     integer           :: lbnum         ! input to memory diagnostic
     integer           :: g,i           ! indices
-    character(len=32) :: rdate         ! date char string for restart file names
+    character(len=CS) :: rdate         ! date char string for restart file names
     character(len=*),parameter  :: subname=trim(modName)//':(ModelAdvance) '
     !-------------------------------------------------------
 
     rc = ESMF_SUCCESS
     call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
-!$  call omp_set_num_threads(nthrds)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if(mainproc) then
@@ -729,7 +738,7 @@ contains
     ! Reset shr logging to my original values
     !--------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(mainproc) then

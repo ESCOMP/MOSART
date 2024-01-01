@@ -7,8 +7,9 @@ module mosart_control_type
    use mosart_io,     only : ncd_io, ncd_pio_openfile, ncd_pio_closefile
    use mosart_vars,   only : mainproc, iam, npes, mpicom_rof, iulog, spval, re
    use pio,           only : file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
+   use ESMF,          only : ESMF_DistGrid, ESMF_Array, ESMF_RouteHandle, ESMF_SUCCESS, &
+                             ESMF_DistGridCreate, ESMF_ArrayCreate, ESMF_ArrayHaloStore, ESMF_ArrayHalo
    use perf_mod,      only : t_startf, t_stopf
-   use ESMF
    use nuopc_shr_methods  , only : chkerr
 
    implicit none

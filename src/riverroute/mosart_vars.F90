@@ -1,9 +1,8 @@
 module mosart_vars
 
-   use shr_kind_mod             , only : r8 => shr_kind_r8, CL => SHR_KIND_CL
+   use shr_kind_mod             , only : r8 => shr_kind_r8, CL => SHR_KIND_CL, CS => shr_kind_CS
    use shr_const_mod            , only : SHR_CONST_CDAY,SHR_CONST_REARTH
    use shr_sys_mod              , only : shr_sys_abort
-   use ESMF
 
    implicit none
    public
@@ -34,9 +33,9 @@ module mosart_vars
    ! Namelist variables
    character(len=CL)  :: frivinp               ! MOSART input data file name
    logical            :: ice_runoff            ! true => runoff is split into liquid and ice, otherwise just liquid
-   character(len=32)  :: decomp_option         ! decomp option
-   character(len=32)  :: bypass_routing_option ! bypass routing model method
-   character(len=32)  :: qgwl_runoff_option    ! method for handling qgwl runoff
+   character(len=CS)  :: decomp_option         ! decomp option
+   character(len=CS)  :: bypass_routing_option ! bypass routing model method
+   character(len=CS)  :: qgwl_runoff_option    ! method for handling qgwl runoff
 
    ! Metadata variables used in history and restart generation
    character(len=CL)  :: caseid  = ' '          ! case id
@@ -53,7 +52,7 @@ module mosart_vars
 
    ! Instance control
    integer           :: inst_index
-   character(len=16) :: inst_name
-   character(len=16) :: inst_suffix
+   character(len=CS) :: inst_name
+   character(len=CS) :: inst_suffix
 
 end module mosart_vars

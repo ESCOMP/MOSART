@@ -8,8 +8,12 @@ module mosart_tspatialunit_type
    use mosart_io,         only : ncd_pio_openfile, compDOF
    use mosart_vars,       only : mainproc, mpicom_rof, iulog
    use nuopc_shr_methods, only : chkerr
-   use pio
-   use ESMF
+   use ESMF,              only : ESMF_Field, ESMF_RouteHandle, ESMF_Mesh, ESMF_FieldCreate, &
+                                 ESMF_FieldSMMStore, ESMF_FieldGet, ESMF_FieldSMM, &
+                                 ESMF_SUCCESS, ESMF_TYPEKIND_R8, ESMF_MESHLOC_ELEMENT, ESMF_TERMORDER_SRCSEQ
+   use pio,               only : iosystem_desc_t, var_desc_t, io_desc_t, file_desc_t, pio_seterrorhandling, &
+                                 pio_inq_varid, pio_inq_vardimid, pio_inq_dimlen, pio_initdecomp, pio_closefile, &
+                                 pio_int, pio_double, PIO_INTERNAL_ERROR, pio_read_darray, pio_freedecomp
 
    implicit none
    private

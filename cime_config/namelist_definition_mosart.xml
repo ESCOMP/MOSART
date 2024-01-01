@@ -69,7 +69,7 @@
     </values>
     <desc>
       If true, add capability to have halo option for mosart fields.
-      In particarul these can be used to create derivatives using halo values
+      In particular these can be used to create derivatives using halo values
       from neighboring cells.
     </desc>
   </entry>

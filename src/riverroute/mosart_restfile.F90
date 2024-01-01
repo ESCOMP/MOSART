@@ -2,7 +2,7 @@ module mosart_restfile
 
    ! Read from and write to the MOSART restart file.
 
-   use shr_kind_mod,       only : r8 => shr_kind_r8, CL => shr_kind_cl
+   use shr_kind_mod,       only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
    use shr_sys_mod,        only : shr_sys_abort
    use mosart_vars,        only : iulog, inst_suffix, caseid, nsrest, &
                                   spval, mainproc, nsrContinue, nsrBranch, nsrStartup, &
@@ -11,7 +11,9 @@ module mosart_restfile
    use mosart_histfile,    only : mosart_hist_restart
    use mosart_fileutils,   only : getfil
    use mosart_timemanager, only : timemgr_restart, get_nstep, get_curr_date
-   use mosart_io
+   use mosart_io,          only : ncd_pio_createfile, ncd_enddef, ncd_pio_openfile, ncd_pio_closefile, &
+                                  ncd_defdim, ncd_putatt, ncd_defvar, ncd_io, ncd_global, ncd_double
+   use pio,                only : file_desc_t
 
    implicit none
    private
@@ -173,8 +175,8 @@ contains
       ! Local variables:
       integer :: status                 ! return status
       integer :: length                 ! temporary
-      character(len=256) :: ftest,ctest ! temporaries
-      character(len=256) :: path        ! full pathname of netcdf restart file
+      character(len=CL) :: ftest,ctest ! temporaries
+      character(len=CL) :: path        ! full pathname of netcdf restart file
       !-------------------------------------
 
       ! Continue run:
@@ -228,10 +230,10 @@ contains
       character(len=*), intent(out) :: pnamer ! full path of restart file
 
       ! Local variables
-      integer :: nio              ! restart unit
-      integer :: ier              ! error return from fortran open
-      integer :: i                ! index
-      character(len=256) :: locfn ! Restart pointer file name
+      integer :: nio             ! restart unit
+      integer :: ier             ! error return from fortran open
+      integer :: i               ! index
+      character(len=CL) :: locfn ! Restart pointer file name
       !-------------------------------------
 
       ! Obtain the restart file from the restart pointer file.
@@ -271,7 +273,7 @@ contains
       ! Local variables
       integer :: nio ! restart pointer file unit number
       integer :: ier ! error return from fortran open
-      character(len=256) :: filename  ! local file name
+      character(len=CL) :: filename  ! local file name
       !-------------------------------------
 
       if (mainproc) then
@@ -290,7 +292,7 @@ contains
 
    !-----------------------------------------------------------------------
 
-   character(len=256) function mosart_rest_FileName( rdate )
+   character(len=CL) function mosart_rest_FileName( rdate )
 
       ! Arguments
       character(len=*), intent(in) :: rdate   ! input date for restart file name
@@ -313,11 +315,11 @@ contains
       type(file_desc_t), intent(inout) :: ncid
 
       ! Local Variables:
-      integer :: dimid               ! netCDF dimension id
-      integer :: ier                 ! error status
-      character(len=  8) :: curdate  ! current date
-      character(len=  8) :: curtime  ! current time
-      character(len=256) :: str
+      integer :: dimid              ! netCDF dimension id
+      integer :: ier                ! error status
+      character(len=CS) :: curdate  ! current date
+      character(len=CS) :: curtime  ! current time
+      character(len=CL) :: str
       character(len=*),parameter :: subname='restFile_dimset'
       !-------------------------------------
 
@@ -325,7 +327,7 @@ contains
 
       call ncd_defdim(ncid, 'nlon'  , ctl%nlon  , dimid)
       call ncd_defdim(ncid, 'nlat'  , ctl%nlat  , dimid)
-      call ncd_defdim(ncid, 'string_length', 64 , dimid)
+      call ncd_defdim(ncid, 'string_length', CS , dimid)
 
       ! Define global attributes
 
@@ -352,18 +354,20 @@ contains
       ! Read/write MOSART restart data.
       !
       ! Arguments:
-      type(file_desc_t), intent(inout)  :: ncid ! netcdf id
-      character(len=*) , intent(in) :: flag   ! 'read' or 'write'
+      type(file_desc_t), intent(inout) :: ncid ! netcdf id
+      character(len=*) , intent(in)    :: flag ! 'read' or 'write'
 
       ! Local variables
-      logical :: readvar          ! determine if variable is on initial file
-      integer :: nt,nv,n          ! indices
+      logical            :: readvar ! determine if variable is on initial file
+      integer            :: n,nt,nv ! indices
+      integer            :: nvariables
       real(r8) , pointer :: dfld(:) ! temporary array
-      character(len=32)  :: vname,uname
-      character(len=255) :: lname
+      character(len=CS)  :: vname,uname
+      character(len=CL)  :: lname
       !-------------------------------------
 
-      do nv = 1,7
+      nvariables = 7
+      do nv = 1,nvariables
          do nt = 1,ctl%ntracers
 
             if (nv == 1) then
