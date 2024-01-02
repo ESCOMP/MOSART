@@ -46,7 +46,7 @@ module mosart_io
    public :: ncd_inqvdims       ! inquire variable ndims
    public :: ncd_inqvdids       ! inquire variable dimids
    public :: ncd_io             ! write local data
-   public :: getdatetime
+   public :: ncd_getdatetime    ! get date and time
 
    integer, parameter, public :: ncd_int       = pio_int
    integer, parameter, public :: ncd_log       =-pio_int
@@ -60,11 +60,6 @@ module mosart_io
    integer, parameter, public :: ncd_noclobber = pio_noclobber
    integer, parameter, public :: ncd_nofill    = pio_nofill
    integer, parameter, public :: ncd_unlimited = pio_unlimited
-
-   ! PIO types needed for ncdio_pio interface calls
-   public :: file_desc_t
-   public :: var_desc_t
-   public :: io_desc_t
 
    ! !PRIVATE MEMBER FUNCTIONS:
    interface ncd_putatt
@@ -135,10 +130,10 @@ contains
       !-----------------------------------------------------------------------
       ! Initialize mosart pio
       !
-      ! !ARGUMENTS:
+      ! Arguments
       integer, intent(in) :: rofid
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       character(len=*),parameter :: subname='ncd_pio_init' ! subroutine name
       !-----------------------------------------------------------------------
 
@@ -196,12 +191,12 @@ contains
       !-----------------------------------------------------------------------
       ! Open a NetCDF PIO file
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: file   ! Output PIO file handle
       character(len=*) , intent(in)    :: fname  ! Input filename to open
       integer          , intent(in)    :: mode   ! file mode
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: ierr
       character(len=*),parameter :: subname='ncd_pio_openfile' ! subroutine name
       !-----------------------------------------------------------------------
@@ -223,7 +218,7 @@ contains
       !-----------------------------------------------------------------------
       ! Close a NetCDF PIO file
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: file   ! PIO file handle to close
       !-----------------------------------------------------------------------
 
@@ -238,11 +233,11 @@ contains
       !-----------------------------------------------------------------------
       ! Create a new NetCDF file with PIO
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: file    ! PIO file descriptor
       character(len=*),  intent(in)    :: fname   ! File name to create
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: ierr
       integer :: iomode
       character(len=*),parameter :: subname='ncd_pio_createfile' ! subroutine name
@@ -270,14 +265,14 @@ contains
       !-----------------------------------------------------------------------
       ! Check if variable is on netcdf file
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout)  :: ncid      ! PIO file descriptor
       character(len=*) , intent(in)     :: varname   ! Varible name to check
       type(Var_desc_t) , intent(out)    :: vardesc   ! Output variable descriptor
       logical          , intent(out)    :: readvar   ! If variable exists or not
       logical, optional, intent(in)     :: print_err ! If should print about error
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: ret     ! return value
       logical :: log_err ! if should log error
       character(len=*),parameter :: subname='check_var' ! subroutine name
@@ -307,12 +302,12 @@ contains
 
       ! Validity check on dimension
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(in) :: ncid      ! PIO file handle
       character(len=*), intent(in) :: dimname   ! Dimension name
       integer, intent(in)          :: value     ! Expected dimension size
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: dimid, dimlen    ! temporaries
       integer :: status           ! error code
       character(len=*),parameter :: subname='check_dim' ! subroutine name
@@ -335,10 +330,10 @@ contains
       !-----------------------------------------------------------------------
       ! enddef netcdf file
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid      ! netcdf file id
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status   ! error status
       character(len=*),parameter :: subname='ncd_enddef' ! subroutine name
       !-----------------------------------------------------------------------
@@ -354,13 +349,13 @@ contains
       !-----------------------------------------------------------------------
       ! inquire on a dimension id
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid   ! netcdf file id
       character(len=*), intent(in) :: name      ! dimension name
       integer         , intent(out):: dimid     ! dimension id
       logical,optional, intent(out):: dimexist  ! if this dimension exists or not
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -386,13 +381,13 @@ contains
       !-----------------------------------------------------------------------
       ! enddef netcdf file
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid       ! netcdf file id
       integer          , intent(inout) :: dimid      ! dimension id
       integer          , intent(out)   :: len        ! dimension len
       character(len=*), optional, intent(in) :: name ! dimension name
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -411,12 +406,12 @@ contains
       !-----------------------------------------------------------------------
       ! inquire dim name
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(in) :: ncid      ! netcdf file id
       integer          , intent(in) :: dimid     ! dimension id
       character(len=*) , intent(out):: dname     ! dimension name
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -429,13 +424,13 @@ contains
    subroutine ncd_inqfdims(ncid, isgrid2d, ni, nj, ns)
 
       !-----------------------------------------------------------------------
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout):: ncid
       logical          , intent(out)  :: isgrid2d
       integer          , intent(out)  :: ni
       integer          , intent(out)  :: nj
       integer          , intent(out)  :: ns
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer  :: dimid                                ! netCDF id
       integer  :: ier                                  ! error status
       character(len=CS) :: subname = 'surfrd_filedims' ! subroutine name
@@ -490,14 +485,14 @@ contains
       !-----------------------------------------------------------------------
       ! Inquire on a variable ID
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: name      ! variable name
       integer          , intent(out)   :: varid     ! variable id
       type(Var_desc_t) , intent(out)   :: vardesc   ! variable descriptor
       logical, optional, intent(out)   :: readvar   ! does variable exist
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: ret               ! return code
       character(len=*),parameter :: subname='ncd_inqvid' ! subroutine name
       !-----------------------------------------------------------------------
@@ -527,12 +522,12 @@ contains
       !-----------------------------------------------------------------------
       ! inquire variable dimensions
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(in)   :: ncid      ! netcdf file id
       integer          , intent(out)  :: ndims     ! variable ndims
       type(Var_desc_t) , intent(inout):: vardesc   ! variable descriptor
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -548,13 +543,13 @@ contains
       !-----------------------------------------------------------------------
       ! inquire variable name
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(in)   :: ncid      ! netcdf file id
       integer          , intent(in)   :: varid     ! variable id
       character(len=*) , intent(out)  :: vname     ! variable vname
       type(Var_desc_t) , intent(inout):: vardesc   ! variable descriptor
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -570,12 +565,12 @@ contains
       !-----------------------------------------------------------------------
       ! inquire variable dimension ids
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(in)  :: ncid      ! netcdf file id
       integer         ,intent(out)  :: dids(:)   ! variable dids
       type(Var_desc_t),intent(inout):: vardesc   ! variable descriptor
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -590,14 +585,14 @@ contains
       !-----------------------------------------------------------------------
       ! put integer attributes
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid      ! netcdf file id
       integer          ,intent(in)    :: varid     ! netcdf var id
       character(len=*) ,intent(in)    :: attrib    ! netcdf attrib
       integer          ,intent(in)    :: value     ! netcdf attrib value
       integer,optional ,intent(in)    :: xtype     ! netcdf data type
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -612,14 +607,14 @@ contains
       !-----------------------------------------------------------------------
       ! put character attributes
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid      ! netcdf file id
       integer          ,intent(in)    :: varid     ! netcdf var id
       character(len=*) ,intent(in)    :: attrib    ! netcdf attrib
       character(len=*) ,intent(in)    :: value     ! netcdf attrib value
       integer,optional ,intent(in)    :: xtype     ! netcdf data type
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -634,14 +629,14 @@ contains
       !-----------------------------------------------------------------------
       ! put real attributes
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid      ! netcdf file id
       integer          ,intent(in)    :: varid     ! netcdf var id
       character(len=*) ,intent(in)    :: attrib    ! netcdf attrib
       real(r8)         ,intent(in)    :: value     ! netcdf attrib value
       integer          ,intent(in)    :: xtype     ! netcdf data type
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       real(r4)  :: value4
       !-----------------------------------------------------------------------
@@ -663,13 +658,13 @@ contains
       !-----------------------------------------------------------------------
       ! define dimension
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(in) :: ncid      ! netcdf file id
       character(len=*) , intent(in) :: attrib    ! netcdf attrib
       integer          , intent(in) :: value     ! netcdf attrib value
       integer          , intent(out):: dimid     ! netcdf dimension id
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status
       !-----------------------------------------------------------------------
 
@@ -687,7 +682,7 @@ contains
       !-----------------------------------------------------------------------
       !  Define a netcdf variable
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid                    ! netcdf file id
       character(len=*) , intent(in)  :: varname                   ! variable name
       integer          , intent(in)  :: xtype                     ! external type
@@ -707,7 +702,7 @@ contains
       integer          , intent(in), optional :: nvalid_range(2)  ! attribute for int
 
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: n                   ! indices
       integer :: ldimid(4)           ! local dimid
       integer :: dimid0(1)           ! local dimid
@@ -829,7 +824,7 @@ contains
       !------------------------------------------------------------------------
       !  Define a netcdf variable
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid                 ! netcdf file id
       character(len=*), intent(in)  :: varname                 ! variable name
       integer         , intent(in)  :: xtype                   ! external type
@@ -853,7 +848,7 @@ contains
       ! !REVISION HISTORY:
       !
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       !EOP
       integer :: n              ! indices
       integer :: ndims          ! dimension counter
@@ -898,7 +893,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global integer variable
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: flag      ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname   ! variable name
@@ -906,7 +901,7 @@ contains
       logical, optional, intent(out)   :: readvar   ! was var read?
       integer, optional, intent(in)    :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(1), count(1)   ! output bounds
       integer :: status               ! error code
@@ -961,7 +956,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global integer variable
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: flag      ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname   ! variable name
@@ -969,7 +964,7 @@ contains
       logical, optional, intent(out)   :: readvar   ! was var read?
       integer, optional, intent(in)    :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(1), count(1)   ! output bounds
       integer :: status               ! error code
@@ -1011,7 +1006,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global real variable
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: flag      ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname   ! variable name
@@ -1019,7 +1014,7 @@ contains
       logical, optional, intent(out)   :: readvar   ! was var read?
       integer, optional, intent(in)    :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(1), count(1)   ! output bounds
       integer :: status               ! error code
@@ -1061,7 +1056,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global integer array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: flag      ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname   ! variable name
@@ -1069,7 +1064,7 @@ contains
       logical, optional, intent(out)   :: readvar   ! was var read?
       integer, optional, intent(in)    :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(2), count(2)   ! output bounds
       integer :: status               ! error code
@@ -1117,7 +1112,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global integer array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid      ! netcdf file id
       character(len=*) , intent(in)    :: flag      ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname   ! variable name
@@ -1125,7 +1120,7 @@ contains
       logical, optional, intent(out)   :: readvar   ! was var read?
       integer, optional, intent(in)    :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(2), count(2)   ! output bounds
       integer :: status               ! error code
@@ -1184,7 +1179,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global real array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid                ! netcdf file id
       character(len=*) , intent(in)    :: flag                ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname             ! variable name
@@ -1192,7 +1187,7 @@ contains
       logical          , optional, intent(out):: readvar      ! was var read?
       integer          , optional, intent(in) :: nt           ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(2), count(2)   ! output bounds
       integer :: status               ! error code
@@ -1240,7 +1235,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global char array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid             ! netcdf file id
       character(len=*) , intent(in)    :: flag             ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname          ! variable name
@@ -1248,7 +1243,7 @@ contains
       logical          , optional, intent(out):: readvar   ! was var read?
       integer          , optional, intent(in) :: nt        ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                   ! netCDF variable id
       integer :: m                       ! indices
       integer :: status                  ! error code
@@ -1288,7 +1283,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global integer 2D array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid                 ! netcdf file id
       character(len=*) , intent(in)    :: flag                 ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname              ! variable name
@@ -1296,7 +1291,7 @@ contains
       logical          , optional, intent(out):: readvar       ! was var read?
       integer          , optional, intent(in) :: nt            ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(3), count(3)   ! output bounds
       integer :: status               ! error code
@@ -1349,7 +1344,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global real 2D  array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid                ! netcdf file id
       character(len=*), intent(in)    :: flag                ! 'read' or 'write'
       character(len=*), intent(in)    :: varname             ! variable name
@@ -1357,7 +1352,7 @@ contains
       logical         , optional, intent(out):: readvar      ! was var read?
       integer         , optional, intent(in) :: nt           ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(3), count(3)   ! output bounds
       integer :: status               ! error code
@@ -1407,7 +1402,7 @@ contains
       !------------------------------------------------------------------------
       ! netcdf I/O of global character array
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid                ! netcdf file id
       character(len=*), intent(in)    :: flag                ! 'read' or 'write'
       character(len=*), intent(in)    :: varname             ! variable name
@@ -1415,7 +1410,7 @@ contains
       logical         , optional, intent(out):: readvar      ! was var read?
       integer         , optional, intent(in) :: nt           ! time sample index
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: varid                ! netCDF variable id
       integer :: start(3), count(3)   ! output bounds
       integer :: status               ! error code
@@ -1459,14 +1454,14 @@ contains
 
       ! netcdf I/O of global character array with start indices input
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid             ! netcdf file id
       character(len=*), intent(in)    :: flag             ! 'read' or 'write'
       type(var_desc_t), intent(in)    :: vardesc          ! local vardesc pointer
       character(len=*), intent(inout) :: data             ! raw data for this index
       integer         , intent(in)    :: start(:)         ! output bounds
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: status               ! error code
       character(len=*),parameter :: subname='ncd_io_char_varn_strt_nf'
       !-----------------------------------------------------------------------
@@ -1486,7 +1481,7 @@ contains
       !-----------------------------------------------------------------------
       ! I/O for 1d integer field
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid             ! netcdf file id
       character(len=*) , intent(in)    :: flag             ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname          ! variable name
@@ -1495,7 +1490,7 @@ contains
       integer          , optional, intent(in) :: nt        ! time sample index
       logical          , optional, intent(out):: readvar   ! true => variable is on initial dataset (read only)
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       character(len=CS) :: dimname    ! temporary
       integer           :: n          ! index
       integer           :: iodnum     ! iodesc num in list
@@ -1586,7 +1581,7 @@ contains
       !-----------------------------------------------------------------------
       ! I/O for 1d integer field
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid             ! netcdf file id
       character(len=*) , intent(in)    :: flag             ! 'read' or 'write'
       character(len=*) , intent(in)    :: varname          ! variable name
@@ -1595,7 +1590,7 @@ contains
       integer          , optional, intent(in) :: nt        ! time sample index
       logical          , optional, intent(out):: readvar   ! true => variable is on initial dataset (read only)
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       character(len=CS) :: dimname    ! temporary
       integer           :: n          ! index
       integer           :: iodnum     ! iodesc num in list
@@ -1700,7 +1695,7 @@ contains
       !-----------------------------------------------------------------------
       ! I/O for 1d real field
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t),intent(inout) :: ncid                 ! netcdf file id
       character(len=*), intent(in)  :: flag                   ! 'read' or 'write'
       character(len=*), intent(in)  :: varname                ! variable name
@@ -1709,7 +1704,7 @@ contains
       integer         , optional, intent(in) :: nt            ! time sample index
       logical         , optional, intent(out):: readvar       ! true => variable is on initial dataset (read only)
       !
-      ! !LOCAL VARIABLES:
+      ! Local variables
       character(len=CS) :: dimname    ! temporary
       integer           :: iodnum     ! iodesc num in list
       integer           :: varid      ! varid
@@ -1802,7 +1797,7 @@ contains
       !------------------------------------------------------------------------
       ! Returns an index to an io descriptor
       !
-      ! !ARGUMENTS:
+      ! Arguments
       type(file_desc_t), intent(inout) :: ncid       ! PIO file descriptor
       integer          , intent(in)    :: ndims      ! ndims for var
       integer          , intent(in)    :: dims(:)    ! dim sizes
@@ -1810,7 +1805,7 @@ contains
       integer          , intent(in)    :: xtype      ! file external type
       integer          , intent(out)   :: iodnum     ! iodesc num in list
 
-      ! !LOCAL VARIABLES:
+      ! Local variables
       integer :: k,m,n                         ! indices
       integer :: status                        ! error status
       logical :: found                         ! true => found created iodescriptor
@@ -1892,7 +1887,7 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine getdatetime (cdate, ctime)
+   subroutine ncd_getdatetime (cdate, ctime)
       !
       ! Get date and time
       !
@@ -1927,6 +1922,6 @@ contains
       call mpi_bcast (cdate,len(cdate),MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (ctime,len(ctime),MPI_CHARACTER, 0, mpicom_rof, ier)
 
-   end subroutine getdatetime
+   end subroutine ncd_getdatetime
 
 end module mosart_io

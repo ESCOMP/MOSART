@@ -12,7 +12,8 @@ module mosart_restfile
    use mosart_fileutils,   only : getfil
    use mosart_timemanager, only : timemgr_restart, get_nstep, get_curr_date
    use mosart_io,          only : ncd_pio_createfile, ncd_enddef, ncd_pio_openfile, ncd_pio_closefile, &
-                                  ncd_defdim, ncd_putatt, ncd_defvar, ncd_io, ncd_global, ncd_double
+                                  ncd_defdim, ncd_putatt, ncd_defvar, ncd_io, ncd_global, ncd_double, &
+                                  ncd_getdatetime
    use pio,                only : file_desc_t
 
    implicit none
@@ -317,8 +318,8 @@ contains
       ! Local Variables:
       integer :: dimid              ! netCDF dimension id
       integer :: ier                ! error status
-      character(len=CS) :: curdate  ! current date
-      character(len=CS) :: curtime  ! current time
+      character(len= 8) :: curdate  ! current date
+      character(len= 8) :: curtime  ! current time
       character(len=CL) :: str
       character(len=*),parameter :: subname='restFile_dimset'
       !-------------------------------------
@@ -332,7 +333,7 @@ contains
       ! Define global attributes
 
       call ncd_putatt(ncid, NCD_GLOBAL, 'Conventions', trim(conventions))
-      call getdatetime(curdate, curtime)
+      call ncd_getdatetime(curdate, curtime)
       str = 'created on ' // curdate // ' ' // curtime
       call ncd_putatt(ncid, NCD_GLOBAL, 'history' , trim(str))
       call ncd_putatt(ncid, NCD_GLOBAL, 'username', trim(username))

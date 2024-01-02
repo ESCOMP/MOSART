@@ -2,19 +2,24 @@ module mosart_histfile
 
    ! Module containing methods to for MOSART history file handling.
 
-   use shr_kind_mod  ,     only : r8=>shr_kind_r8, CL=>shr_kind_cl, CS=>shr_kind_cs
-   use shr_sys_mod   ,     only : shr_sys_abort
-   use shr_log_mod   ,     only : errMsg => shr_log_errMsg
-   use mosart_vars   ,     only : spval, ispval, secspday, frivinp, &
+   use shr_kind_mod,       only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_cl
+   use shr_sys_mod,        only : shr_sys_abort
+   use shr_log_mod,        only : errMsg => shr_log_errMsg
+   use mosart_vars,        only : spval, ispval, secspday, frivinp, &
                                   iulog, nsrest, caseid, inst_suffix, nsrStartup, nsrBranch, &
                                   ctitle, version, hostname, username, conventions, source, &
                                   model_doi_url, mainproc, isecspday
-   use mosart_data   ,     only : ctl, Tunit
+   use mosart_data,        only : ctl, Tunit
    use mosart_fileutils,   only : get_filename, getfil
    use mosart_timemanager, only : get_nstep, get_curr_date, get_curr_time, get_ref_date, &
                                   get_prev_time, get_prev_date, get_step_size, &
                                   get_calendar, NO_LEAP_C, GREGORIAN_C
-   use mosart_io
+   use pio,                only : file_desc_t, var_desc_t
+   use mosart_io,          only : ncd_pio_createfile, ncd_putatt, ncd_global, ncd_defdim, ncd_defvar, &
+                                  ncd_io, ncd_enddef, ncd_pio_closefile, ncd_pio_openfile, &
+                                  ncd_inqvid, ncd_inqdlen, ncd_nowrite, ncd_write, &
+                                  ncd_double, ncd_float, ncd_int, ncd_char, ncd_log, ncd_unlimited, &
+                                  ncd_getdatetime
 
    implicit none
    private
@@ -84,7 +89,7 @@ module mosart_histfile
    ! Subscript dimensions
    !
    integer, parameter :: max_subs = 100         ! max number of subscripts
-   character(len=CS)  :: subs_name(max_subs)    ! name of subscript
+   character(len=32)  :: subs_name(max_subs)    ! name of subscript
    integer            :: subs_dim(max_subs)     ! dimension of subscript
    !
    ! Derived types
@@ -585,12 +590,12 @@ contains
       integer :: sec_hist_nhtfrq     ! nhtfrq converted to seconds
       logical :: lhistrest           ! local history restart flag
       type(file_desc_t), pointer :: lnfid     ! local file id
-      character(len=  8) :: curdate  ! current date
-      character(len=  8) :: curtime  ! current time
-      character(len= CL) :: name     ! name of attribute
-      character(len= CL) :: units    ! units of attribute
-      character(len= CL) :: str      ! global attribute string
-      character(len=  1) :: avgflag  ! time averaging flag
+      character(len= 8) :: curdate  ! current date
+      character(len= 8) :: curtime  ! current time
+      character(len=CL) :: name     ! name of attribute
+      character(len=CL) :: units    ! units of attribute
+      character(len=CL) :: str      ! global attribute string
+      character(len= 1) :: avgflag  ! time averaging flag
       character(len=*),parameter :: subname = 'htape_create'
       !-----------------------------------------------------
 
@@ -633,7 +638,7 @@ contains
       ! data set as a whole, as opposed to a single variable
 
       call ncd_putatt(lnfid, ncd_global, 'Conventions', trim(conventions))
-      call getdatetime(curdate, curtime)
+      call ncd_getdatetime(curdate, curtime)
       str = 'created on ' // curdate // ' ' // curtime
       call ncd_putatt(lnfid, ncd_global, 'history'      , trim(str))
       call ncd_putatt(lnfid, ncd_global, 'source'       , trim(source))
@@ -641,12 +646,16 @@ contains
       call ncd_putatt(lnfid, ncd_global, 'username'     , trim(username))
       call ncd_putatt(lnfid, ncd_global, 'version'      , trim(version))
       call ncd_putatt(lnfid, ncd_global, 'model_doi_url', trim(model_doi_url))
+      write(6,*)'DEBUG: I am here7'
 
       call ncd_putatt(lnfid, ncd_global, 'case_title', trim(ctitle))
+      write(6,*)'DEBUG: I am here8'
       call ncd_putatt(lnfid, ncd_global, 'case_id', trim(caseid))
+      write(6,*)'DEBUG: I am here9'
 
       str = get_filename(frivinp)
       call ncd_putatt(lnfid, ncd_global, 'input_dataset', trim(str))
+      write(6,*)'DEBUG: I am here10'
 
       !
       ! add global attribute time_period_freq
@@ -672,6 +681,7 @@ contains
 999   format(a,i0)
 
       call ncd_putatt(lnfid, ncd_global, 'time_period_freq', trim(time_period_freq))
+      write(6,*)'DEBUG: I am here6'
 
       ! Define dimensions.
       ! Time is an unlimited dimension. Character string is treated as an array of characters.
@@ -681,10 +691,12 @@ contains
       call ncd_defdim(lnfid, 'lat'   , ctl%nlat , dimid)
       call ncd_defdim(lnfid, 'allrof', ctl%numr , dimid)
       call ncd_defdim(lnfid, 'string_length', 8, strlen_dimid)
+      write(6,*)'DEBUG: I am here7'
 
       if ( .not. lhistrest )then
          call ncd_defdim(lnfid, 'hist_interval', 2, hist_interval_dimid)
          call ncd_defdim(lnfid, 'time', ncd_unlimited, time_dimid)
+         write(6,*)'DEBUG: I am here8'
          if (mainproc)then
             write(iulog,*) trim(subname),' : Successfully defined netcdf history file ',t
          end if
@@ -731,7 +743,7 @@ contains
       character(len=max_namlen):: units     ! variable units
       character(len=max_namlen):: cal       ! calendar type from time-manager
       character(len=max_namlen):: caldesc   ! calendar description to put on file
-      character(len= CL):: str              ! global attribute string
+      character(len=CL):: str               ! global attribute string
       integer :: status
       character(len=*),parameter :: subname = 'htape_timeconst'
       !--------------------------------------------------------
@@ -815,7 +827,7 @@ contains
          timedata(2) = time
          call ncd_io('time_bounds', timedata, 'write', nfid(t), nt=tape(t)%ntimes)
 
-         call getdatetime (cdate, ctime)
+         call ncd_getdatetime (cdate, ctime)
          call ncd_io('date_written', cdate, 'write', nfid(t), nt=tape(t)%ntimes)
 
          call ncd_io('time_written', ctime, 'write', nfid(t), nt=tape(t)%ntimes)
@@ -877,12 +889,12 @@ contains
       integer :: yrm1                ! nstep-1 year (0 -> ...)
       integer :: mcsecm1             ! nstep-1 time of day [seconds]
       real(r8):: time                ! current time
-      character(len= CL):: str       ! global attribute string
+      character(len=CL) :: str       ! global attribute string
       character(len=1)  :: avgflag   ! averaging flag
       real(r8), pointer :: histo(:)  ! temporary
       real(r8), pointer :: hbuf(:)   ! history buffer
       integer , pointer :: nacs(:)   ! accumulation counter
-      character(len=CS) :: avgstr    ! time averaging type
+      character(len=32) :: avgstr    ! time averaging type
       character(len=max_chars) :: long_name ! long name
       character(len=max_chars) :: units     ! units
       character(len=max_namlen):: varname   ! variable name
@@ -1576,12 +1588,12 @@ contains
       integer, intent(in)  :: hist_file   !history file index
 
       ! !LOCAL VARIABLES:
-      character(len= CL) :: cdate       !date char string
-      character(len=  1) :: hist_index  !p,1 or 2 (currently)
-      integer :: day                    !day (1 -> 31)
-      integer :: mon                    !month (1 -> 12)
-      integer :: yr                     !year (0 -> ...)
-      integer :: sec                    !seconds into current day
+      character(len=CL) :: cdate       !date char string
+      character(len= 1) :: hist_index  !p,1 or 2 (currently)
+      integer :: day                   !day (1 -> 31)
+      integer :: mon                   !month (1 -> 12)
+      integer :: yr                    !year (0 -> ...)
+      integer :: sec                   !seconds into current day
       integer :: filename_length
       character(len=*),parameter :: subname = 'set_hist_filename'
 
