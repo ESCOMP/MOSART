@@ -27,7 +27,7 @@ module mosart_histfile
    ! Constants
    integer , public, parameter :: max_tapes  = 3     ! max number of history tapes
    integer , public, parameter :: max_flds   = 1500  ! max number of history fields
-   integer , public, parameter :: max_namlen = 32    ! maximum number of characters for field name
+   integer , public, parameter :: max_namlen = CS    ! maximum number of characters for field name
 
    ! Counters
    integer , public :: ntapes = 0         ! index of max history file requested
