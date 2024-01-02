@@ -2,7 +2,7 @@ module mosart_histfile
 
    ! Module containing methods to for MOSART history file handling.
 
-   use shr_kind_mod  ,     only : r8 => shr_kind_r8
+   use shr_kind_mod  ,     only : r8=>shr_kind_r8, CL=>shr_kind_cl, CS=>shr_kind_cs
    use shr_sys_mod   ,     only : shr_sys_abort
    use shr_log_mod   ,     only : errMsg => shr_log_errMsg
    use mosart_vars   ,     only : spval, ispval, secspday, frivinp, &
@@ -84,7 +84,7 @@ module mosart_histfile
    ! Subscript dimensions
    !
    integer, parameter :: max_subs = 100         ! max number of subscripts
-   character(len=32)  :: subs_name(max_subs)    ! name of subscript
+   character(len=CS)  :: subs_name(max_subs)    ! name of subscript
    integer            :: subs_dim(max_subs)     ! dimension of subscript
    !
    ! Derived types
@@ -587,9 +587,9 @@ contains
       type(file_desc_t), pointer :: lnfid     ! local file id
       character(len=  8) :: curdate  ! current date
       character(len=  8) :: curtime  ! current time
-      character(len=256) :: name     ! name of attribute
-      character(len=256) :: units    ! units of attribute
-      character(len=256) :: str      ! global attribute string
+      character(len= CL) :: name     ! name of attribute
+      character(len= CL) :: units    ! units of attribute
+      character(len= CL) :: str      ! global attribute string
       character(len=  1) :: avgflag  ! time averaging flag
       character(len=*),parameter :: subname = 'htape_create'
       !-----------------------------------------------------
@@ -731,7 +731,7 @@ contains
       character(len=max_namlen):: units     ! variable units
       character(len=max_namlen):: cal       ! calendar type from time-manager
       character(len=max_namlen):: caldesc   ! calendar description to put on file
-      character(len=256):: str              ! global attribute string
+      character(len= CL):: str              ! global attribute string
       integer :: status
       character(len=*),parameter :: subname = 'htape_timeconst'
       !--------------------------------------------------------
@@ -877,12 +877,12 @@ contains
       integer :: yrm1                ! nstep-1 year (0 -> ...)
       integer :: mcsecm1             ! nstep-1 time of day [seconds]
       real(r8):: time                ! current time
-      character(len=256):: str       ! global attribute string
+      character(len= CL):: str       ! global attribute string
       character(len=1)  :: avgflag   ! averaging flag
       real(r8), pointer :: histo(:)  ! temporary
       real(r8), pointer :: hbuf(:)   ! history buffer
       integer , pointer :: nacs(:)   ! accumulation counter
-      character(len=32) :: avgstr    ! time averaging type
+      character(len=CS) :: avgstr    ! time averaging type
       character(len=max_chars) :: long_name ! long name
       character(len=max_chars) :: units     ! units
       character(len=max_namlen):: varname   ! variable name
@@ -1576,7 +1576,7 @@ contains
       integer, intent(in)  :: hist_file   !history file index
 
       ! !LOCAL VARIABLES:
-      character(len=256) :: cdate       !date char string
+      character(len= CL) :: cdate       !date char string
       character(len=  1) :: hist_index  !p,1 or 2 (currently)
       integer :: day                    !day (1 -> 31)
       integer :: mon                    !month (1 -> 12)
