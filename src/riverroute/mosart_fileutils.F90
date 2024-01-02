@@ -3,6 +3,7 @@ module mosart_fileutils
    ! Module containing file I/O utilities
 
    use shr_sys_mod , only : shr_sys_abort
+   use shr_kind_mod, only : CL=>shr_kind_cl
    use mosart_vars , only : iulog, mainproc
 
    implicit none
@@ -16,7 +17,7 @@ module mosart_fileutils
 contains
 
    !-----------------------------------------------------------------------
-   character(len=256) function get_filename (fulpath)
+   character(len=CL) function get_filename (fulpath)
 
       ! Returns filename given full pathname
       !

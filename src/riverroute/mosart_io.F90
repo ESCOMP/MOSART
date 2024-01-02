@@ -99,9 +99,8 @@ module mosart_io
 
    private :: ncd_getiodesc      ! obtain iodesc
 
-   integer  , parameter, private :: debug = 0             ! local debug level
-   integer  , parameter, public  :: max_string_len = 256     ! length of strings
-   real(r8) , parameter, public  :: fillvalue = 1.e36_r8     ! fill value for netcdf fields
+   integer  , parameter, private :: debug = 0               ! local debug level
+   real(r8) , parameter, public  :: fillvalue = 1.e36_r8    ! fill value for netcdf fields
 
    integer :: io_type, io_format
    type(iosystem_desc_t), pointer, public  :: pio_subsystem
