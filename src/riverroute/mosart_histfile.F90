@@ -81,10 +81,8 @@ module mosart_histfile
    ! !PRIVATE TYPES:
    ! Constants
    !
-   integer, parameter :: max_length_filename = 255 ! max length of a filename. on most linux systems this
-                                                   ! is 255. But this can't be increased until all hard
-                                                   ! coded values throughout the i/o stack are updated.
-   integer, parameter :: max_chars = 255           ! max chars for char variables
+   integer, parameter :: max_length_filename = CL
+   integer, parameter :: max_chars = CL
    !
    ! Subscript dimensions
    !
