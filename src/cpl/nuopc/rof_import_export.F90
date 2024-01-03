@@ -53,12 +53,11 @@ module rof_import_export
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, do_rtmflood, rc)
+  subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    logical          , intent(in)  :: do_rtmflood
     integer          , intent(out) :: rc
 
     ! local variables

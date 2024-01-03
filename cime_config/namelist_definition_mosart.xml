@@ -8,20 +8,6 @@
   <!-- MOSART Namelist -->
   <!-- ========================================================================================  -->
 
-  <entry id="do_rtmflood" modify_via_xml="MOSART_FLOOD_MODE">
-    <type>logical</type>
-    <category>mosart</category>
-    <group>mosart_inparm</group>
-    <values>
-      <value mosart_flood_mode="ACTIVE">.true.</value>
-      <value mosart_flood_mode="NULL">.false.</value>
-    </values>
-    <desc>
-      If .true., turn on mosart flooding back to clm
-      Note that mosart flood is not supported in CESM1.1
-    </desc>
-  </entry>
-
   <entry id="ice_runoff">
     <type>logical</type>
     <category>mosart</category>

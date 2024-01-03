@@ -52,7 +52,6 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
            else:
                logger.warning( "WARNING::"+message )
 
-    config['mosart_flood_mode'] = case.get_value("MOSART_FLOOD_MODE")
     config['rof_grid'] = case.get_value("ROF_GRID")
     config['lnd_grid'] = case.get_value("LND_GRID")
     config['rof_ncpl'] = case.get_value("ROF_NCPL")

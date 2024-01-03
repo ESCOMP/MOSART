@@ -14,7 +14,7 @@
     <desc option="FLOOD">MOSART model with flood:</desc>
   </description>
 
-  <entry id="COMP_ROF"> 
+  <entry id="COMP_ROF">
      <type>char</type>
      <valid_values>mosart</valid_values>
      <default_value>mosart</default_value>
@@ -42,18 +42,6 @@
     <group>run_component_mosart</group>
     <file>env_run.xml</file>
     <desc>If warnings in namelist setttings from buildnml should be ignored or not</desc>
-  </entry>
-
-  <entry id="MOSART_FLOOD_MODE">
-    <type>char</type>
-    <valid_values>ACTIVE,NULL</valid_values>
-    <default_value>NULL</default_value>
-    <values>
-      <value compset="_MOSART%FLOOD">ACTIVE</value>
-    </values>
-    <group>build_component_mosart</group>
-    <file>env_build.xml</file>
-    <desc>mode for mosart flood feature, NULL means mosart flood is turned off</desc>
   </entry>
 
   <entry id="MOSART_SIM_YEAR">
