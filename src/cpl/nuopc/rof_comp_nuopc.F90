@@ -55,10 +55,7 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_nx = 0
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
-
-  logical                 :: do_flood
   integer                 :: nthrds
-
   integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
   character(*), parameter :: u_FILE_u = &
@@ -416,13 +413,13 @@ contains
     !     - need to compute areas where they are not defined in input file
     ! - Initialize runoff datatype (rtmCTL)
 
-    call MOSART_read_namelist(do_flood)
+    call MOSART_read_namelist()
 
     !----------------------------------------------------------------------------
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, do_flood, rc)
+    call advertise_fields(gcomp, flds_scalar_name, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
