@@ -55,6 +55,8 @@ module mosart_control_type
       real(r8), pointer :: direct(:,:) => null()      ! coupler return direct flow [m3/s]
       real(r8), pointer :: qirrig(:) => null()        ! coupler irrigation [m3/s]
       real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage
+      !scs
+      real(r8), pointer :: zwt(:) => null()           ! coupler water table depth [m]
 
       ! storage, runoff
       real(r8), pointer :: runofflnd(:,:) => null()   ! runoff masked for land (m3 H2O/s)
@@ -260,7 +262,6 @@ contains
       ! ---------------------------------------------
 
       ! memory for this%gindex, this%mask and this%dsig is allocated in init_decomp
-
       call t_startf('mosarti_decomp')
       call this%init_decomp(locfn, decomp_option, use_halo_option, &
            nlon, nlat, this%begr, this%endr, this%lnumr, this%numr, IDkey, rc)
@@ -296,6 +297,8 @@ contains
                this%qgwl(begr:endr,ntracers),       &
                this%qirrig(begr:endr),              &
                this%qirrig_actual(begr:endr),       &
+               !scs
+               this%zwt(begr:endr),                 &
                !
                this%evel(begr:endr,ntracers),       &
                this%flow(begr:endr,ntracers),       &
@@ -322,6 +325,8 @@ contains
       this%direct(:,:)      = 0._r8
       this%qirrig(:)        = 0._r8
       this%qirrig_actual(:) = 0._r8
+      !scs
+      this%zwt(:)           = 0._r8
       this%qsur(:,:)        = 0._r8
       this%qsub(:,:)        = 0._r8
       this%qgwl(:,:)        = 0._r8
@@ -385,15 +390,15 @@ contains
       ! Local variables
       integer                    :: n, nr, i, j, g           ! indices
       integer                    :: nl,nloops                ! used for decomp search
-      integer                    :: itempr(nlon,nlat)        ! global temporary buffer
-      integer                    :: gmask(nlon*nlat)         ! global mask
-      integer                    :: gdc2glo(nlon*nlat)       ! temporary for initialization
-      integer                    :: glo2gdc(nlon*nlat)       ! temporary for initialization
-      integer                    :: ID0_global(nlon*nlat)    ! global (local) ID index
-      integer                    :: dnID_global(nlon*nlat)   ! global downstream ID based on ID0
-      integer                    :: idxocn(nlon*nlat)        ! downstream ocean outlet cell
-      integer                    :: nupstrm(nlon*nlat)       ! number of upstream cells including own cell
-      integer                    :: pocn(nlon*nlat)          ! pe number assigned to basin
+      integer, allocatable       :: itempr(:,:)        ! global temporary buffer
+      integer, allocatable       :: gmask(:)         ! global mask
+      integer, allocatable       :: gdc2glo(:)       ! temporary for initialization
+      integer, allocatable       :: glo2gdc(:)       ! temporary for initialization
+      integer, allocatable       :: ID0_global(:)    ! global (local) ID index
+      integer, allocatable       :: dnID_global(:)   ! global downstream ID based on ID0
+      integer, allocatable       :: idxocn(:)        ! downstream ocean outlet cell
+      integer, allocatable       :: nupstrm(:)       ! number of upstream cells including own cell
+      integer, allocatable       :: pocn(:)          ! pe number assigned to basin
       integer                    :: nop(0:npes-1)            ! number of gridcells on a pe
       integer                    :: nba(0:npes-1)            ! number of basins on each pe
       integer                    :: nrs(0:npes-1)            ! begr on each pe
@@ -419,10 +424,21 @@ contains
       integer, pointer           :: seqlist(:)
       integer, allocatable       :: store_halo_index(:)
       integer                    :: nglob
+      !scs
+      real(r8),allocatable       :: rtempr(:,:)        ! global temporary buffer - real
       character(len=*),parameter :: subname = '(mosart_control_type: init_decomp) '
       !-----------------------------------------------------------------------
 
       rc = ESMF_SUCCESS
+!!$      !scs
+!!$      write(iulog,*) 'checkfile1a '
+!!$      write(iulog,*) 'checkfile1b ',nlon
+!!$      write(iulog,*) 'checkfile1c ',nlat
+!!$      write(iulog,*) 'checkfile1d ',decomp_option
+!!$      write(iulog,*) 'checkfile1e ',use_halo_option
+!!$      write(iulog,*) 'checkfile1a ',trim(locfn)
+!!$
+!!$      write(iulog,*) 'checkfile2 ',size(IDkey)
 
       !-------------------------------------------------------
       ! Read ID and DnID from routing file
@@ -430,27 +446,31 @@ contains
 
       call ncd_pio_openfile(ncid, trim(locfn), 0)
 
-      call ncd_io(ncid=ncid, varname='ID', flag='read', data=itempr, readvar=found)
+      !scs: use real input variables
+      allocate(rtempr(nlon,nlat))
+      allocate(ID0_global(nlon*nlat),dnID_global(nlon*nlat))
+      call ncd_io(ncid=ncid, varname='ID', flag='read', data=rtempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart ID')
-      if (mainproc) write(iulog,*) 'Read ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read ID ',minval(rtempr),maxval(rtempr)
       do j=1,nlat
          do i=1,nlon
             n = (j-1)*nlon + i
-            ID0_global(n) = itempr(i,j)
+            ID0_global(n) = int(rtempr(i,j))
          end do
       end do
-      if (mainproc) write(iulog,*) 'ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'ID ',minval(rtempr),maxval(rtempr)
 
-      call ncd_io(ncid=ncid, varname='dnID', flag='read', data=itempr, readvar=found)
+      call ncd_io(ncid=ncid, varname='dnID', flag='read', data=rtempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart dnID')
-      if (mainproc) write(iulog,*) 'Read dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read dnID ',minval(rtempr),maxval(rtempr)
       do j=1,nlat
          do i=1,nlon
             n = (j-1)*nlon + i
-            dnID_global(n) = itempr(i,j)
+            dnID_global(n) = int(rtempr(i,j))
          end do
       end do
-      if (mainproc) write(iulog,*) 'dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'dnID ',minval(rtempr),maxval(rtempr)
+      deallocate(rtempr)
 
       call ncd_pio_closefile(ncid)
 
@@ -497,7 +517,7 @@ contains
       !-------------------------------------------------------
 
       ! 1=land, 2=ocean, 3=ocean outlet from land
-
+      allocate(gmask(nlon*nlat))
       gmask(:) = 2     ! assume ocean point
       do n=1,nlon*nlat ! mark all downstream points as outlet
          nr = dnID_global(n)
@@ -547,7 +567,7 @@ contains
 
       ! idxocn = final downstream cell, index is global 1d ocean gridcell
       ! nupstrm = number of source gridcells upstream including self
-
+      allocate(idxocn(nlon*nlat),nupstrm(nlon*nlat))
       idxocn(:)  = 0
       nupstrm(:) = 0
       do nr=1,nlon*nlat
@@ -589,7 +609,7 @@ contains
       ! this is the heart of the decomp, need to set pocn and nop by the end of this
       ! pocn is the pe that gets the basin associated with ocean outlet nr
       ! nop is a running count of the number of mosart cells/pe
-
+      allocate(pocn(nlon*nlat))
       pocn(:) = -99
       nop(0:npes-1) = 0
       if (trim(decomp_option) == 'basin') then
@@ -694,7 +714,8 @@ contains
          write(iulog,*) 'mosart cells per pe    min/max = ',minval(nop),maxval(nop)
          write(iulog,*) 'mosart basins per pe   min/max = ',minval(nba),maxval(nba)
       endif
-
+      deallocate(nupstrm)
+      
       !-------------------------------------------------------
       ! Determine begr, endr, numr and lnumr
       !-------------------------------------------------------
@@ -729,7 +750,8 @@ contains
          ! so loop through the pes and determine begr on each pe
          nrs(n) = nrs(n-1) + nop(n-1)
       enddo
-
+      
+      allocate(glo2gdc(nlon*nlat),gdc2glo(nlon*nlat))
       glo2gdc(:) = 0
       nba(:) = 0
       do nr = 1,nlon*nlat
@@ -866,7 +888,8 @@ contains
 
       deallocate(halo_list)
       deallocate(store_halo_index)
-
+      deallocate(gdc2glo,glo2gdc,pocn)
+      
       ! Now do a test of the halo operation
       call this%test_halo(rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -886,7 +909,8 @@ contains
             this%dsig(nr) = dnID_global(n)
          endif
       end do
-
+      deallocate(gmask,dnID_global,idxocn)
+      
       !-------------------------------------------------------
       ! Write per-processor runoff bounds depending on dbug level
       !-------------------------------------------------------

@@ -9,7 +9,10 @@ module mosart_io
    use shr_pio_mod  , only : shr_pio_getiosys, shr_pio_getiotype, shr_pio_getioformat
    use mosart_vars  , only : spval, ispval, iulog, mainproc, mpicom_rof, iam, npes
    use perf_mod     , only : t_startf, t_stopf
-   use mpi          , only : mpi_barrier, mpi_bcast, MPI_CHARACTER
+!scs   use mpi          , only : mpi_barrier, mpi_bcast, MPI_CHARACTER
+!scs   use mpi          , only : mpi_bcast
+   use mpi          , only : mpi_barrier, MPI_CHARACTER
+
    use pio          , only : file_desc_t, var_desc_t, io_desc_t, iosystem_desc_t, pio_initdecomp, &
                              pio_openfile, pio_iotask_rank, pio_closefile, pio_createfile, &
                              pio_seterrorhandling, pio_inq_dimid, pio_inq_dimlen, pio_inq_dimname, &

@@ -582,9 +582,9 @@ contains
       logical, save :: first_call = .true.
 
       SLOPE1 = SLOPE1def
-      if (first_call) then
+!scs      if (first_call) then
          sinatanSLOPE1defr = 1.0_r8/(sin(atan(SLOPE1def)))
-      endif
+!scs      endif
       first_call = .false.
 
       if(hr_ < TINYVALUE) then
