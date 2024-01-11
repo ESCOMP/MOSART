@@ -175,6 +175,7 @@ contains
                      localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_r(nr)
                      temp_erout = 0._r8
                      do k=1,TUnit%numDT_r(nr)
+                        ! TODO: is it positive (TRunoff%wr) and negative afterwards
                         call mainchannelRouting(nr,nt,localDeltaT)
                         TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) + TRunoff%dwr(nr,nt) * localDeltaT
                         ! check for negative channel storage
@@ -310,8 +311,7 @@ contains
             TRunoff%erout(nr,nt) = -TRunoff%vr(nr,nt) * TRunoff%mr(nr,nt)
             if(-TRunoff%erout(nr,nt) > TINYVALUE .and. TRunoff%wr(nr,nt) + &
               (TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%erout(nr,nt)) * theDeltaT < TINYVALUE) then
-               TRunoff%erout(nr,nt) = &
-                    -(TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%wr(nr,nt) / theDeltaT)
+               TRunoff%erout(nr,nt) = -(TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%wr(nr,nt) / theDeltaT)
                if(TRunoff%mr(nr,nt) > 0._r8) then
                   TRunoff%vr(nr,nt) = -TRunoff%erout(nr,nt) / TRunoff%mr(nr,nt)
                end if
@@ -323,8 +323,7 @@ contains
 
       TRunoff%dwr(nr,nt) = TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%erout(nr,nt) + temp_gwl
 
-      if((TRunoff%wr(nr,nt)/theDeltaT &
-           + TRunoff%dwr(nr,nt)) < -TINYVALUE) then
+      if ((TRunoff%wr(nr,nt)/theDeltaT + TRunoff%dwr(nr,nt)) < -TINYVALUE) then
          write(iulog,*) 'mosart: ERROR main channel going negative: ', nr, nt
          write(iulog,*) theDeltaT, TRunoff%wr(nr,nt), &
               TRunoff%wr(nr,nt)/theDeltaT, TRunoff%dwr(nr,nt), temp_gwl

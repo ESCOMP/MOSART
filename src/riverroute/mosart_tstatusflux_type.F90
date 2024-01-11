@@ -54,18 +54,18 @@ module mosart_tstatusflux_type
       real(r8), pointer :: vr(:,:)      ! flow velocity, [m/s]
       real(r8), pointer :: tr(:,:)      ! mean travel time of the water within the channel, [s]
       !! exchange fluxes
-      real(r8), pointer :: erlg(:,:)    ! evaporation, [m/s]
-      real(r8), pointer :: erlateral(:,:) ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
-      real(r8), pointer :: erin(:,:)    ! inflow from upstream links, [m3/s]
-      real(r8), pointer :: erout(:,:)   ! outflow into downstream links, [m3/s]
-      real(r8), pointer :: erout_prev(:,:) ! outflow into downstream links from previous timestep, [m3/s]
-      real(r8), pointer :: eroutUp(:,:) ! outflow sum of upstream gridcells, instantaneous (m3/s)
+      real(r8), pointer :: erlg(:,:)        ! evaporation, [m/s]
+      real(r8), pointer :: erlateral(:,:)   ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
+      real(r8), pointer :: erin(:,:)        ! inflow from upstream links, [m3/s]
+      real(r8), pointer :: erout(:,:)       ! outflow into downstream links, [m3/s]
+      real(r8), pointer :: erout_prev(:,:)  ! outflow into downstream links from previous timestep, [m3/s]
+      real(r8), pointer :: eroutUp(:,:)     ! outflow sum of upstream gridcells, instantaneous (m3/s)
       real(r8), pointer :: eroutUp_avg(:,:) ! outflow sum of upstream gridcells, average [m3/s]
-      real(r8), pointer :: erlat_avg(:,:) ! erlateral average [m3/s]
-      real(r8), pointer :: flow(:,:)    ! streamflow from the outlet of the reach, [m3/s]
-      real(r8), pointer :: erin1(:,:)   ! inflow from upstream links during previous step, used for Muskingum method, [m3/s]
-      real(r8), pointer :: erin2(:,:)   ! inflow from upstream links during current step, used for Muskingum method, [m3/s]
-      real(r8), pointer :: ergwl(:,:)   ! flux item for the adjustment of water balance residual in glacie, wetlands and lakes dynamics [m3/s]
+      real(r8), pointer :: erlat_avg(:,:)   ! erlateral average [m3/s]
+      real(r8), pointer :: flow(:,:)        ! streamflow from the outlet of the reach, [m3/s]
+      real(r8), pointer :: erin1(:,:)       ! inflow from upstream links during previous step, used for Muskingum method, [m3/s]
+      real(r8), pointer :: erin2(:,:)       ! inflow from upstream links during current step, used for Muskingum method, [m3/s]
+      real(r8), pointer :: ergwl(:,:)       ! flux item for the adjustment of water balance residual in glacie, wetlands and lakes dynamics [m3/s]
 
       !! for Runge-Kutta algorithm
       real(r8), pointer :: wrtemp(:,:)  ! temporary storage item, for 4th order Runge-Kutta  algorithm;

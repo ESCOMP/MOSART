@@ -30,7 +30,6 @@ module mosart_mod
    use mosart_io          , only : ncd_pio_openfile, ncd_inqdid, ncd_inqdlen, ncd_pio_closefile, ncd_decomp_init, &
                                    pio_subsystem
    use pio                , only : file_desc_t
-   !use mpi                , only : mpi_bcast, mpi_barrier, MPI_CHARACTER, MPI_LOGICAL, MPI_INTEGER
    use mpi
    !
    ! !PUBLIC TYPES:
