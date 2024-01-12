@@ -8,6 +8,7 @@ module mosart_mod
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
+   use shr_string_mod     , only : shr_string_listGetNum, shr_string_listGetName
    use mosart_vars        , only : re, spval, iulog, ice_runoff, &
                                    frivinp, nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
@@ -46,6 +47,7 @@ module mosart_mod
    integer :: coupling_period ! mosart coupling period
    integer :: delt_mosart     ! mosart internal timestep (->nsub)
    logical :: use_halo_option ! enable halo capability using ESMF
+   character(len=CL) :: mosart_tracers ! colon delimited string of tracer names
 
    ! subcycling
    integer   :: nsub_save ! previous nsub
@@ -88,12 +90,7 @@ contains
       namelist /mosart_inparm / frivinp, finidat, nrevsn, coupling_period, ice_runoff, &
            ndens, mfilt, nhtfrq, fincl1,  fincl2, fincl3, fexcl1,  fexcl2, fexcl3, &
            avgflag_pertape, decomp_option, bypass_routing_option, qgwl_runoff_option, &
-           use_halo_option, delt_mosart
-
-      ! TODO: add the following as namelists
-      ctl%ntracers = 2                ! number of tracers
-      allocate(ctl%tracer_names(ctl%ntracers))
-      ctl%tracer_names(:) =  (/'LIQ','ICE'/) ! tracer names
+           use_halo_option, delt_mosart, mosart_tracers
 
       ! Preset values
       ice_runoff  = .true.
@@ -105,6 +102,7 @@ contains
       bypass_routing_option = 'direct_in_place'
       qgwl_runoff_option = 'threshold'
       use_halo_option = .false.
+      mosart_tracers = 'LIQ:ICE'  ! TODO - add DOMC
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
@@ -145,6 +143,15 @@ contains
       call mpi_bcast (fincl2, (max_namlen+2)*size(fincl2), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fincl3, (max_namlen+2)*size(fincl3), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (avgflag_pertape, size(avgflag_pertape), MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (mosart_tracers, CL, MPI_CHARACTER, 0, mpicom_rof, ier)
+
+      ! Determine number of tracers and array of tracer names
+      ctl%ntracers = shr_string_listGetNum(mosart_tracers)
+      allocate(ctl%tracer_names(ctl%ntracers))
+      do i = 1,ctl%ntracers
+         call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
+      end do
+      !ctl%tracer_names(:) =  (/'LIQ','ICE','DOMC'/) ! tracer names
 
       runtyp(:)               = 'missing'
       runtyp(nsrStartup  + 1) = 'initial'
@@ -160,6 +167,7 @@ contains
          write(iulog,*) '   use_halo_optoin       = ',use_halo_option
          write(iulog,*) '   bypass_routing option = ',trim(bypass_routing_option)
          write(iulog,*) '   qgwl runoff option    = ',trim(qgwl_runoff_option)
+         write(iulog,*) '   mosart tracers        = ',trim(mosart_tracers)
          if (nsrest == nsrStartup .and. finidat /= ' ') then
             write(iulog,*) '   mosart initial data   = ',trim(finidat)
          end if

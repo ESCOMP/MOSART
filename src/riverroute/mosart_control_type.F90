@@ -291,37 +291,37 @@ contains
     endr = this%endr
     ntracers = this%ntracers
 
-    allocate(this%area(begr:endr),                &
-                                !
+    allocate(this%area(begr:endr),            &
+         !
          this%volr(begr:endr,ntracers),       &
          this%dvolrdt(begr:endr,ntracers),    &
          this%dvolrdtlnd(begr:endr,ntracers), &
          this%dvolrdtocn(begr:endr,ntracers), &
-                                !
+         !
          this%runoff(begr:endr,ntracers),     &
          this%runofflnd(begr:endr,ntracers),  &
          this%runoffocn(begr:endr,ntracers),  &
          this%runofftot(begr:endr,ntracers),  &
-                                !
+         !
          this%fthresh(begr:endr),             &
          this%flood(begr:endr),               &
-                                !
+         !
          this%direct(begr:endr,ntracers),     &
          this%qsur(begr:endr,ntracers),       &
          this%qsub(begr:endr,ntracers),       &
          this%qgwl(begr:endr,ntracers),       &
          this%qirrig(begr:endr),              &
          this%qirrig_actual(begr:endr),       &
-                                !scs
+         !
          this%zwt(begr:endr),                 &
-         this%slope(begr:endr),                 &
-                                !
+         this%slope(begr:endr),               &
+         !
          this%evel(begr:endr,ntracers),       &
          this%flow(begr:endr,ntracers),       &
          this%erout_prev(begr:endr,ntracers), &
          this%eroutup_avg(begr:endr,ntracers),&
          this%erlat_avg(begr:endr,ntracers),  &
-                                !
+         !
          this%effvel(ntracers),               &
          stat=ier)
     if (ier /= 0) then
@@ -341,14 +341,11 @@ contains
     this%direct(:,:)      = 0._r8
     this%qirrig(:)        = 0._r8
     this%qirrig_actual(:) = 0._r8
-    !scs
     this%zwt(:)           = 0._r8
     this%slope(:)         = 0._r8
-
     this%qsur(:,:)        = 0._r8
     this%qsub(:,:)        = 0._r8
     this%qgwl(:,:)        = 0._r8
-    !
     this%fthresh(:)       = abs(spval)
     this%flow(:,:)        = 0._r8
     this%erout_prev(:,:)  = 0._r8
@@ -408,15 +405,14 @@ contains
     ! Local variables
     integer                    :: n, nr, i, j, g           ! indices
     integer                    :: nl,nloops                ! used for decomp search
-    integer, allocatable       :: itempr(:,:)              ! global temporary buffer
+    real(r8),allocatable       :: rtempr(:,:)              ! global temporary buffer - real
     integer, allocatable       :: gmask(:)                 ! global mask
-    integer, allocatable       :: loc2glo(:)               ! global local->global mapping
     integer, allocatable       :: glo2loc(:)               ! global global->local mapping
-    integer, allocatable       :: ID0_global(:)            ! global (local) ID index
     integer, allocatable       :: dnID_global(:)           ! global downstream ID based on ID0
     integer, allocatable       :: idxocn(:)                ! global downstream ocean outlet cell
     integer, allocatable       :: nupstrm(:)               ! number of upstream cells including own cell
     integer, allocatable       :: pocn(:)                  ! pe number assigned to basin
+    integer                    :: ID0_global               ! global (local) ID index
     integer                    :: nop(0:npes-1)            ! number of gridcells on a pe
     integer                    :: nba(0:npes-1)            ! number of basins on each pe
     integer                    :: nrs(0:npes-1)            ! begr on each pe
@@ -442,8 +438,6 @@ contains
     integer, pointer           :: seqlist(:)
     integer, allocatable       :: store_halo_index(:)
     integer                    :: nglob
-    !scs
-    real(r8),allocatable       :: rtempr(:,:)        ! global temporary buffer - real
     character(len=*),parameter :: subname = '(mosart_control_type: init_decomp) '
     !-----------------------------------------------------------------------
 
@@ -453,37 +447,6 @@ contains
     ! Read ID and DnID from routing file
     !-------------------------------------------------------
 
-    call ncd_pio_openfile(ncid, trim(locfn), 0)
-
-    !scs: use real input variables
-    allocate(rtempr(nlon,nlat))
-    allocate(ID0_global(nlon*nlat),dnID_global(nlon*nlat))
-    call ncd_io(ncid=ncid, varname='ID', flag='read', data=rtempr, readvar=found)
-    if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart ID')
-    if (mainproc) write(iulog,*) 'Read ID ',minval(rtempr),maxval(rtempr)
-    do j=1,nlat
-       do i=1,nlon
-          n = (j-1)*nlon + i
-          ID0_global(n) = int(rtempr(i,j))
-       end do
-    end do
-    if (mainproc) write(iulog,*) 'ID ',minval(rtempr),maxval(rtempr)
-
-    call ncd_io(ncid=ncid, varname='dnID', flag='read', data=rtempr, readvar=found)
-    if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart dnID')
-    if (mainproc) write(iulog,*) 'Read dnID ',minval(rtempr),maxval(rtempr)
-    do j=1,nlat
-       do i=1,nlon
-          n = (j-1)*nlon + i
-          dnID_global(n) = int(rtempr(i,j))
-       end do
-    end do
-    if (mainproc) write(iulog,*) 'dnID ',minval(rtempr),maxval(rtempr)
-    deallocate(rtempr)
-
-    call ncd_pio_closefile(ncid)
-
-    !-------------------------------------------------------
     ! RESET dnID indices based on ID0
     ! rename the dnID values to be consistent with global grid indexing.
     ! where 1 = lower left of grid and nlon*nlat is upper right.
@@ -492,34 +455,58 @@ contains
     ! to the gindex value.  compute the key, then apply the key to dnID_global.
     ! As part of this, check that each value of ID0 is unique and within
     ! the range of 1 to nlon*nlat.
-    !-------------------------------------------------------
 
-    IDkey = 0
-    do n=1,nlon*nlat
-       if (ID0_global(n) < 0 .or. ID0_global(n) > nlon*nlat) then
-          write(iulog,*) subname,' ERROR ID0 out of range',n,ID0_global(n)
-          call shr_sys_abort(subname//' ERROR error ID0 out of range')
-       endif
-       if (IDkey(ID0_global(n)) /= 0) then
-          write(iulog,*) subname,' ERROR ID0 value occurs twice',n,ID0_global(n)
-          call shr_sys_abort(subname//' ERROR ID0 value occurs twice')
-       endif
-       IDkey(ID0_global(n)) = n
-    enddo
+    call ncd_pio_openfile(ncid, trim(locfn), 0)
+
+    allocate(rtempr(nlon,nlat))
+    allocate(dnID_global(nlon*nlat))
+
+    call ncd_io(ncid=ncid, varname='ID', flag='read', data=rtempr, readvar=found)
+    if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart ID')
+    if (mainproc) write(iulog,*) 'Read ID ',minval(rtempr),maxval(rtempr)
+
+    IDkey(:) = 0
+    do j=1,nlat
+       do i=1,nlon
+          n = (j-1)*nlon + i
+          ID0_global = int(rtempr(i,j))
+          if (ID0_global < 0 .or. ID0_global > nlon*nlat) then
+             write(iulog,*) subname,' ERROR ID0 out of range',n,ID0_global
+             call shr_sys_abort(subname//' ERROR error ID0 out of range')
+          endif
+          if (IDkey(ID0_global) /= 0) then
+             write(iulog,*) subname,' ERROR ID0 value occurs twice',n,ID0_global
+             call shr_sys_abort(subname//' ERROR ID0 value occurs twice')
+          endif
+          IDkey(ID0_global) = n
+       end do
+    end do
     if (minval(IDkey) < 1) then
        write(iulog,*) subname,' ERROR IDkey incomplete'
        call shr_sys_abort(subname//' ERROR IDkey incomplete')
     endif
-    do n=1,nlon*nlat
-       if (dnID_global(n) > 0 .and. dnID_global(n) <= nlon*nlat) then
-          if (IDkey(dnID_global(n)) > 0 .and. IDkey(dnID_global(n)) <= nlon*nlat) then
-             dnID_global(n) = IDkey(dnID_global(n))
-          else
-             write(iulog,*) subname,' ERROR bad IDkey',n,dnID_global(n),IDkey(dnID_global(n))
-             call shr_sys_abort(subname//' ERROR bad IDkey')
+
+    call ncd_io(ncid=ncid, varname='dnID', flag='read', data=rtempr, readvar=found)
+    if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart dnID')
+    if (mainproc) write(iulog,*) 'Read dnID ',minval(rtempr),maxval(rtempr)
+    do j=1,nlat
+       do i=1,nlon
+          n = (j-1)*nlon + i
+          dnID_global(n) = int(rtempr(i,j))
+          if (dnID_global(n) > 0 .and. dnID_global(n) <= nlon*nlat) then
+             if (IDkey(dnID_global(n)) > 0 .and. IDkey(dnID_global(n)) <= nlon*nlat) then
+                dnID_global(n) = IDkey(dnID_global(n))
+             else
+                write(iulog,*) subname,' ERROR bad IDkey',n,dnID_global(n),IDkey(dnID_global(n))
+                call shr_sys_abort(subname//' ERROR bad IDkey')
+             endif
           endif
-       endif
-    enddo
+       end do
+    end do
+    if (mainproc) write(iulog,*) 'dnID ',minval(rtempr),maxval(rtempr)
+    deallocate(rtempr)
+
+    call ncd_pio_closefile(ncid)
 
     !-------------------------------------------------------
     ! Determine mosart ocn/land mask (global, all procs)
@@ -735,7 +722,7 @@ contains
     lnumr = endr - begr + 1
 
     !-------------------------------------------------------
-    ! Determine glo2loc (global to local) and loc2glo (local to global)
+    ! Determine glo2loc (global to local)
     !-------------------------------------------------------
 
     ! pocn(nlon*nlat) pe number assigned to basin
@@ -755,7 +742,7 @@ contains
        nrs(n) = nrs(n-1) + nop(n-1)
     enddo
 
-    allocate(glo2loc(nlon*nlat),loc2glo(nlon*nlat))
+    allocate(glo2loc(nlon*nlat))
     glo2loc(:) = 0
     nba(:) = 0
     do nr = 1,nlon*nlat
@@ -772,36 +759,23 @@ contains
        endif
     enddo
 
-    ! Determine loc2glo - local to global index space
+    ! Determine gindex
+    allocate(this%gindex(begr:endr))
     do j = 1,nlat
        do i = 1,nlon
           n = (j-1)*nlon + i
+          if (dnID_global(n) > 0) then
+             if (glo2loc(dnID_global(n)) == 0) then
+                write(iulog,*) subname,' ERROR glo2loc dnID_global ',&
+                     nr,n,dnID_global(n),glo2loc(dnID_global(n))
+                call shr_sys_abort(subname//' ERROT glo2loc dnID_global')
+             end if
+          end if
           nr = glo2loc(n)
-          if (nr > 0) then
-             loc2glo(nr) = n
+          if (nr >= begr .and. nr <= endr) then
+             this%gindex(nr) = n
           endif
        end do
-    end do
-
-    !-------------------------------------------------------
-    ! Determine gindex
-    !-------------------------------------------------------
-
-    allocate(this%gindex(begr:endr))
-    do nr = begr,endr
-       this%gindex(nr) = loc2glo(nr)
-       n = this%gindex(nr)
-       if (n <= 0 .or. n > nlon*nlat) then
-          write(iulog,*) subname,' ERROR in gindex, nr,ng= ',nr,n
-          call shr_sys_abort(subname//' ERROR gindex values values')
-       endif
-       if (dnID_global(n) > 0) then
-          if (glo2loc(dnID_global(n)) == 0) then
-             write(iulog,*) subname,' ERROR glo2loc dnID_global ',&
-                  nr,n,dnID_global(n),glo2loc(dnID_global(n))
-             call shr_sys_abort(subname//' ERROT glo2loc dnID_global')
-          end if
-       end if
     end do
 
     !-------------------------------------------------------
@@ -824,7 +798,7 @@ contains
 
     allocate(this%lonc(begr:endr), this%latc(begr:endr))
     do nr = begr,endr
-       n = loc2glo(nr)
+       n = this%gindex(nr)
        i = mod(n-1,nlon) + 1
        j = (n-1)/nlon + 1
        this%lonc(nr) = this%rlon(i)
@@ -847,7 +821,7 @@ contains
        store_halo_index(:) = 0
 
        do nr = begr,endr
-          n = loc2glo(nr)
+          n = this%gindex(nr)
           i = mod(n-1,nlon) + 1
           j = (n-1)/nlon + 1
           jm1 = j-1
@@ -928,7 +902,8 @@ contains
        call this%test_halo(rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
     endif
-    deallocate(loc2glo,glo2loc,pocn)
+    deallocate(glo2loc)
+    deallocate(pocn)
 
     !-------------------------------------------------------
     ! Determine mask, outletg and dsig
@@ -945,7 +920,9 @@ contains
           this%dsig(nr) = dnID_global(n)
        endif
     end do
-    deallocate(gmask,dnID_global,idxocn)
+    deallocate(gmask)
+    deallocate(dnID_global)
+    deallocate(idxocn)
 
     !-------------------------------------------------------
     ! Write per-processor runoff bounds depending on dbug level

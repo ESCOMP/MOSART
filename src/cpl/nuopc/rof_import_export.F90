@@ -36,8 +36,6 @@ module rof_import_export
   integer                :: fldsToRof_num = 0
   integer                :: fldsFrRof_num = 0
   logical                :: flds_r2l_stream_channel_depths = .false.   ! If should pass the channel depth fields needed for the hillslope model
-  !scs
-  logical                :: flds_r2l_intergrid_gw = .false.            ! If should pass the intergridcell groundwater flux
   type (fld_list_type)   :: fldsToRof(fldsMax)
   type (fld_list_type)   :: fldsFrRof(fldsMax)
 
@@ -84,11 +82,6 @@ contains
          isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
-    !scs
-    call NUOPC_CompAttributeGet(gcomp, name="flds_r2l_intergrid_gw", value=cvalue, &
-         isPresent=isPresent, isSet=isSet, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent .and. isSet) read(cvalue,*) flds_r2l_intergrid_gw
     call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
@@ -99,10 +92,6 @@ contains
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth')
        call fldlist_add(fldsFrRof_num, fldsFrRof, 'Sr_tdepth_max')
     end if
-    !scs
-    if ( flds_r2l_intergrid_gw )then
-       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_intergrid_gw')
-    endif
 
     do n = 1,fldsFrRof_num
        call NUOPC_Advertise(exportState, standardName=fldsFrRof(n)%stdname, &
@@ -120,10 +109,6 @@ contains
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
-    !scs
-    if ( flds_r2l_intergrid_gw )then
-       call fldlist_add(fldsToRof_num, fldsToRof, 'Sl_zwt')
-    endif
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -300,22 +285,6 @@ contains
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    !scs
-    if ( flds_r2l_intergrid_gw )then
-       call state_getimport(importState, 'Sl_zwt', begr, endr, ctl%area, output=ctl%zwt(:), &
-            do_area_correction=.true., rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       !scs: state_getimport multiplies variable by area; revert here
-       do n = begr,endr
-          ctl%zwt(n) = ctl%zwt(n)/(ctl%area(n)*0.001_r8)
-          ! this is b/c idk where 1e36 are coming from yet
-          if(ctl%zwt(n) > 100._r8) then
-             ctl%zwt(n) = 0._r8
-          endif
-       end do
-    endif
-    
     ctl%qsub(begr:endr, nfrz) = 0.0_r8
     ctl%qgwl(begr:endr, nfrz) = 0.0_r8
 

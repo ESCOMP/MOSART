@@ -31,8 +31,6 @@ module mosart_histflds
   type(hist_pointer_type), allocatable :: h_qgwl(:)
 
   real(r8), pointer :: h_volr_mch(:)
-  !scs
-  real(r8), pointer :: h_water_table(:)
 
 !------------------------------------------------------------------------
 contains
@@ -77,8 +75,6 @@ contains
       end do
 
       allocate(h_volr_mch(begr:endr))
-      !scs
-      allocate(h_water_table(begr:endr))
 
       !-------------------------------------------------------
       ! Build master field list of all possible fields in a history file.
@@ -142,11 +138,6 @@ contains
            avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
            ptr_rof=ctl%qirrig_actual, default='inactive')
 
-      !scs
-      call mosart_hist_addfld (fname='WATER_TABLE', units='m',  &
-         avgflag='A', long_name='water table from land', &
-           ptr_rof=h_water_table, default='inactive')
-
       ! print masterlist of history fields
       call mosart_hist_printflds()
 
@@ -178,8 +169,6 @@ contains
          h_qgwl(nt)%data(:)       = ctl%qgwl(:,nt)
       end do
       h_volr_mch(:) = Trunoff%wr(:,1)
-      !scs
-!      h_water_table(:) = ctl%zwt(:)
 
    end subroutine mosart_histflds_set
 
