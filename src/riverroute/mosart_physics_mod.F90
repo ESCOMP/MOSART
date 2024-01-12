@@ -2,6 +2,8 @@ MODULE MOSART_physics_mod
 
    !-----------------------------------------------------------------------
    ! Description: core code of MOSART.
+   ! Contains routines for solving diffusion wave and update the state of 
+   ! hillslope, subnetwork and main channel variables
    ! Developed by Hongyi Li, 12/29/2011.
    !-----------------------------------------------------------------------
 
