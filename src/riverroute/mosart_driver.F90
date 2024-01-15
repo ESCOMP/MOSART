@@ -1,9 +1,9 @@
-module mosart_mod
+module mosart_driver
 
    !-----------------------------------------------------------------------
    ! Mosart Routing Model
-   !
-   ! !USES:
+   !-----------------------------------------------------------------------
+
    use shr_kind_mod       , only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_CL
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
@@ -23,7 +23,7 @@ module mosart_mod
                                    fincl1, fincl2, fincl3, fexcl1, fexcl2, fexcl3, max_tapes, max_namlen
    use mosart_restfile    , only : mosart_rest_timemanager, mosart_rest_getfile, mosart_rest_fileread, &
                                    mosart_rest_filewrite, mosart_rest_filename, finidat, nrevsn
-   use mosart_physics_mod , only : updatestate_hillslope, updatestate_subnetwork, updatestate_mainchannel, Euler
+   use mosart_physics     , only : updatestate_hillslope, updatestate_subnetwork, updatestate_mainchannel, Euler
    use perf_mod           , only : t_startf, t_stopf
    use nuopc_shr_methods  , only : chkerr
    use ESMF               , only : ESMF_SUCCESS, ESMF_FieldGet, ESMF_FieldSMMStore, ESMF_FieldSMM, &
@@ -32,17 +32,16 @@ module mosart_mod
                                    pio_subsystem
    use pio                , only : file_desc_t
    use mpi
-   !
-   ! !PUBLIC TYPES:
+
    implicit none
    private
-   !
-   ! !PUBLIC MEMBER FUNCTIONS:
+
+   ! public member functions:
    public :: mosart_read_namelist ! Read in mosart namelist
    public :: mosart_init1         ! Initialize mosart grid
    public :: mosart_init2         ! Initialize mosart maps
    public :: mosart_run           ! River routing model
-   !
+
    ! mosart namelists
    integer :: coupling_period ! mosart coupling period
    integer :: delt_mosart     ! mosart internal timestep (->nsub)
@@ -151,7 +150,6 @@ contains
       do i = 1,ctl%ntracers
          call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
       end do
-      !ctl%tracer_names(:) =  (/'LIQ','ICE','DOMC'/) ! tracer names
 
       runtyp(:)               = 'missing'
       runtyp(nsrStartup  + 1) = 'initial'
@@ -989,4 +987,4 @@ contains
 
    end subroutine mosart_run
 
-end module mosart_mod
+end module mosart_driver

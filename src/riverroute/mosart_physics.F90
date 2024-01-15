@@ -1,8 +1,8 @@
-MODULE MOSART_physics_mod
+module mosart_physics
 
    !-----------------------------------------------------------------------
    ! Description: core code of MOSART.
-   ! Contains routines for solving diffusion wave and update the state of 
+   ! Contains routines for solving diffusion wave and update the state of
    ! hillslope, subnetwork and main channel variables
    ! Developed by Hongyi Li, 12/29/2011.
    !-----------------------------------------------------------------------
@@ -65,7 +65,6 @@ contains
                if(TUnit%mask(nr) > 0) then
                   call hillslopeRouting(nr,nt,Tctl%DeltaT)
                   TRunoff%wh(nr,nt) = TRunoff%wh(nr,nt) + TRunoff%dwh(nr,nt) * Tctl%DeltaT
-
                   call UpdateState_hillslope(nr,nt)
                   TRunoff%etin(nr,nt) = (-TRunoff%ehout(nr,nt) + TRunoff%qsub(nr,nt)) * TUnit%area(nr) * TUnit%frac(nr)
                endif
@@ -89,7 +88,7 @@ contains
 
       do m=1,Tctl%DLevelH2R
 
-         !--- accumulate/average erout at prior timestep (used in eroutUp calc) for budget analysis
+         ! accumulate/average erout at prior timestep (used in eroutUp calc) for budget analysis
          do nt=1,ctl%ntracers
             if (TUnit%euler_calc(nt)) then
                do nr=ctl%begr,ctl%endr
@@ -602,4 +601,4 @@ contains
       end if
    end function GRPR
 
-end MODULE MOSART_physics_mod
+end module mosart_physics
