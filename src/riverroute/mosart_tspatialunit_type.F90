@@ -2,9 +2,10 @@ module mosart_tspatialunit_type
 
   ! Topographic and geometric properties, applicable for both grid- and subbasin-based representations
 
-   use shr_kind_mod,      only : r8 => shr_kind_r8, CL => SHR_KIND_CL
+   use shr_kind_mod,      only : r8=>shr_kind_r8, CL=>SHR_KIND_CL, CS=>SHR_KIND_CS
    use shr_sys_mod,       only : shr_sys_abort
    use shr_mpi_mod,       only : shr_mpi_sum, shr_mpi_max
+   use shr_string_mod,    only : shr_string_listGetName
    use mosart_io,         only : ncd_pio_openfile, compDOF
    use mosart_vars,       only : mainproc, mpicom_rof, iulog
    use nuopc_shr_methods, only : chkerr
@@ -88,13 +89,14 @@ module mosart_tspatialunit_type
 contains
 
    !-----------------------------------------------------------------------
-   subroutine Init(this, begr, endr, ntracers, nlon, nlat, EMesh, &
+   subroutine Init(this, begr, endr, ntracers, mosart_euler_calc, nlon, nlat, EMesh, &
         frivinp, IDkey, c_twid, DLevelR, area, gindex, outletg, pio_subsystem, rc)
 
       ! Arguments
       class(Tspatialunit_type)            :: this
       integer               , intent(in)  :: begr, endr
       integer               , intent(in)  :: ntracers
+      character(len=*)      , intent(in)  :: mosart_euler_calc
       real(r8)              , intent(in)  :: area(begr:endr)
       integer               , intent(in)  :: nlon, nlat
       character(len=*)      , intent(in)  :: frivinp
@@ -117,6 +119,7 @@ contains
       integer           :: dids(2)       ! variable dimension ids
       integer           :: dsizes(2)     ! variable dimension lengths
       real(r8)          :: hlen_max, rlen_min
+      character(len=CS) :: ctemp
       character(len=*),parameter :: FORMI = '(2A,2i10)'
       character(len=*),parameter :: FORMR = '(2A,2g15.7)'
       character(len=*),parameter :: subname = '(mosart_tspatialunit_type_init) '
@@ -137,6 +140,17 @@ contains
       call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compDOF, iodesc_int)
 
       allocate(this%euler_calc(ntracers))
+      do n = 1,ntracers
+         call shr_string_listGetName(mosart_euler_calc, n, ctemp)
+         if (trim(ctemp) == 'T') then
+            this%euler_calc = .true.
+         else if (trim(ctemp) == 'F') then
+            this%euler_calc = .false.
+         else
+            call shr_sys_abort(trim(subname)//' mosart_euler_calc can only be T or F')
+         end if
+      end do
+
       this%euler_calc = .true.
 
       allocate(this%frac(begr:endr))

@@ -46,7 +46,8 @@ module mosart_driver
    integer :: coupling_period ! mosart coupling period
    integer :: delt_mosart     ! mosart internal timestep (->nsub)
    logical :: use_halo_option ! enable halo capability using ESMF
-   character(len=CL) :: mosart_tracers ! colon delimited string of tracer names
+   character(len=CS) :: mosart_tracers    ! colon delimited string of tracer names
+   character(len=CS) :: mosart_euler_calc ! colon delimited string of logicals for using Euler  algorithm
 
    ! subcycling
    integer   :: nsub_save ! previous nsub
@@ -79,6 +80,7 @@ contains
       integer           :: unitn     ! unit for namelist file
       logical           :: lexist    ! File exists
       character(len=CS) :: runtyp(4) ! run type
+      logical, allocatable :: do_euler_calc(:) ! turn on euler algorithm
       character(len=*),parameter :: subname = '(mosart_read_namelist) '
       !-----------------------------------------------------------------------
 
@@ -89,7 +91,7 @@ contains
       namelist /mosart_inparm / frivinp, finidat, nrevsn, coupling_period, ice_runoff, &
            ndens, mfilt, nhtfrq, fincl1,  fincl2, fincl3, fexcl1,  fexcl2, fexcl3, &
            avgflag_pertape, decomp_option, bypass_routing_option, qgwl_runoff_option, &
-           use_halo_option, delt_mosart, mosart_tracers
+           use_halo_option, delt_mosart, mosart_tracers, mosart_euler_calc
 
       ! Preset values
       ice_runoff  = .true.
@@ -101,7 +103,8 @@ contains
       bypass_routing_option = 'direct_in_place'
       qgwl_runoff_option = 'threshold'
       use_halo_option = .false.
-      mosart_tracers = 'LIQ:ICE'  ! TODO - add DOMC
+      mosart_tracers = 'LIQ:ICE'
+      mosart_euler_calc = 'T:F'
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
@@ -142,7 +145,8 @@ contains
       call mpi_bcast (fincl2, (max_namlen+2)*size(fincl2), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fincl3, (max_namlen+2)*size(fincl3), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (avgflag_pertape, size(avgflag_pertape), MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (mosart_tracers, CL, MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (mosart_tracers, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
 
       ! Determine number of tracers and array of tracer names
       ctl%ntracers = shr_string_listGetNum(mosart_tracers)
@@ -158,16 +162,17 @@ contains
 
       if (mainproc) then
          write(iulog,*) 'define run:'
-         write(iulog,*) '   run type              = ',trim(runtyp(nsrest+1))
-         write(iulog,*) '   coupling_period       = ',coupling_period
-         write(iulog,*) '   delt_mosart           = ',delt_mosart
-         write(iulog,*) '   decomp option         = ',trim(decomp_option)
-         write(iulog,*) '   use_halo_optoin       = ',use_halo_option
-         write(iulog,*) '   bypass_routing option = ',trim(bypass_routing_option)
-         write(iulog,*) '   qgwl runoff option    = ',trim(qgwl_runoff_option)
-         write(iulog,*) '   mosart tracers        = ',trim(mosart_tracers)
+         write(iulog,'(a)'   ) '   run type              = '//trim(runtyp(nsrest+1))
+         write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
+         write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
+         write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
+         write(iulog,'(a,l)' ) '   use_halo_optoin       = ',use_halo_option
+         write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
+         write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
+         write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
+         write(iulog,'(a)'   ) '   mosart euler calc     = '//trim(mosart_euler_calc)
          if (nsrest == nsrStartup .and. finidat /= ' ') then
-            write(iulog,*) '   mosart initial data   = ',trim(finidat)
+            write(iulog,'(a)') '   mosart initial data   = '//trim(finidat)
          end if
       endif
 
@@ -324,8 +329,9 @@ contains
 
       call TRunoff%Init(begr, endr, ntracers)
 
-      call Tunit%Init(begr, endr, ntracers, ctl%nlon, ctl%nlat, Emesh, &
-           trim(frivinp), IDKey, Tpara%c_twid, Tctl%DLevelR, ctl%area, ctl%gindex, ctl%outletg, pio_subsystem, rc)
+      call Tunit%Init(begr, endr, ntracers, &
+           mosart_euler_calc, ctl%nlon, ctl%nlat, Emesh, trim(frivinp), IDKey, &
+           Tpara%c_twid, Tctl%DLevelR, ctl%area, ctl%gindex, ctl%outletg, pio_subsystem, rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-------------------------------------------------------
