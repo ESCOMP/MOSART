@@ -254,4 +254,29 @@
     </desc>
   </entry>
 
+  <entry id="mosart_tracers">
+    <type>char</type>
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>LIQ:ICE</value>
+    </values>
+    <desc>
+      Colon delimited string of mosart tracers.
+    </desc>
+  </entry>
+
+  <entry id="mosart_euler_calc">
+    <type>char</type>
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>T:F</value>
+    </values>
+    <desc>
+      Colon delimited string of toggle to turn on Euler algorithm for
+      tracer name in mosart_tracers.
+    </desc>
+  </entry>
+
 </entry_id>

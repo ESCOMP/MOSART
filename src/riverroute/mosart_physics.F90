@@ -1,7 +1,9 @@
-MODULE MOSART_physics_mod
+module mosart_physics
 
    !-----------------------------------------------------------------------
    ! Description: core code of MOSART.
+   ! Contains routines for solving diffusion wave and update the state of
+   ! hillslope, subnetwork and main channel variables
    ! Developed by Hongyi Li, 12/29/2011.
    !-----------------------------------------------------------------------
 
@@ -28,6 +30,7 @@ MODULE MOSART_physics_mod
 
    real(r8), parameter :: TINYVALUE = 1.0e-14_r8 ! double precision variable has a significance of about 16 decimal digits
    real(r8), parameter :: SLOPE1def = 0.1_r8     ! here give it a small value in order to avoid the abrupt change of hydraulic radidus etc.
+   real(r8)            :: sinatanSLOPE1defr      ! 1.0/sin(atan(slope1))
 
    character(*), parameter :: u_FILE_u = &
         __FILE__
@@ -63,7 +66,6 @@ contains
                if(TUnit%mask(nr) > 0) then
                   call hillslopeRouting(nr,nt,Tctl%DeltaT)
                   TRunoff%wh(nr,nt) = TRunoff%wh(nr,nt) + TRunoff%dwh(nr,nt) * Tctl%DeltaT
-
                   call UpdateState_hillslope(nr,nt)
                   TRunoff%etin(nr,nt) = (-TRunoff%ehout(nr,nt) + TRunoff%qsub(nr,nt)) * TUnit%area(nr) * TUnit%frac(nr)
                endif
@@ -87,7 +89,7 @@ contains
 
       do m=1,Tctl%DLevelH2R
 
-         !--- accumulate/average erout at prior timestep (used in eroutUp calc) for budget analysis
+         ! accumulate/average erout at prior timestep (used in eroutUp calc) for budget analysis
          do nt=1,ctl%ntracers
             if (TUnit%euler_calc(nt)) then
                do nr=ctl%begr,ctl%endr
@@ -173,6 +175,7 @@ contains
                      localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R/TUnit%numDT_r(nr)
                      temp_erout = 0._r8
                      do k=1,TUnit%numDT_r(nr)
+                        ! TODO: is it positive (TRunoff%wr) and negative afterwards
                         call mainchannelRouting(nr,nt,localDeltaT)
                         TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) + TRunoff%dwr(nr,nt) * localDeltaT
                         ! check for negative channel storage
@@ -308,8 +311,7 @@ contains
             TRunoff%erout(nr,nt) = -TRunoff%vr(nr,nt) * TRunoff%mr(nr,nt)
             if(-TRunoff%erout(nr,nt) > TINYVALUE .and. TRunoff%wr(nr,nt) + &
               (TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%erout(nr,nt)) * theDeltaT < TINYVALUE) then
-               TRunoff%erout(nr,nt) = &
-                    -(TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%wr(nr,nt) / theDeltaT)
+               TRunoff%erout(nr,nt) = -(TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%wr(nr,nt) / theDeltaT)
                if(TRunoff%mr(nr,nt) > 0._r8) then
                   TRunoff%vr(nr,nt) = -TRunoff%erout(nr,nt) / TRunoff%mr(nr,nt)
                end if
@@ -321,8 +323,7 @@ contains
 
       TRunoff%dwr(nr,nt) = TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%erout(nr,nt) + temp_gwl
 
-      if((TRunoff%wr(nr,nt)/theDeltaT &
-           + TRunoff%dwr(nr,nt)) < -TINYVALUE) then
+      if ((TRunoff%wr(nr,nt)/theDeltaT + TRunoff%dwr(nr,nt)) < -TINYVALUE) then
          write(iulog,*) 'mosart: ERROR main channel going negative: ', nr, nt
          write(iulog,*) theDeltaT, TRunoff%wr(nr,nt), &
               TRunoff%wr(nr,nt)/theDeltaT, TRunoff%dwr(nr,nt), temp_gwl
@@ -576,7 +577,6 @@ contains
       ! Local variables
       real(r8) :: SLOPE1  ! slope of flood plain, TO DO
       real(r8) :: deltahr_
-      real(r8) :: sinatanSLOPE1defr      ! 1.0/sin(atan(slope1))
       logical, save :: first_call = .true.
 
       SLOPE1 = SLOPE1def
@@ -601,4 +601,4 @@ contains
       end if
    end function GRPR
 
-end MODULE MOSART_physics_mod
+end module mosart_physics

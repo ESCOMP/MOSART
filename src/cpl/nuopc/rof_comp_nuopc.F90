@@ -35,7 +35,7 @@ module rof_comp_nuopc
                                   mainproc, mpicom_rof, iam, npes, iulog, &
                                   nsrest, caseid, ctitle, version, hostname, username
   use mosart_data        , only : ctl
-  use mosart_mod         , only : mosart_read_namelist, mosart_init1, mosart_init2, mosart_run
+  use mosart_driver      , only : mosart_read_namelist, mosart_init1, mosart_init2, mosart_run
   use mosart_timemanager , only : timemgr_setup, get_curr_date, get_step_size, advance_timestep
   use mosart_io          , only : ncd_pio_init
   use mosart_restfile    , only : brnch_retain_casename

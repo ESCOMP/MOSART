@@ -1,13 +1,14 @@
-module mosart_mod
+module mosart_driver
 
    !-----------------------------------------------------------------------
    ! Mosart Routing Model
-   !
-   ! !USES:
+   !-----------------------------------------------------------------------
+
    use shr_kind_mod       , only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_CL
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
+   use shr_string_mod     , only : shr_string_listGetNum, shr_string_listGetName
    use mosart_vars        , only : re, spval, iulog, ice_runoff, &
                                    frivinp, nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
@@ -22,7 +23,7 @@ module mosart_mod
                                    fincl1, fincl2, fincl3, fexcl1, fexcl2, fexcl3, max_tapes, max_namlen
    use mosart_restfile    , only : mosart_rest_timemanager, mosart_rest_getfile, mosart_rest_fileread, &
                                    mosart_rest_filewrite, mosart_rest_filename, finidat, nrevsn
-   use mosart_physics_mod , only : updatestate_hillslope, updatestate_subnetwork, updatestate_mainchannel, Euler
+   use mosart_physics     , only : updatestate_hillslope, updatestate_subnetwork, updatestate_mainchannel, Euler
    use perf_mod           , only : t_startf, t_stopf
    use nuopc_shr_methods  , only : chkerr
    use ESMF               , only : ESMF_SUCCESS, ESMF_FieldGet, ESMF_FieldSMMStore, ESMF_FieldSMM, &
@@ -30,22 +31,23 @@ module mosart_mod
    use mosart_io          , only : ncd_pio_openfile, ncd_inqdid, ncd_inqdlen, ncd_pio_closefile, ncd_decomp_init, &
                                    pio_subsystem
    use pio                , only : file_desc_t
-   use mpi                , only : mpi_bcast, mpi_barrier, MPI_CHARACTER, MPI_LOGICAL, MPI_INTEGER
-   !
-   ! !PUBLIC TYPES:
+   use mpi
+
    implicit none
    private
-   !
-   ! !PUBLIC MEMBER FUNCTIONS:
+
+   ! public member functions:
    public :: mosart_read_namelist ! Read in mosart namelist
    public :: mosart_init1         ! Initialize mosart grid
    public :: mosart_init2         ! Initialize mosart maps
    public :: mosart_run           ! River routing model
-   !
+
    ! mosart namelists
    integer :: coupling_period ! mosart coupling period
    integer :: delt_mosart     ! mosart internal timestep (->nsub)
    logical :: use_halo_option ! enable halo capability using ESMF
+   character(len=CS) :: mosart_tracers    ! colon delimited string of tracer names
+   character(len=CS) :: mosart_euler_calc ! colon delimited string of logicals for using Euler  algorithm
 
    ! subcycling
    integer   :: nsub_save ! previous nsub
@@ -78,6 +80,7 @@ contains
       integer           :: unitn     ! unit for namelist file
       logical           :: lexist    ! File exists
       character(len=CS) :: runtyp(4) ! run type
+      logical, allocatable :: do_euler_calc(:) ! turn on euler algorithm
       character(len=*),parameter :: subname = '(mosart_read_namelist) '
       !-----------------------------------------------------------------------
 
@@ -88,12 +91,7 @@ contains
       namelist /mosart_inparm / frivinp, finidat, nrevsn, coupling_period, ice_runoff, &
            ndens, mfilt, nhtfrq, fincl1,  fincl2, fincl3, fexcl1,  fexcl2, fexcl3, &
            avgflag_pertape, decomp_option, bypass_routing_option, qgwl_runoff_option, &
-           use_halo_option, delt_mosart
-
-      ! TODO: add the following as namelists
-      ctl%ntracers = 2                ! number of tracers
-      allocate(ctl%tracer_names(ctl%ntracers))
-      ctl%tracer_names(:) =  (/'LIQ','ICE'/) ! tracer names
+           use_halo_option, delt_mosart, mosart_tracers, mosart_euler_calc
 
       ! Preset values
       ice_runoff  = .true.
@@ -105,6 +103,8 @@ contains
       bypass_routing_option = 'direct_in_place'
       qgwl_runoff_option = 'threshold'
       use_halo_option = .false.
+      mosart_tracers = 'LIQ:ICE'
+      mosart_euler_calc = 'T:F'
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
@@ -145,6 +145,15 @@ contains
       call mpi_bcast (fincl2, (max_namlen+2)*size(fincl2), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fincl3, (max_namlen+2)*size(fincl3), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (avgflag_pertape, size(avgflag_pertape), MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (mosart_tracers, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
+
+      ! Determine number of tracers and array of tracer names
+      ctl%ntracers = shr_string_listGetNum(mosart_tracers)
+      allocate(ctl%tracer_names(ctl%ntracers))
+      do i = 1,ctl%ntracers
+         call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
+      end do
 
       runtyp(:)               = 'missing'
       runtyp(nsrStartup  + 1) = 'initial'
@@ -153,15 +162,17 @@ contains
 
       if (mainproc) then
          write(iulog,*) 'define run:'
-         write(iulog,*) '   run type              = ',trim(runtyp(nsrest+1))
-         write(iulog,*) '   coupling_period       = ',coupling_period
-         write(iulog,*) '   delt_mosart           = ',delt_mosart
-         write(iulog,*) '   decomp option         = ',trim(decomp_option)
-         write(iulog,*) '   use_halo_optoin       = ',use_halo_option
-         write(iulog,*) '   bypass_routing option = ',trim(bypass_routing_option)
-         write(iulog,*) '   qgwl runoff option    = ',trim(qgwl_runoff_option)
+         write(iulog,'(a)'   ) '   run type              = '//trim(runtyp(nsrest+1))
+         write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
+         write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
+         write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
+         write(iulog,'(a,l)' ) '   use_halo_optoin       = ',use_halo_option
+         write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
+         write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
+         write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
+         write(iulog,'(a)'   ) '   mosart euler calc     = '//trim(mosart_euler_calc)
          if (nsrest == nsrStartup .and. finidat /= ' ') then
-            write(iulog,*) '   mosart initial data   = ',trim(finidat)
+            write(iulog,'(a)') '   mosart initial data   = '//trim(finidat)
          end if
       endif
 
@@ -318,8 +329,9 @@ contains
 
       call TRunoff%Init(begr, endr, ntracers)
 
-      call Tunit%Init(begr, endr, ntracers, ctl%nlon, ctl%nlat, Emesh, &
-           trim(frivinp), IDKey, Tpara%c_twid, Tctl%DLevelR, ctl%area, ctl%gindex, ctl%outletg, pio_subsystem, rc)
+      call Tunit%Init(begr, endr, ntracers, &
+           mosart_euler_calc, ctl%nlon, ctl%nlat, Emesh, trim(frivinp), IDKey, &
+           Tpara%c_twid, Tctl%DLevelR, ctl%area, ctl%gindex, ctl%outletg, pio_subsystem, rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-------------------------------------------------------
@@ -981,4 +993,4 @@ contains
 
    end subroutine mosart_run
 
-end module mosart_mod
+end module mosart_driver

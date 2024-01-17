@@ -115,11 +115,6 @@ module mosart_control_type
   integer, public :: halo_w  = 7
   integer, public :: halo_nw = 8
 
-  ! dimensions of halo array
-  integer :: halo_zwt = 1
-  integer :: halo_lon = 2
-  integer :: halo_att = 3
-
   character(*), parameter :: u_FILE_u = &
        __FILE__
 
@@ -1160,7 +1155,7 @@ contains
     ! degrees to radians
     deg2rad = SHR_CONST_PI / 180._r8
 
-    ! update halo array for zwt
+    ! update halo array for fld
     n = 0
     do nr = begr,endr
        n = n + 1
@@ -1205,7 +1200,7 @@ contains
     enddo ! end of nr loop
 
     call t_stopf('gradient')
-
+    
   end subroutine Gradient
 
 end module mosart_control_type
