@@ -75,21 +75,28 @@ module mosart_control_type
       real(r8), pointer :: effvel(:) => null()
 
       ! halo operations
-      type(ESMF_Array)       :: haloArray
       type(ESMF_RouteHandle) :: haloHandle
-      real(r8), pointer      :: halo_arrayptr(:) => null() ! preallocated memory for exclusive region plus halo
-      integer , pointer      :: halo_arrayptr_index(:,:)    ! index into halo_arrayptr that corresponds to a halo point
+     type(ESMF_Array)       :: lon_haloArray
+     type(ESMF_Array)       :: lat_haloArray
+     type(ESMF_Array)       :: fld_haloArray
+     integer , pointer      :: halo_arrayptr_index(:,:) => null() ! index into halo_arrayptr that corresponds to a halo point
+     real(r8), pointer      :: fld_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
+     real(r8), pointer      :: lon_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
+     real(r8), pointer      :: lat_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
 
    contains
 
      procedure, public  :: Init
      procedure, private :: init_decomp
      procedure, private :: test_halo
+     procedure, public  :: Gradient
 
   end type control_type
   public :: control_type
 
   private :: init_decomp
+  public  :: Gradient
+
 
 #ifdef NDEBUG
   integer,parameter :: dbug = 0 ! 0 = none, 1=normal, 2=much, 3=max
@@ -97,15 +104,21 @@ module mosart_control_type
   integer,parameter :: dbug = 3 ! 0 = none, 1=normal, 2=much, 3=max
 #endif
 
-  integer :: max_num_halo = 8
-  integer :: halo_sw = 1
-  integer :: halo_s  = 2
-  integer :: halo_se = 3
-  integer :: halo_e  = 4
-  integer :: halo_ne = 5
-  integer :: halo_n  = 6
-  integer :: halo_nw = 7
-  integer :: halo_w  = 8
+  integer, public :: max_num_halo = 8
+  ! eight surrounding indices ordered as [N,NE,E,SE,S,SW,W,NW]
+  integer, public :: halo_n  = 1
+  integer, public :: halo_ne = 2
+  integer, public :: halo_e  = 3
+  integer, public :: halo_se = 4
+  integer, public :: halo_s  = 5
+  integer, public :: halo_sw = 6
+  integer, public :: halo_w  = 7
+  integer, public :: halo_nw = 8
+
+  ! dimensions of halo array
+  integer :: halo_zwt = 1
+  integer :: halo_lon = 2
+  integer :: halo_att = 3
 
   character(*), parameter :: u_FILE_u = &
        __FILE__
@@ -260,7 +273,6 @@ contains
       ! ---------------------------------------------
 
       ! memory for this%gindex, this%mask and this%dsig is allocated in init_decomp
-
       call t_startf('mosarti_decomp')
       call this%init_decomp(locfn, decomp_option, use_halo_option, &
            nlon, nlat, this%begr, this%endr, this%lnumr, this%numr, IDkey, rc)
@@ -322,6 +334,7 @@ contains
       this%direct(:,:)      = 0._r8
       this%qirrig(:)        = 0._r8
       this%qirrig_actual(:) = 0._r8
+
       this%qsur(:,:)        = 0._r8
       this%qsub(:,:)        = 0._r8
       this%qgwl(:,:)        = 0._r8
@@ -385,15 +398,14 @@ contains
       ! Local variables
       integer                    :: n, nr, i, j, g           ! indices
       integer                    :: nl,nloops                ! used for decomp search
-      integer                    :: itempr(nlon,nlat)        ! global temporary buffer
-      integer                    :: gmask(nlon*nlat)         ! global mask
-      integer                    :: gdc2glo(nlon*nlat)       ! temporary for initialization
-      integer                    :: glo2gdc(nlon*nlat)       ! temporary for initialization
-      integer                    :: ID0_global(nlon*nlat)    ! global (local) ID index
-      integer                    :: dnID_global(nlon*nlat)   ! global downstream ID based on ID0
-      integer                    :: idxocn(nlon*nlat)        ! downstream ocean outlet cell
-      integer                    :: nupstrm(nlon*nlat)       ! number of upstream cells including own cell
-      integer                    :: pocn(nlon*nlat)          ! pe number assigned to basin
+      integer, allocatable       :: gmask(:)         ! global mask
+      integer, allocatable       :: gdc2glo(:)       ! temporary for initialization
+      integer, allocatable       :: glo2gdc(:)       ! temporary for initialization
+      integer, allocatable       :: ID0_global(:)    ! global (local) ID index
+      integer, allocatable       :: dnID_global(:)   ! global downstream ID based on ID0
+      integer, allocatable       :: idxocn(:)        ! downstream ocean outlet cell
+      integer, allocatable       :: nupstrm(:)       ! number of upstream cells including own cell
+      integer, allocatable       :: pocn(:)          ! pe number assigned to basin
       integer                    :: nop(0:npes-1)            ! number of gridcells on a pe
       integer                    :: nba(0:npes-1)            ! number of basins on each pe
       integer                    :: nrs(0:npes-1)            ! begr on each pe
@@ -419,6 +431,7 @@ contains
       integer, pointer           :: seqlist(:)
       integer, allocatable       :: store_halo_index(:)
       integer                    :: nglob
+      real(r8),allocatable       :: rtempr(:,:)        ! global temporary buffer - real
       character(len=*),parameter :: subname = '(mosart_control_type: init_decomp) '
       !-----------------------------------------------------------------------
 
@@ -430,27 +443,30 @@ contains
 
       call ncd_pio_openfile(ncid, trim(locfn), 0)
 
-      call ncd_io(ncid=ncid, varname='ID', flag='read', data=itempr, readvar=found)
+      allocate(rtempr(nlon,nlat))
+      allocate(ID0_global(nlon*nlat),dnID_global(nlon*nlat))
+      call ncd_io(ncid=ncid, varname='ID', flag='read', data=rtempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart ID')
-      if (mainproc) write(iulog,*) 'Read ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read ID ',minval(rtempr),maxval(rtempr)
       do j=1,nlat
          do i=1,nlon
             n = (j-1)*nlon + i
-            ID0_global(n) = itempr(i,j)
+            ID0_global(n) = int(rtempr(i,j))
          end do
       end do
-      if (mainproc) write(iulog,*) 'ID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'ID ',minval(rtempr),maxval(rtempr)
 
-      call ncd_io(ncid=ncid, varname='dnID', flag='read', data=itempr, readvar=found)
+      call ncd_io(ncid=ncid, varname='dnID', flag='read', data=rtempr, readvar=found)
       if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read mosart dnID')
-      if (mainproc) write(iulog,*) 'Read dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'Read dnID ',minval(rtempr),maxval(rtempr)
       do j=1,nlat
          do i=1,nlon
             n = (j-1)*nlon + i
-            dnID_global(n) = itempr(i,j)
+            dnID_global(n) = int(rtempr(i,j))
          end do
       end do
-      if (mainproc) write(iulog,*) 'dnID ',minval(itempr),maxval(itempr)
+      if (mainproc) write(iulog,*) 'dnID ',minval(rtempr),maxval(rtempr)
+      deallocate(rtempr)
 
       call ncd_pio_closefile(ncid)
 
@@ -497,7 +513,7 @@ contains
       !-------------------------------------------------------
 
       ! 1=land, 2=ocean, 3=ocean outlet from land
-
+      allocate(gmask(nlon*nlat))
       gmask(:) = 2     ! assume ocean point
       do n=1,nlon*nlat ! mark all downstream points as outlet
          nr = dnID_global(n)
@@ -547,7 +563,7 @@ contains
 
       ! idxocn = final downstream cell, index is global 1d ocean gridcell
       ! nupstrm = number of source gridcells upstream including self
-
+      allocate(idxocn(nlon*nlat),nupstrm(nlon*nlat))
       idxocn(:)  = 0
       nupstrm(:) = 0
       do nr=1,nlon*nlat
@@ -589,7 +605,7 @@ contains
       ! this is the heart of the decomp, need to set pocn and nop by the end of this
       ! pocn is the pe that gets the basin associated with ocean outlet nr
       ! nop is a running count of the number of mosart cells/pe
-
+      allocate(pocn(nlon*nlat))
       pocn(:) = -99
       nop(0:npes-1) = 0
       if (trim(decomp_option) == 'basin') then
@@ -694,7 +710,8 @@ contains
          write(iulog,*) 'mosart cells per pe    min/max = ',minval(nop),maxval(nop)
          write(iulog,*) 'mosart basins per pe   min/max = ',minval(nba),maxval(nba)
       endif
-
+      deallocate(nupstrm)
+      
       !-------------------------------------------------------
       ! Determine begr, endr, numr and lnumr
       !-------------------------------------------------------
@@ -729,7 +746,8 @@ contains
          ! so loop through the pes and determine begr on each pe
          nrs(n) = nrs(n-1) + nop(n-1)
       enddo
-
+      
+      allocate(glo2gdc(nlon*nlat),gdc2glo(nlon*nlat))
       glo2gdc(:) = 0
       nba(:) = 0
       do nr = 1,nlon*nlat
@@ -808,69 +826,93 @@ contains
       !-------------------------------------------------------
       ! Determine halo points and create halo route handle
       !-------------------------------------------------------
+      if( use_halo_option ) then
+         ! note that for each gridcell below there are nhalo extra elements that need to be allocated
+         ! Need to keep track of the global index of each halo point
+         ! temporary allocatable array store_halo_index = size((endr-begr+1)*nhalo) (nhalo is the number of halo points)
+         !
+         ! Allocate halo_arrayptr_index - local index (starting at 1) into this%halo_arrayptr on my pe
+         allocate(this%halo_arrayptr_index(endr-begr+1,max_num_halo))
+         this%halo_arrayptr_index(:,:) = -999
 
-      ! each note that for each gridcell below there are 4 extra elements that need to be allocated
-      ! Need to keep track of the global index of each halo point
-      ! temporary allocatable array store_halo_index = size((endr-begr+1)*nhalo) (nhalo is the number of halo points)
-      !
-      ! Allocate halo_arrayptr_index - local index (starting at 1) into this%halo_arrayptr on my pe
-      allocate(this%halo_arrayptr_index(endr-begr+1,max_num_halo))
-      this%halo_arrayptr_index(:,:) = -999
+         allocate(store_halo_index((endr-begr+1)*max_num_halo))
+         store_halo_index(:) = 0
 
-      allocate(store_halo_index((endr-begr+1)*max_num_halo))
-      store_halo_index(:) = 0
+         do nr = begr,endr
+            n = gdc2glo(nr)
+            i = mod(n-1,nlon) + 1
+            j = (n-1)/nlon + 1
+            jm1 = j-1
+            jp1 = j+1
+            im1 = i-1
+            ip1 = i+1
+            if (i == 1) im1 = 1
+            if (j == 1) jm1 = 1
+            if (i == nlon) ip1 = nlon
+            if (j == nlat) jp1 = nlat
+            n_sw = (jm1-1)*nlon + im1
+            n_s  = (jm1-1)*nlon + i
+            n_se = (jm1-1)*nlon + ip1
+            n_e  = (  j-1)*nlon + ip1
+            n_ne = (jp1-1)*nlon + ip1
+            n_n  = (jp1-1)*nlon + i
+            n_nw = (jp1-1)*nlon + im1
+            n_w  = (  j-1)*nlon + im1
+            call set_halo_index(n_sw, halo_sw, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_s , halo_s , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_se, halo_se, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_e , halo_e , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_ne, halo_ne, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_n , halo_n , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_nw, halo_nw, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+            call set_halo_index(n_w , halo_w , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
+         end do
 
-      do nr = begr,endr
-         n = gdc2glo(nr)
-         i = mod(n-1,nlon) + 1
-         j = (n-1)/nlon + 1
-         jm1 = j-1
-         jp1 = j+1
-         im1 = i-1
-         ip1 = i+1
-         if (i == 1) im1 = 1
-         if (j == 1) jm1 = 1
-         if (i == nlon) ip1 = nlon
-         if (j == nlat) jp1 = nlat
-         n_sw = (jm1-1)*nlon + im1
-         n_s  = (jm1-1)*nlon + i
-         n_se = (jm1-1)*nlon + ip1
-         n_e  = (  j-1)*nlon + ip1
-         n_ne = (jp1-1)*nlon + ip1
-         n_n  = (jp1-1)*nlon + i
-         n_nw = (jp1-1)*nlon + im1
-         n_w  = (  j-1)*nlon + im1
-         call set_halo_index(n_sw, halo_sw, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_s , halo_s , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_se, halo_se, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_e , halo_e , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_ne, halo_ne, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_n , halo_n , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_nw, halo_nw, glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-         call set_halo_index(n_w , halo_w , glo2gdc, nr, begr, endr, pocn, store_halo_index, this%halo_arrayptr_index)
-      end do
+         ! Allocate halo_list - global indices of the halo points on my pe
+         num_halo = count(store_halo_index /= 0)
+         allocate(halo_list(num_halo))
+         halo_list(1:num_halo) = store_halo_index(1:num_halo)
 
-      ! Allocate halo_list - global indices of the halo points on my pe
-      num_halo = count(store_halo_index /= 0)
-      allocate(halo_list(num_halo))
-      halo_list(1:num_halo) = store_halo_index(1:num_halo)
+         ! Create halo route handle using predefined allocatable memory
+       ! Create ESMF array for field - this will be time dependent
+       allocate(this%fld_halo_arrayptr(endr-begr+1+num_halo))
+       this%fld_halo_arrayptr(:) = 0.
+       this%fld_haloArray = ESMF_ArrayCreate(this%distgrid, this%fld_halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
+       call ESMF_ArrayHaloStore(this%fld_haloArray, routehandle=this%haloHandle, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-      ! Create halo route handle using predefined allocatable memory
-      allocate(this%halo_arrayptr(endr-begr+1+num_halo))
-      this%halo_arrayptr(:) = 0.
-      this%haloArray = ESMF_ArrayCreate(this%distgrid, this%halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
+       ! Create ESMF arrays for lon, lat and fld
+       allocate(this%lon_halo_arrayptr(endr-begr+1+num_halo))
+       this%lon_halo_arrayptr(:) = 0.
+       this%lon_haloArray = ESMF_ArrayCreate(this%distgrid, this%lon_halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-      call ESMF_ArrayHaloStore(this%haloArray, routehandle=this%haloHandle, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
+       allocate(this%lat_halo_arrayptr(endr-begr+1+num_halo))
+       this%lat_halo_arrayptr(:) = 0.
+       this%lat_haloArray = ESMF_ArrayCreate(this%distgrid, this%lat_halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-      deallocate(halo_list)
-      deallocate(store_halo_index)
+       ! Set halo array for lon and lat - these do not change with time
+       n = 0 
+       do nr = this%begr,this%endr
+          n = n + 1
+          this%lon_halo_arrayptr(n) = this%lonc(nr)
+          this%lat_halo_arrayptr(n) = this%latc(nr)
+       end do
+       call ESMF_ArrayHalo(this%lon_haloArray, routehandle=this%haloHandle, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       call ESMF_ArrayHalo(this%lat_haloArray, routehandle=this%haloHandle, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+         
+         deallocate(halo_list)
+         deallocate(store_halo_index)
 
-      ! Now do a test of the halo operation
-      call this%test_halo(rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
+         ! Now do a test of the halo operation
+         call this%test_halo(rc)
+         if (chkerr(rc,__LINE__,u_FILE_u)) return
+      endif
+      deallocate(gdc2glo,glo2gdc,pocn)
+         
       !-------------------------------------------------------
       ! Determine mask, outletg and dsig
       !-------------------------------------------------------
@@ -886,7 +928,8 @@ contains
             this%dsig(nr) = dnID_global(n)
          endif
       end do
-
+      deallocate(gmask,dnID_global,idxocn)
+      
       !-------------------------------------------------------
       ! Write per-processor runoff bounds depending on dbug level
       !-------------------------------------------------------
@@ -993,10 +1036,10 @@ contains
       n = 0
       do nr = this%begr,this%endr
          n = n + 1
-         this%halo_arrayptr(n) = this%latc(nr)*10. + this%lonc(nr)/100.
+         this%fld_halo_arrayptr(n) = this%latc(nr)*10. + this%lonc(nr)/100.
       end do
 
-      call ESMF_ArrayHalo(this%haloArray, routehandle=this%haloHandle, rc=rc)
+      call ESMF_ArrayHalo(this%fld_haloArray, routehandle=this%haloHandle, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       n = 0
@@ -1028,42 +1071,42 @@ contains
          end if
          lon = this%rlon(i)
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_sw))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_sw))
          valid_value = lat_m1*10 + lon_m1/100.
          if (halo_value /= valid_value) then
             write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
             call shr_sys_abort('ERROR: invalid halo')
          end if
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_s))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_s))
          valid_value = lat_m1*10 + lon/100.
          if (halo_value /= valid_value) then
             write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
             call shr_sys_abort('ERROR: invalid halo')
          end if
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_se))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_se))
          valid_value = lat_m1*10 + lon_p1/100.
          if (halo_value /= valid_value) then
             write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
             call shr_sys_abort('ERROR: invalid halo')
          end if
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_e))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_e))
          valid_value = lat*10 + lon_p1/100.
          if (halo_value /= valid_value) then
             write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
             call shr_sys_abort('ERROR: invalid halo')
          end if
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_ne))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_ne))
          valid_value = lat_p1*10 + lon_p1/100.
          if (halo_value /= valid_value) then
             write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
             call shr_sys_abort('ERROR: invalid halo')
          end if
          !
-         halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_nw))
+         halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_nw))
          valid_value = lat_p1*10 + lon_m1/100.
          if (halo_value /= valid_value) then
             write(6,*)'ERROR: halo, valid not the same = ',halo_value, valid_value
@@ -1071,6 +1114,98 @@ contains
          end if
       end do
 
-   end subroutine test_halo
+    end subroutine test_halo
+
+   !========================================================================
+
+  subroutine Gradient(this, begr, endr, fld, dfld_dx, dfld_dy, rc)
+
+    ! Calculate head gradient from nine gridcells (center and surrounding)
+
+    ! Uses
+    use shr_const_mod, only : SHR_CONST_REARTH, SHR_CONST_PI
+
+    ! Arguments:
+    class(control_type)   :: this
+    integer , intent(in)  :: begr, endr
+    real(r8), intent(in)  :: fld(begr:endr)
+    real(r8), intent(out) :: dfld_dx(:)      ! gradient x component
+    real(r8), intent(out) :: dfld_dy(:)      ! gradient y component
+    integer , intent(out) :: rc
+
+    ! Local variables
+    integer  :: i, n, nr               ! local indices
+    real(r8) :: deg2rad
+    real(r8) :: mean_dx, mean_dy, dlon, dlat
+    real(r8) :: ax_indices(4)                 ! x indices to add
+    real(r8) :: sx_indices(4)                 ! x indices to subtract
+    real(r8) :: ay_indices(4)                 ! y indices to add
+    real(r8) :: sy_indices(4)                 ! y indices to subtract
+    real(r8) :: fld_surrounding(max_num_halo)
+    real(r8) :: dx(max_num_halo)
+    real(r8) :: dy(max_num_halo)
+    integer  :: index
+    !-----------------------------------------------------------------------
+
+    call t_startf('gradient')
+
+    rc = ESMF_SUCCESS
+
+    ! Define indices for addition/subtraction
+    ax_indices(:) = (/halo_ne,halo_e,halo_e,halo_se/) ! x indices to add
+    sx_indices(:) = (/halo_nw,halo_w,halo_w,halo_sw/) ! x indices to subtract
+    ay_indices(:) = (/halo_ne,halo_n,halo_n,halo_nw/) ! y indices to add
+    sy_indices(:) = (/halo_se,halo_s,halo_s,halo_sw/) ! y indices to subtract
+
+    ! degrees to radians
+    deg2rad = SHR_CONST_PI / 180._r8
+
+    ! update halo array for zwt
+    n = 0
+    do nr = begr,endr
+       n = n + 1
+       this%fld_halo_arrayptr(n) = fld(nr)
+    end do
+    call ESMF_ArrayHalo(this%fld_haloArray, routehandle=this%haloHandle, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    ! Initialize gradient components
+    dfld_dx(:) = 0._r8
+    dfld_dy(:) = 0._r8
+
+    n = 0
+    do nr = begr,endr
+       n = n+1
+
+       ! extract neighbors from halo array
+       do i = 1,max_num_halo
+          index = this%halo_arrayptr_index(n,i)
+          fld_surrounding(i) = this%fld_halo_arrayptr(index)
+          dlon = (this%lon_halo_arrayptr(n) - this%lon_halo_arrayptr(index))
+          dlat = (this%lat_halo_arrayptr(n) - this%lat_halo_arrayptr(index))
+          dx(i) = SHR_CONST_REARTH * abs(deg2rad*dlon) * cos(deg2rad*this%latc(nr))
+          dy(i) = SHR_CONST_REARTH * abs(deg2rad*dlat)
+       enddo
+
+       ! calculate mean spacing
+       mean_dx = 0.5_r8 * (dx(halo_w)+dx(halo_e)) ! average dx west and east
+       mean_dy = 0.5_r8 * (dy(halo_s)+dy(halo_n)) ! average dy south and north
+
+       ! compute gradient values
+       ! for x gradient sum [NE,2xE,SE,-NW,-2xW,-SW]
+       ! for y gradient sum [NE,2xN,NW,-SE,-2xS,-SW]
+       do i = 1,4
+          dfld_dx(n) = dfld_dx(n) + (fld_surrounding(ax_indices(i)) - fld_surrounding(sx_indices(i)))
+          dfld_dy(n) = dfld_dy(n) + (fld_surrounding(ay_indices(i)) - fld_surrounding(sy_indices(i)))
+       enddo
+       
+       dfld_dx(n) = dfld_dx(n) / (8._r8*mean_dx)
+       dfld_dy(n) = dfld_dy(n) / (8._r8*mean_dy)
+
+    enddo ! end of nr loop
+
+    call t_stopf('gradient')
+
+  end subroutine Gradient
 
 end module mosart_control_type
