@@ -3,8 +3,8 @@
 
   <test name="PFS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/default">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -13,8 +13,8 @@
   </test>
   <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/default">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -23,8 +23,8 @@
   </test>
   <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -32,8 +32,8 @@
   </test>
   <test name="SMS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/mosartCold">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -42,8 +42,8 @@
   </test>
   <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -52,8 +52,8 @@
   </test>
   <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm51Sp" testmods="mosart/clmAccelSpinupIgnoreWarn">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -62,8 +62,8 @@
   </test>
   <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/default">
     <machines>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
-      <machine name="izumi" compiler="nag" category="aux_mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -72,8 +72,8 @@
   </test>
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -82,8 +82,8 @@
   </test>
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/passChannelDepths">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -92,8 +92,8 @@
   </test>
   <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -101,8 +101,8 @@
   </test>
   <test name="PEM_D" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/inplacethreshold">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -111,8 +111,8 @@
   </test>
   <test name="SMS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/nobypass">
     <machines>
-      <machine name="derecho" compiler="intel" category="aux_mosart"></machine>
-      <machine name="betzy" compiler="intel" category="aux_mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
