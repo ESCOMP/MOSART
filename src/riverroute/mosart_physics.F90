@@ -30,6 +30,7 @@ module mosart_physics
 
    real(r8), parameter :: TINYVALUE = 1.0e-14_r8 ! double precision variable has a significance of about 16 decimal digits
    real(r8), parameter :: SLOPE1def = 0.1_r8     ! here give it a small value in order to avoid the abrupt change of hydraulic radidus etc.
+   real(r8)            :: sinatanSLOPE1defr      ! 1.0/sin(atan(slope1))
 
    character(*), parameter :: u_FILE_u = &
         __FILE__
@@ -576,13 +577,12 @@ contains
       ! Local variables
       real(r8) :: SLOPE1  ! slope of flood plain, TO DO
       real(r8) :: deltahr_
-      real(r8) :: sinatanSLOPE1defr      ! 1.0/sin(atan(slope1))
       logical, save :: first_call = .true.
 
       SLOPE1 = SLOPE1def
-!scs      if (first_call) then
+      if (first_call) then
          sinatanSLOPE1defr = 1.0_r8/(sin(atan(SLOPE1def)))
-!scs      endif
+      endif
       first_call = .false.
 
       if(hr_ < TINYVALUE) then

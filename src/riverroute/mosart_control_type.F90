@@ -56,8 +56,6 @@ module mosart_control_type
      real(r8), pointer :: direct(:,:) => null()      ! coupler return direct flow [m3/s]
      real(r8), pointer :: qirrig(:) => null()        ! coupler irrigation [m3/s]
      real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage
-     real(r8), pointer :: zwt(:) => null()           ! coupler water table depth [m]
-     real(r8), pointer :: slope(:) => null()         ! slope, using for testing currently
 
      ! storage, runoff
      real(r8), pointer :: runofflnd(:,:) => null()   ! runoff masked for land (m3 H2O/s)
@@ -79,15 +77,13 @@ module mosart_control_type
 
      ! halo operations
      type(ESMF_RouteHandle) :: haloHandle
-     integer , pointer      :: halo_arrayptr_index(:,:) => null() ! index into halo_arrayptr that corresponds to a halo point
-     type(ESMF_Array)       :: halo_array
-     real(r8), pointer      :: halo_arrayptr(:) => null()         ! preallocated memory for exclusive region plus halo
+     type(ESMF_Array)       :: fld_halo_array
      type(ESMF_Array)       :: lon_halo_array
-     real(r8), pointer      :: lon_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
      type(ESMF_Array)       :: lat_halo_array
+     integer , pointer      :: halo_arrayptr_index(:,:) => null() ! index into halo_arrayptr that corresponds to a halo point
+     real(r8), pointer      :: fld_halo_arrayptr(:) => null()         ! preallocated memory for exclusive region plus halo
+     real(r8), pointer      :: lon_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
      real(r8), pointer      :: lat_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
-     type(ESMF_Array)       :: zwt_halo_array
-     real(r8), pointer      :: zwt_halo_arrayptr(:) => null()     ! preallocated memory for exclusive region plus halo
 
    contains
 
@@ -118,11 +114,6 @@ module mosart_control_type
   integer, public :: halo_sw = 6
   integer, public :: halo_w  = 7
   integer, public :: halo_nw = 8
-
-  ! dimensions of halo array
-  integer :: halo_zwt = 1
-  integer :: halo_lon = 2
-  integer :: halo_att = 3
 
   character(*), parameter :: u_FILE_u = &
        __FILE__
@@ -313,9 +304,6 @@ contains
          this%qirrig(begr:endr),              &
          this%qirrig_actual(begr:endr),       &
          !
-         this%zwt(begr:endr),                 &
-         this%slope(begr:endr),               &
-         !
          this%evel(begr:endr,ntracers),       &
          this%flow(begr:endr,ntracers),       &
          this%erout_prev(begr:endr,ntracers), &
@@ -341,8 +329,6 @@ contains
     this%direct(:,:)      = 0._r8
     this%qirrig(:)        = 0._r8
     this%qirrig_actual(:) = 0._r8
-    this%zwt(:)           = 0._r8
-    this%slope(:)         = 0._r8
     this%qsur(:,:)        = 0._r8
     this%qsub(:,:)        = 0._r8
     this%qgwl(:,:)        = 0._r8
@@ -856,13 +842,13 @@ contains
        halo_list(1:num_halo) = store_halo_index(1:num_halo)
 
        ! Create halo route handle using predefined allocatable memory
-       allocate(this%halo_arrayptr(endr-begr+1+num_halo))
-       this%halo_arrayptr(:) = 0.
-       this%halo_array = ESMF_ArrayCreate(this%distgrid, this%halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
+       allocate(this%fld_halo_arrayptr(endr-begr+1+num_halo))
+       this%fld_halo_arrayptr(:) = 0.
+       this%fld_halo_array = ESMF_ArrayCreate(this%distgrid, this%fld_halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        ! Create a halo route handle - only need one
-       call ESMF_ArrayHaloStore(this%halo_array, routehandle=this%haloHandle, rc=rc)
+       call ESMF_ArrayHaloStore(this%fld_halo_array, routehandle=this%haloHandle, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        ! Create ESMF arrays for lon, lat and fld
@@ -886,12 +872,6 @@ contains
        call ESMF_ArrayHalo(this%lon_halo_array, routehandle=this%haloHandle, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call ESMF_ArrayHalo(this%lat_halo_array, routehandle=this%haloHandle, rc=rc)
-       if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-       ! Create ESMF array for zwt - this will be time dependent
-       allocate(this%zwt_halo_arrayptr(endr-begr+1+num_halo))
-       this%zwt_halo_arrayptr(:) = 0.
-       this%zwt_halo_array = ESMF_ArrayCreate(this%distgrid, this%zwt_halo_arrayptr, haloSeqIndexList=halo_list, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        ! Deallocate memory
@@ -1030,10 +1010,10 @@ contains
     n = 0
     do nr = this%begr,this%endr
        n = n + 1
-       this%halo_arrayptr(n) = this%latc(nr)*10. + this%lonc(nr)/100.
+       this%fld_halo_arrayptr(n) = this%latc(nr)*10. + this%lonc(nr)/100.
     end do
 
-    call ESMF_ArrayHalo(this%halo_array, routehandle=this%haloHandle, rc=rc)
+    call ESMF_ArrayHalo(this%fld_halo_array, routehandle=this%haloHandle, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
     n = 0
@@ -1065,42 +1045,42 @@ contains
        end if
        lon = this%rlon(i)
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_sw))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_sw))
        valid_value = lat_m1*10 + lon_m1/100.
        if (halo_value /= valid_value) then
           write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
           call shr_sys_abort('ERROR: invalid halo')
        end if
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_s))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_s))
        valid_value = lat_m1*10 + lon/100.
        if (halo_value /= valid_value) then
           write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
           call shr_sys_abort('ERROR: invalid halo')
        end if
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_se))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_se))
        valid_value = lat_m1*10 + lon_p1/100.
        if (halo_value /= valid_value) then
           write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
           call shr_sys_abort('ERROR: invalid halo')
        end if
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_e))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_e))
        valid_value = lat*10 + lon_p1/100.
        if (halo_value /= valid_value) then
           write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
           call shr_sys_abort('ERROR: invalid halo')
        end if
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_ne))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_ne))
        valid_value = lat_p1*10 + lon_p1/100.
        if (halo_value /= valid_value) then
           write(6,'(a,2f20.10)')'ERROR: halo, valid not the same = ',halo_value, valid_value
           call shr_sys_abort('ERROR: invalid halo')
        end if
        !
-       halo_value = this%halo_arrayptr(this%halo_arrayptr_index(n,halo_nw))
+       halo_value = this%fld_halo_arrayptr(this%halo_arrayptr_index(n,halo_nw))
        valid_value = lat_p1*10 + lon_m1/100.
        if (halo_value /= valid_value) then
           write(6,*)'ERROR: halo, valid not the same = ',halo_value, valid_value
@@ -1114,25 +1094,26 @@ contains
 
   subroutine calc_gradient(this, fld, fld_halo_array, dfld_dx, dfld_dy, rc)
 
-    ! Calculate head gradient from nine gridcells (center and surrounding)
+    ! Calculate gradient from nine gridcells (center and surrounding)
+
+    ! Uses
 
     ! Arguments:
     class(control_type)   :: this
     real(r8), intent(in)  :: fld(this%begr:this%endr)
     type(ESMF_Array)      :: fld_halo_array
-    real(r8), intent(out) :: dfld_dx(:)           ! gradient x component
-    real(r8), intent(out) :: dfld_dy(:)           ! gradient y component
+    real(r8), intent(out) :: dfld_dx(:)      ! gradient x component
+    real(r8), intent(out) :: dfld_dy(:)      ! gradient y component
     integer , intent(out) :: rc
 
     ! Local variables
-    integer  :: i, m, n, nr               ! local indices
+    integer  :: i, n, nr               ! local indices
     real(r8) :: deg2rad
     real(r8) :: mean_dx, mean_dy, dlon, dlat
-    real(r8) :: ax_indices(4) = (/2,3,3,4/) ! x indices to add
-    real(r8) :: sx_indices(4) = (/6,7,7,8/) ! x indices to subtract
-    real(r8) :: ay_indices(4) = (/1,1,2,8/) ! y indices to add
-    real(r8) :: sy_indices(4) = (/2,5,5,6/) ! y indices to subtract
-    integer  :: surrounding_pts(max_num_halo)
+    real(r8) :: ax_indices(4)                 ! x indices to add
+    real(r8) :: sx_indices(4)                 ! x indices to subtract
+    real(r8) :: ay_indices(4)                 ! y indices to add
+    real(r8) :: sy_indices(4)                 ! y indices to subtract
     real(r8) :: fld_surrounding(max_num_halo)
     real(r8) :: dx(max_num_halo)
     real(r8) :: dy(max_num_halo)
@@ -1140,15 +1121,18 @@ contains
     real(r8), pointer :: fld_halo_arrayptr(:)
     !-----------------------------------------------------------------------
 
-    call t_startf('gw_gradient')
+    call t_startf('gradient')
 
     rc = ESMF_SUCCESS
 
-    ! Define order of surround points (clockwise starting at north)
-    surrounding_pts(:) = (/halo_n, halo_ne, halo_e, halo_se, halo_s, halo_sw, halo_w, halo_nw/)
+    ! Define indices for addition/subtraction
+    ax_indices(:) = (/halo_ne,halo_e,halo_e,halo_se/) ! x indices to add
+    sx_indices(:) = (/halo_nw,halo_w,halo_w,halo_sw/) ! x indices to subtract
+    ay_indices(:) = (/halo_ne,halo_n,halo_n,halo_nw/) ! y indices to add
+    sy_indices(:) = (/halo_se,halo_s,halo_s,halo_sw/) ! y indices to subtract
 
     ! degrees to radians
-    deg2rad = SHR_CONST_PI / 180._r8
+    deg2rad = shr_const_pi / 180._r8
 
     ! Get pointer to data in ESMF array
     call ESMF_ArrayGet(fld_halo_array, farrayPtr=fld_halo_arrayptr, rc=rc)
@@ -1173,13 +1157,12 @@ contains
 
        ! extract neighbors from halo array
        do i = 1,max_num_halo
-          m = surrounding_pts(i)
-          index = this%halo_arrayptr_index(n,m)
+          index = this%halo_arrayptr_index(n,i)
           fld_surrounding(i) = fld_halo_arrayptr(index)
           dlon = (this%lon_halo_arrayptr(n) - this%lon_halo_arrayptr(index))
           dlat = (this%lat_halo_arrayptr(n) - this%lat_halo_arrayptr(index))
-          dx(i) = SHR_CONST_REARTH * abs(dlon) * cos(deg2rad*this%latc(nr))
-          dy(i) = SHR_CONST_REARTH * abs(dlat)
+          dx(i) = shr_const_rearth * abs(deg2rad*dlon) * cos(deg2rad*this%latc(nr))
+          dy(i) = shr_const_rearth * abs(deg2rad*dlat)
        enddo
 
        ! calculate mean spacing
@@ -1187,12 +1170,19 @@ contains
        mean_dy = 0.5_r8 * (dy(halo_s)+dy(halo_n)) ! average dy south and north
 
        ! compute gradient values
+       ! for x gradient sum [NE,2xE,SE,-NW,-2xW,-SW]
+       ! for y gradient sum [NE,2xN,NW,-SE,-2xS,-SW]
        do i = 1,4
-          dfld_dx(n) = (fld_surrounding(ax_indices(i)) - fld_surrounding(sx_indices(i))) / (8._r8*mean_dx)
-          dfld_dy(n) = (fld_surrounding(ay_indices(i)) - fld_surrounding(sy_indices(i))) / (8._r8*mean_dy)
+          dfld_dx(n) = dfld_dx(n) + (fld_surrounding(ax_indices(i)) - fld_surrounding(sx_indices(i)))
+          dfld_dy(n) = dfld_dy(n) + (fld_surrounding(ay_indices(i)) - fld_surrounding(sy_indices(i)))
        enddo
+       
+       dfld_dx(n) = dfld_dx(n) / (8._r8*mean_dx)
+       dfld_dy(n) = dfld_dy(n) / (8._r8*mean_dy)
 
     enddo ! end of nr loop
+
+    call t_stopf('gradient')
 
   end subroutine calc_gradient
 
