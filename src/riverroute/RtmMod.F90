@@ -82,6 +82,8 @@ module RtmMod
    real(r8),pointer :: rlonw(:)    ! longitude of 1d west grid cell edge (deg)
    real(r8),pointer :: rlone(:)    ! longitude of 1d east grid cell edge (deg)
 
+   logical :: do_rtmflood          ! Turn flooding on
+
    character(len=256) :: nlfilename_rof = 'mosart_in'
    character(len=256) :: fnamer      ! name of netcdf restart file
    character(*), parameter :: u_FILE_u = &
@@ -91,7 +93,10 @@ module RtmMod
 contains
 
    !-----------------------------------------------------------------------
-   subroutine MOSART_read_namelist()
+   subroutine MOSART_read_namelist(flood_active)
+      ! Read and distribute mosart namelist
+      !
+      logical, intent(out) :: flood_active
       !
       ! Read and distribute mosart namelist
       !
@@ -108,7 +113,7 @@ contains
       ! Read in mosart namelist
       !-------------------------------------------------------
 
-      namelist /mosart_inparm / ice_runoff, &
+      namelist /mosart_inparm / ice_runoff, do_rtmflood, &
            frivinp_rtm, finidat_rtm, nrevsn_rtm, coupling_period, &
            rtmhist_ndens, rtmhist_mfilt, rtmhist_nhtfrq, &
            rtmhist_fincl1,  rtmhist_fincl2, rtmhist_fincl3, &
@@ -155,6 +160,7 @@ contains
       call mpi_bcast (decomp_option         , len(decomp_option)         , MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (bypass_routing_option , len(bypass_routing_option) , MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (qgwl_runoff_option    , len(qgwl_runoff_option)    , MPI_CHARACTER, 0, mpicom_rof, ier)
+      call mpi_bcast (do_rtmflood, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
       call mpi_bcast (ice_runoff,  1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
@@ -188,6 +194,8 @@ contains
             write(iulog,*) '   MOSART initial data   = ',trim(finidat_rtm)
          end if
       endif
+
+      flood_active = do_rtmflood
 
       if (frivinp_rtm == ' ') then
          call shr_sys_abort( subname//' ERROR: frivinp_rtm NOT set' )
@@ -893,13 +901,18 @@ contains
       ! Initialize mosart flood - rtmCTL%fthresh and evel
       !-------------------------------------------------------
 
-      effvel(:) = effvel0  ! downstream velocity (m/s)
-      rtmCTL%fthresh(:) = abs(spval)
-      do nt = 1,nt_rtm
-         do nr = rtmCTL%begr,rtmCTL%endr
-            evel(nr,nt) = effvel(nt)
+      if (do_rtmflood) then
+         write(iulog,*) subname,' Flood not validated in this version, abort'
+         call shr_sys_abort(subname//' Flood feature unavailable')
+      else
+         effvel(:) = effvel0  ! downstream velocity (m/s)
+         rtmCTL%fthresh(:) = abs(spval)
+         do nt = 1,nt_rtm
+            do nr = rtmCTL%begr,rtmCTL%endr
+               evel(nr,nt) = effvel(nt)
+            enddo
          enddo
-      enddo
+      end if
 
       !-------------------------------------------------------
       ! Initialize runoff data type
