@@ -10,26 +10,12 @@ module RunoffMod
 !
 ! !USES:
   use shr_kind_mod, only : r8 => shr_kind_r8
+  use shr_sys_mod , only : shr_sys_abort
   use RtmVar      , only : iulog, spval, nt_rtm
-  use mct_mod
 
 ! !PUBLIC TYPES:
   implicit none
   private
-
-  type(mct_gsmap),public :: gsmap_r       ! gsmap for mosart decomposition
-
-  type(mct_sMatP),public :: sMatP_dnstrm  ! sparse matrix plus for downstream advection
-  type(mct_avect),public :: avsrc_dnstrm  ! src avect for SM mult downstream advection
-  type(mct_avect),public :: avdst_dnstrm  ! dst avect for SM mult downstream advection
-
-  type(mct_sMatP),public :: sMatP_direct  ! sparse matrix plus for direct to outlet flow
-  type(mct_avect),public :: avsrc_direct  ! src avect for SM mult direct to outlet flow
-  type(mct_avect),public :: avdst_direct  ! dst avect for SM mult direct to outlet flow
-
-  type(mct_sMatP),public :: sMatP_eroutUp ! sparse matrix plus for eroutUp calc
-  type(mct_avect),public :: avsrc_eroutUp ! src avect for SM mult eroutUp calc
-  type(mct_avect),public :: avdst_eroutUp ! dst avect for SM mult eroutUp calc
 
   public :: runoff_flow
   type runoff_flow
@@ -41,7 +27,7 @@ module RunoffMod
      integer , pointer :: dsig(:)          ! downstream index, global index
      integer , pointer :: outletg(:)       ! outlet index, global index
 
-     !    - global 
+     !    - global
      integer , pointer :: mask(:)          ! general mask of cell 1=land, 2=ocean, 3=outlet
      real(r8), pointer :: rlon(:)          ! rtm longitude list, 1d
      real(r8), pointer :: rlat(:)          ! rtm latitude list, 1d
@@ -103,12 +89,11 @@ module RunoffMod
      real(r8), pointer :: qsub_nt2(:)
      real(r8), pointer :: qgwl_nt1(:)
      real(r8), pointer :: qgwl_nt2(:)
-
   end type runoff_flow
 
-  
+
   !== Hongyi
-  ! constrol information 
+  ! constrol information
   public :: Tcontrol
   type Tcontrol
      integer  :: NUnit            ! numer of Grides in the model domain, which is equal to the number of cells, nrows*ncols
@@ -116,17 +101,17 @@ module RunoffMod
      integer  :: NSTEPS           ! number of time steps specified in the modeling
      integer  :: NWARMUP          ! time steps for model warming up
      real(r8) :: DATAH            ! time step of runoff generation in second provided by the user
-     integer  :: Num_dt           ! number of sub-steps within the current step interval, 
-                                  ! i.e., if the time step of the incoming runoff data is 3-hr, and num_dt is set to 10, 
+     integer  :: Num_dt           ! number of sub-steps within the current step interval,
+                                  ! i.e., if the time step of the incoming runoff data is 3-hr, and num_dt is set to 10,
                                   ! then deltaT = 3*3600/10 = 1080 seconds
-     real(r8) :: DeltaT           ! Time step in seconds 
-     integer  :: DLevelH2R        ! The base number of channel routing sub-time-steps within one hillslope routing step. 
+     real(r8) :: DeltaT           ! Time step in seconds
+     integer  :: DLevelH2R        ! The base number of channel routing sub-time-steps within one hillslope routing step.
                                   ! Usually channel routing requires small time steps than hillslope routing.
-     integer  :: DLevelR          ! The number of channel routing sub-time-steps at a higher level within one channel routing step at a lower level. 
+     integer  :: DLevelR          ! The number of channel routing sub-time-steps at a higher level within one channel routing step at a lower level.
      integer  :: Restart          ! flag, Restart=1 means starting from the state of last run, =0 means starting from model-inset initial state.
      integer  :: RoutingMethod    ! Flag for routing methods. 1 --> variable storage method from SWAT model; 2 --> Muskingum method?
      integer  :: RoutingFlag      ! Flag for whether including hillslope and sub-network routing. 1--> include routing through hillslope, sub-network and main channel; 0--> main channel routing only.
- 
+
      character(len=100) :: baseName    ! name of the case study, e.g., columbia
      character(len=200) :: ctlFile     ! the name of the control file
      character(len=100) :: ctlPath     ! the path of the control file
@@ -137,16 +122,16 @@ module RunoffMod
      integer :: numStation             ! number of basins to be simulated
      character(len=200) :: staListFile ! name of the file containing station list
      integer, pointer :: out_ID(:)     ! the indices of the outlet subbasins whether the stations are located
-     character(len=80), pointer :: out_name(:)  ! the name of the outlets  
+     character(len=80), pointer :: out_name(:)  ! the name of the outlets
      character(len=80) :: curOutlet    ! the name of the current outlet
   end type Tcontrol
-  
+
   ! --- Topographic and geometric properties, applicable for both grid- and subbasin-based representations
   public :: Tspatialunit
   type Tspatialunit
      ! grid properties
      integer , pointer :: mask(:)      ! mosart mask of mosart cell, 0=null, 1=land with dnID, 2=outlet
-     integer , pointer :: ID0(:)         
+     integer , pointer :: ID0(:)
      real(r8), pointer :: lat(:)       ! latitude of the centroid of the cell
      real(r8), pointer :: lon(:)       ! longitude of the centroid of the cell
      real(r8), pointer :: area(:)      ! area of local cell, [m2]
@@ -157,25 +142,24 @@ module RunoffMod
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      logical , pointer :: euler_calc(:) ! flag for calculating tracers in euler
 
-
      ! hillslope properties
-     real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded) 
+     real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded)
      real(r8), pointer :: hslp(:)      ! slope of hillslope, [-]
-     real(r8), pointer :: hslpsqrt(:)  ! sqrt of slope of hillslope, [-] 
-     real(r8), pointer :: hlen(:)      ! length of hillslope within the cell, [m] 
+     real(r8), pointer :: hslpsqrt(:)  ! sqrt of slope of hillslope, [-]
+     real(r8), pointer :: hlen(:)      ! length of hillslope within the cell, [m]
 
      ! subnetwork channel properties
      real(r8), pointer :: tslp(:)      ! average slope of tributaries, [-]
-     real(r8), pointer :: tslpsqrt(:)  ! sqrt of average slope of tributaries, [-] 
-     real(r8), pointer :: tlen(:)      ! length of all sub-network reach within the cell, [m] 
+     real(r8), pointer :: tslpsqrt(:)  ! sqrt of average slope of tributaries, [-]
+     real(r8), pointer :: tlen(:)      ! length of all sub-network reach within the cell, [m]
      real(r8), pointer :: twidth(:)    ! bankfull width of the sub-reach, [m]
      real(r8), pointer :: twidth0(:)   ! unadjusted twidth
-     real(r8), pointer :: nt(:)        ! manning's roughness of the subnetwork at hillslope  
+     real(r8), pointer :: nt(:)        ! manning's roughness of the subnetwork at hillslope
 
      ! main channel properties
      real(r8), pointer :: rlen(:)      ! length of main river reach, [m]
      real(r8), pointer :: rslp(:)      ! slope of main river reach, [-]
-     real(r8), pointer :: rslpsqrt(:)  ! sqrt of slope of main river reach, [-] 
+     real(r8), pointer :: rslpsqrt(:)  ! sqrt of slope of main river reach, [-]
      real(r8), pointer :: rwidth(:)    ! bankfull width of main reach, [m]
      real(r8), pointer :: rwidth0(:)   ! total width of the flood plain, [m]
      real(r8), pointer :: rdepth(:)    ! bankfull depth of river cross section, [m]
@@ -183,9 +167,9 @@ module RunoffMod
      integer , pointer :: dnID(:)      ! IDs of the downstream units, corresponding to the subbasin ID in the input table
      integer , pointer :: nUp(:)       ! number of upstream units, maximum 8
      integer , pointer :: iUp(:,:)     ! IDs of upstream units, corresponding to the subbasin ID in the input table
-  
+
      integer , pointer :: indexDown(:) ! indices of the downstream units in the ID array. sometimes subbasins IDs may not be continuous
-  
+
      integer , pointer :: numDT_r(:)   ! for a main reach, the number of sub-time-steps needed for numerical stability
      integer , pointer :: numDT_t(:)   ! for a subnetwork reach, the number of sub-time-steps needed for numerical stability
      real(r8), pointer :: phi_r(:)     ! the indicator used to define numDT_r
@@ -230,7 +214,7 @@ module RunoffMod
 
      ! main channel
      !! states
-     real(r8), pointer :: rarea(:,:)   ! area of channel water surface, [m2] 
+     real(r8), pointer :: rarea(:,:)   ! area of channel water surface, [m2]
      real(r8), pointer :: wr(:,:)      ! storage of surface water, [m3]
      real(r8), pointer :: dwr(:,:)     ! change of water storage, [m3]
      real(r8), pointer :: yr(:,:)      ! water depth. [m]
@@ -263,14 +247,14 @@ module RunoffMod
      real(r8), pointer :: k4(:,:)
   end type TstatusFlux
   !== Hongyi
- 
+
   ! parameters to be calibrated. Ideally, these parameters are supposed to be uniform for one region
   public :: Tparameter
   type Tparameter
      real(r8), pointer :: c_nr(:)       ! coefficient to adjust the manning's roughness of channels
      real(r8), pointer :: c_nh(:)       ! coefficient to adjust the manning's roughness of overland flow across hillslopes
      real(r8), pointer :: c_twid(:)     ! coefficient to adjust the width of sub-reach channel
-  end type Tparameter 
+  end type Tparameter
 
   !== Hongyi
   type (Tcontrol)    , public :: Tctl
@@ -334,7 +318,7 @@ contains
              rtmCTL%wt(begr:endr,nt_rtm),         &
              rtmCTL%wr(begr:endr,nt_rtm),         &
              rtmCTL%erout(begr:endr,nt_rtm),      &
-             rtmCTL%qsur(begr:endr,nt_rtm),       & 
+             rtmCTL%qsur(begr:endr,nt_rtm),       &
              rtmCTL%qsub(begr:endr,nt_rtm),       &
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
              rtmCTL%qirrig(begr:endr),            &

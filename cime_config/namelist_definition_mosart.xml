@@ -61,20 +61,6 @@
     </desc>
   </entry>
 
-  <entry id="smat_option">
-    <type>char</type>
-    <category>mosart</category>
-    <group>mosart_inparm</group>
-    <valid_values>opt,Xonly,Yonly</valid_values>
-    <values>
-      <value>Xonly</value>
-    </values>
-    <desc>
-      sparse matrix mct setting.  Xonly is bfb on different pe counts,
-      opt and Yonly might involve partial sums
-    </desc>
-  </entry>
-
   <entry id="decomp_option">
     <type>char</type>
     <category>mosart</category>
