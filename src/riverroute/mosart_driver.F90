@@ -32,6 +32,7 @@ module mosart_driver
                                    pio_subsystem
    use pio                , only : file_desc_t
    use mpi
+   use shr_lnd2rof_tracers_mod, only : shr_lnd2rof_tracers_readnl
 
    implicit none
    private
@@ -46,8 +47,6 @@ module mosart_driver
    integer :: coupling_period ! mosart coupling period
    integer :: delt_mosart     ! mosart internal timestep (->nsub)
    logical :: use_halo_option ! enable halo capability using ESMF
-   character(len=CS) :: mosart_tracers    ! colon delimited string of tracer names
-   character(len=CS) :: mosart_euler_calc ! colon delimited string of logicals for using Euler  algorithm
 
    ! subcycling
    integer   :: nsub_save ! previous nsub
@@ -79,7 +78,11 @@ contains
       integer           :: ier       ! error code
       integer           :: unitn     ! unit for namelist file
       logical           :: lexist    ! File exists
+      integer           :: nliq_tracers
+      integer           :: ntracers
       character(len=CS) :: runtyp(4) ! run type
+      character(len=CS) :: liquid_extra_tracers
+      character(len=CS) :: lnd2rof_tracers
       logical, allocatable :: do_euler_calc(:) ! turn on euler algorithm
       character(len=*),parameter :: subname = '(mosart_read_namelist) '
       !-----------------------------------------------------------------------
@@ -91,7 +94,7 @@ contains
       namelist /mosart_inparm / frivinp, finidat, nrevsn, coupling_period, ice_runoff, &
            ndens, mfilt, nhtfrq, fincl1,  fincl2, fincl3, fexcl1,  fexcl2, fexcl3, &
            avgflag_pertape, decomp_option, bypass_routing_option, qgwl_runoff_option, &
-           use_halo_option, delt_mosart, mosart_tracers, mosart_euler_calc
+           use_halo_option, delt_mosart
 
       ! Preset values
       ice_runoff  = .true.
@@ -103,8 +106,6 @@ contains
       bypass_routing_option = 'direct_in_place'
       qgwl_runoff_option = 'threshold'
       use_halo_option = .false.
-      mosart_tracers = 'LIQ:ICE'
-      mosart_euler_calc = 'T:F'
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
@@ -145,14 +146,21 @@ contains
       call mpi_bcast (fincl2, (max_namlen+2)*size(fincl2), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (fincl3, (max_namlen+2)*size(fincl3), MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (avgflag_pertape, size(avgflag_pertape), MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (mosart_tracers, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
-      call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
+
+      ! lnd2rof liquid tracers (other than water)
+      call shr_lnd2rof_tracers_readnl('drv_flds_in', lnd2rof_tracers)
 
       ! Determine number of tracers and array of tracer names
-      ctl%ntracers = shr_string_listGetNum(mosart_tracers)
-      allocate(ctl%tracer_names(ctl%ntracers))
-      do i = 1,ctl%ntracers
-         call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
+      nliq_tracers = shr_string_listGetNum(lnd2rof_tracers) + 1 ! extra 1 for liquid water
+      ctl%ntracers = nliq_tracers + 1 ! extra 1 for ice
+      ntracers = ctl%ntracers
+
+      allocate(ctl%tracer_names(ntracers))
+      ctl%tracer_names(ntracers) = 'ICE'
+      ctl%tracer_names(1) = 'LIQ'
+      do i = 2,nliq_tracers
+         ! Note that i-1 is the index in the string - since it refers only to non-water tracers
+         call shr_string_listGetName(lnd2rof_tracers, i-1, ctl%tracer_names(i))
       end do
 
       runtyp(:)               = 'missing'
@@ -162,15 +170,18 @@ contains
 
       if (mainproc) then
          write(iulog,*) 'define run:'
-         write(iulog,'(a)'   ) '   run type              = '//trim(runtyp(nsrest+1))
-         write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
-         write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
-         write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
-         write(iulog,'(a,l)' ) '   use_halo_optoin       = ',use_halo_option
-         write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
-         write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
-         write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
-         write(iulog,'(a)'   ) '   mosart euler calc     = '//trim(mosart_euler_calc)
+         write(iulog,'(a)'   ) '   run type                  = '//trim(runtyp(nsrest+1))
+         write(iulog,'(a,i8)') '   coupling_period           = ',coupling_period
+         write(iulog,'(a,i8)') '   delt_mosart               = ',delt_mosart
+         write(iulog,'(a)'   ) '   decomp option             = '//trim(decomp_option)
+         write(iulog,'(a,l)' ) '   use_halo_optoin           = ',use_halo_option
+         write(iulog,'(a)'   ) '   bypass_routing option     = '//trim(bypass_routing_option)
+         write(iulog,'(a)'   ) '   qgwl runoff option        = '//trim(qgwl_runoff_option)
+         if (nliq_tracers == 1) then
+            write(iulog,'(a)'   ) '   non-water liquid  tracers = none'
+         else
+            write(iulog,'(a)'   ) '   non-water liquid  tracers = '//trim(lnd2rof_tracers)
+         end if
          if (nsrest == nsrStartup .and. finidat /= ' ') then
             write(iulog,'(a)') '   mosart initial data   = '//trim(finidat)
          end if
@@ -330,7 +341,7 @@ contains
       call TRunoff%Init(begr, endr, ntracers)
 
       call Tunit%Init(begr, endr, ntracers, &
-           mosart_euler_calc, ctl%nlon, ctl%nlat, Emesh, trim(frivinp), IDKey, &
+           ctl%nlon, ctl%nlat, Emesh, trim(frivinp), IDKey, &
            Tpara%c_twid, Tctl%DLevelR, ctl%area, ctl%gindex, ctl%outletg, pio_subsystem, rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
@@ -570,16 +581,13 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-----------------------------------------------------
-      !--- all frozen runoff passed direct to outlet
+      !--- all frozen runoff passed directly to outlet
       !-----------------------------------------------------
 
-      nt = 2
       src_direct(:,:) = 0._r8
       dst_direct(:,:) = 0._r8
 
-      ! set euler_calc = false for frozen runoff
-      Tunit%euler_calc(nt) = .false.
-
+      nt = Tunit%nice
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
@@ -601,10 +609,9 @@ contains
       enddo
 
       !-----------------------------------------------------
-      !--- direct to outlet qgwl
+      ! option for direct to outlet liquid qgwl (glaciers, wetlands, lakes)
       !-----------------------------------------------------
 
-      !-- liquid runoff components
       if (trim(bypass_routing_option) == 'direct_to_outlet') then
 
          nt = 1
@@ -642,7 +649,6 @@ contains
       !-----------------------------------------------------
 
       if (trim(bypass_routing_option) == 'direct_in_place') then
-
          nt = 1
          do nr = begr,endr
 
@@ -668,7 +674,6 @@ contains
                endif
             endif
          enddo
-
       endif
 
       !-------------------------------------------------------
@@ -677,6 +682,7 @@ contains
       !-------------------------------------------------------
 
       if (trim(bypass_routing_option) == 'direct_in_place') then
+
          do nt = 1,ntracers
             do nr = begr,endr
 
@@ -700,9 +706,8 @@ contains
                endif
             enddo
          enddo
-      endif
 
-      if (trim(bypass_routing_option) == 'direct_to_outlet') then
+      else if (trim(bypass_routing_option) == 'direct_to_outlet') then
 
          src_direct(:,:) = 0._r8
          dst_direct(:,:) = 0._r8
@@ -728,8 +733,8 @@ contains
                if (Tunit%mask(nr) > 0) then
                   ! mosart euler
                else
-                  src_direct(nt,cnt) = src_direct(nt,cnt) + TRunoff%qsub(nr,nt) + TRunoff%qsur(nr,nt) &
-                       + TRunoff%qgwl(nr,nt)
+                  src_direct(nt,cnt) = src_direct(nt,cnt) &
+                       + TRunoff%qsub(nr,nt) + TRunoff%qsur(nr,nt) + TRunoff%qgwl(nr,nt)
                   TRunoff%qsub(nr,nt) = 0._r8
                   TRunoff%qsur(nr,nt) = 0._r8
                   TRunoff%qgwl(nr,nt) = 0._r8
@@ -748,6 +753,7 @@ contains
                ctl%direct(nr,nt) = ctl%direct(nr,nt) + dst_direct(nt,cnt)
             enddo
          enddo
+
       endif
       call t_stopf('mosartr_SMdirect')
 
@@ -780,7 +786,7 @@ contains
       Tctl%DeltaT = delt
 
       !-----------------------------------
-      ! mosart euler solver
+      ! BUDGET init
       !-----------------------------------
 
       call t_startf('mosartr_budget')
@@ -801,13 +807,17 @@ contains
          enddo
       enddo
 
-      ! Subcycle the call to Euler
+      !-----------------------------------
+      ! mosart euler solver - subcycle the call to Euler
+      !-----------------------------------
+
       call t_startf('mosartr_euler')
       ctl%flow = 0._r8
       ctl%erout_prev = 0._r8
       ctl%eroutup_avg = 0._r8
       ctl%erlat_avg = 0._r8
       do ns = 1,nsub
+
          ! solve the ODEs with Euler algorithm
          call Euler(rc)
          if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -831,7 +841,6 @@ contains
       ctl%erlat_avg   = ctl%erlat_avg   / float(nsub)
 
       ! update states when subsycling completed
-      ! TODO: move of this to hist_set_flds
       ctl%runoff = 0._r8
       ctl%runofflnd = spval
       ctl%runoffocn = spval

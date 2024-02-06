@@ -324,8 +324,7 @@ contains
 
       if ((TRunoff%wr(nr,nt)/theDeltaT + TRunoff%dwr(nr,nt)) < -TINYVALUE) then
          write(iulog,*) 'mosart: ERROR main channel going negative: ', nr, nt
-         write(iulog,*) theDeltaT, TRunoff%wr(nr,nt), &
-              TRunoff%wr(nr,nt)/theDeltaT, TRunoff%dwr(nr,nt), temp_gwl
+         write(iulog,*) theDeltaT, TRunoff%wr(nr,nt), TRunoff%wr(nr,nt)/theDeltaT, TRunoff%dwr(nr,nt), temp_gwl
          write(iulog,*) ' '
       endif
 

@@ -21,6 +21,12 @@ module mosart_tspatialunit_type
 
   type Tspatialunit_type
 
+     ! euler computation
+     logical , pointer :: euler_calc(:) ! flag for calculating tracers in euler
+
+     ! frozen water runoff index
+     integer :: nice
+
      ! grid properties
      integer , pointer :: mask(:)      ! mosart mask of mosart cell, 0=null, 1=land with dnID, 2=outlet
      integer , pointer :: ID0(:)
@@ -32,7 +38,6 @@ module mosart_tspatialunit_type
      real(r8), pointer :: rlenTotal(:) ! length of all reaches, [m]
      real(r8), pointer :: Gxr(:)       ! drainage density within the cell, [1/m]
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
-     logical , pointer :: euler_calc(:) ! flag for calculating tracers in euler
 
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded)
@@ -89,14 +94,13 @@ module mosart_tspatialunit_type
 contains
 
    !-----------------------------------------------------------------------
-   subroutine Init(this, begr, endr, ntracers, mosart_euler_calc, nlon, nlat, EMesh, &
+   subroutine Init(this, begr, endr, ntracers, nlon, nlat, EMesh, &
         frivinp, IDkey, c_twid, DLevelR, area, gindex, outletg, pio_subsystem, rc)
 
       ! Arguments
       class(Tspatialunit_type)            :: this
       integer               , intent(in)  :: begr, endr
       integer               , intent(in)  :: ntracers
-      character(len=*)      , intent(in)  :: mosart_euler_calc
       real(r8)              , intent(in)  :: area(begr:endr)
       integer               , intent(in)  :: nlon, nlat
       character(len=*)      , intent(in)  :: frivinp
@@ -139,19 +143,19 @@ contains
       call pio_initdecomp(pio_subsystem, pio_double, dsizes, compDOF, iodesc_dbl)
       call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compDOF, iodesc_int)
 
+      ! Set ice index
+      this%nice = ntracers
+
+      ! For now assume that frozen runoff is the last tracer
+      ! set euler_calc = false for frozen runoff
       allocate(this%euler_calc(ntracers))
       do n = 1,ntracers
-         call shr_string_listGetName(mosart_euler_calc, n, ctemp)
-         if (trim(ctemp) == 'T') then
-            this%euler_calc = .true.
-         else if (trim(ctemp) == 'F') then
-            this%euler_calc = .false.
+         if (n < ntracers) then
+            this%euler_calc(n) = .true.
          else
-            call shr_sys_abort(trim(subname)//' mosart_euler_calc can only be T or F')
+            this%euler_calc(n) = .false.
          end if
       end do
-
-      this%euler_calc = .true.
 
       allocate(this%frac(begr:endr))
       ier = pio_inq_varid(ncid, name='frac', vardesc=vardesc)

@@ -46,17 +46,17 @@ module mosart_control_type
      real(r8)          :: totarea                    ! global area
 
      ! inputs to MOSART
-     real(r8), pointer :: qsur(:,:) => null()        ! coupler surface forcing [m3/s]
-     real(r8), pointer :: qsub(:,:) => null()        ! coupler subsurface forcing [m3/s]
-     real(r8), pointer :: qgwl(:,:) => null()        ! coupler glacier/wetland/lake forcing [m3/s]
+     real(r8), pointer :: qsur(:,:) => null()        ! surface forcing [m3/s]
+     real(r8), pointer :: qsub(:,:) => null()        ! subsurface forcing [m3/s]
+     real(r8), pointer :: qgwl(:,:) => null()        ! glacier/wetland/lake forcing [m3/s]
 
      ! outputs from MOSART
-     real(r8), pointer :: flood(:) => null()         ! coupler return flood water sent back to clm [m3/s]
-     real(r8), pointer :: runoff(:,:) => null()      ! coupler return mosart basin derived flow [m3/s]
-     real(r8), pointer :: direct(:,:) => null()      ! coupler return direct flow [m3/s]
-     real(r8), pointer :: qirrig(:) => null()        ! coupler irrigation [m3/s]
+     real(r8), pointer :: flood(:) => null()         ! return flood water sent back to clm [m3/s]
+     real(r8), pointer :: runoff(:,:) => null()      ! return mosart basin derived flow [m3/s]
+     real(r8), pointer :: direct(:,:) => null()      ! return direct flow [m3/s]
+     real(r8), pointer :: qirrig(:) => null()        ! irrigation [m3/s]
      real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage
-     real(r8), pointer :: zwt(:) => null()           ! coupler water table depth [m]
+     real(r8), pointer :: zwt(:) => null()           ! water table depth [m]
      real(r8), pointer :: slope(:) => null()         ! slope, using for testing currently
 
      ! storage, runoff

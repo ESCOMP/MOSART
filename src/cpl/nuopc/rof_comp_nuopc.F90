@@ -384,7 +384,7 @@ contains
     ! Now advertise fields
     !----------------------------------------------------------------------------
 
-    call advertise_fields(gcomp, flds_scalar_name, rc)
+    call advertise_fields(gcomp, flds_scalar_name, ctl%ntracers, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !----------------------------------------------------------------------------
@@ -536,7 +536,7 @@ contains
     ! Create MOSART export state
     !--------------------------------
 
-    call export_fields(gcomp, ctl%begr, ctl%endr, rc)
+    call export_fields(gcomp, ctl%begr, ctl%endr, ctl%ntracers, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Set global grid size scalars in export state
@@ -699,7 +699,7 @@ contains
     !--------------------------------
 
     call t_startf ('lc_rof_export')
-    call export_fields(gcomp, ctl%begr, ctl%endr, rc)
+    call export_fields(gcomp, ctl%begr, ctl%endr, ctl%ntracers, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call t_stopf ('lc_rof_export')
 
