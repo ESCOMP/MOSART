@@ -59,7 +59,7 @@ contains
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    integer          , intent(in)  :: ntracers
+    integer          , intent(in)  :: ntracers ! total number of tracers
     integer          , intent(out) :: rc
 
     ! local variables
@@ -83,7 +83,11 @@ contains
     !--------------------------------
 
     call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
-    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl', ungridded_lbound=1, ungridded_ubound=ntracers-1)
+    if (ntracers > 2) then
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl', ungridded_lbound=1, ungridded_ubound=ntracers-1)
+    else
+       call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
+    end if
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
@@ -109,7 +113,11 @@ contains
     !--------------------------------
 
     call fldlist_add(fldsToRof_num, fldsToRof, trim(flds_scalar_name))
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur', ungridded_lbound=1, ungridded_ubound=ntracers-1)
+    if (ntracers > 2) then
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur', ungridded_lbound=1, ungridded_ubound=ntracers-1)
+    else
+       call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsur')
+    end if
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofgwl')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
@@ -246,9 +254,7 @@ contains
     type(ESMF_State) :: importState
     integer          :: n,nt
     integer          :: nliq, nfrz, nno3, nh2o
-    integer          :: begg, endg
     integer          :: ntracers_liq, ntracers_tot
-    real(r8), pointer:: fld2d(:,:)
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
 
@@ -259,50 +265,49 @@ contains
     call NUOPC_ModelGet(gcomp, importState=importState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    begg = ctl%begr
-    endg = ctl%endr
+    ! Set indices - note that ntracers_liq is the number of additional non-water liquid tracers
     ntracers_tot = ctl%ntracers
-    ntracers_liq = ctl%ntracers - 1
-
-    ! Set tracers
     nliq = 1
     nfrz = ntracers_tot
+    ntracers_liq = ntracers_tot - nliq - 1
 
     ! determine output array and scale by unit convertsion
     ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
     ! NOTE: all liquid tracers need to come BEFORE the ice tracers -
 
-    allocate(fld2d(ntracers_liq, begg:endg))
-    call state_getimport2d(importState, 'Flrl_rofsur', begr, endr, ntracers_liq, ctl%area, output=fld2d, &
+    if (ntracers_liq > 0) then
+       call state_getimport2d(importState, 'Flrl_rofsur', ctl%area, output=ctl%qsur(:,1:ntracers_tot-1), &
+            do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else
+       call state_getimport1d(importState, 'Flrl_rofsur', ctl%area, output=ctl%qsur(:,nliq), &
+            do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
+
+    call state_getimport1d(importState, 'Flrl_rofsub', ctl%area, output=ctl%qsub(:,nliq), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    do n = 1,ntracers_liq
-       ctl%qsur(begg:endg,n) = fld2d(n,begg:endg)
-       if (n > 1) then
-          ctl%qsub(begg:endg,n) = 0._r8
-          ctl%qgwl(begg:endg,n) = 0._r8
-       end if
-    end do
-    deallocate(fld2d)
-
-    call state_getimport1d(importState, 'Flrl_rofsub', begr, endr, ctl%area, output=ctl%qsub(:,nliq), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call state_getimport1d(importState, 'Flrl_rofgwl', begr, endr, ctl%area, output=ctl%qgwl(:,nliq), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call state_getimport1d(importState, 'Flrl_rofi', begr, endr, ctl%area, output=ctl%qsur(:,nfrz), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call state_getimport1d(importState, 'Flrl_irrig', begr, endr, ctl%area, output=ctl%qirrig(:), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
+    if (ntracers_liq > 0) then
+       ctl%qsub(begr:endr,2:ntracers_liq+1) = 0._r8
+    end if
     ctl%qsub(begr:endr, nfrz) = 0.0_r8
+
+    call state_getimport1d(importState, 'Flrl_rofgwl', ctl%area, output=ctl%qgwl(:,nliq), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (ntracers_liq > 0) then
+       ctl%qgwl(begr:endr,2:ntracers_liq+1) = 0._r8
+    end if
     ctl%qgwl(begr:endr, nfrz) = 0.0_r8
+
+    call state_getimport1d(importState, 'Flrl_rofi', ctl%area, output=ctl%qsur(:,nfrz), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_getimport1d(importState, 'Flrl_irrig', ctl%area, output=ctl%qirrig(:), &
+         do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
   end subroutine import_fields
 
@@ -341,11 +346,6 @@ contains
     call NUOPC_ModelGet(gcomp, exportState=exportState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ! Set tracers
-    nliq = 1
-    nfrz = ntracers_tot
-    ntracers_liq = ntracers_tot - 1
-
     if (first_time) then
        if (mainproc) then
           if ( ice_runoff )then
@@ -357,16 +357,23 @@ contains
        first_time = .false.
     end if
 
+    ! Set tracers
+    nliq = 1
+    nfrz = ntracers_tot
+    ntracers_liq = ntracers_tot - 2
+
+    ! Non-ice liquid runoff
+    do nt = 1,ntracers_liq + 1
+       do n = begr,endr
+          rofl(n,nt) =  ctl%direct(n,nt) / (ctl%area(n)*0.001_r8)
+          if (ctl%mask(n) >= 2) then
+             rofl(n,nt) = rofl(n,nt) + ctl%runoff(n,nt) / (ctl%area(n)*0.001_r8)
+          end if
+       end do
+    end do
+
     if ( ice_runoff )then
        ! liquid and ice runoff are treated separately - this is what goes to the ocean
-       do nt = 1,ntracers_liq
-          do n = begr,endr
-             rofl(n,nt) =  ctl%direct(n,nt) / (ctl%area(n)*0.001_r8)
-             if (ctl%mask(n) >= 2) then
-                rofl(n,nt) = rofl(n,nt) + ctl%runoff(n,nt) / (ctl%area(n)*0.001_r8)
-             end if
-          end do
-       end do
        do n = begr,endr
           rofi(n) =  ctl%direct(n,nfrz) / (ctl%area(n)*0.001_r8)
           if (ctl%mask(n) >= 2) then
@@ -400,27 +407,31 @@ contains
         end if
     end do
 
-    ! minus 1 below to only include liquid tracers
-    call state_setexport2d(exportState, 'Forr_rofl', begr, endr, ntracers_liq, input=rofl, do_area_correction=.true., rc=rc)
+    if (ntracers_liq > 0) then
+       call state_setexport2d(exportState, 'Forr_rofl', input=rofl, do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else
+       call state_setexport1d(exportState, 'Forr_rofl', input=rofl(:,1), do_area_correction=.true., rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
+
+    call state_setexport1d(exportState, 'Forr_rofi', input=rofi, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport1d(exportState, 'Forr_rofi', begr, endr, input=rofi, do_area_correction=.true., rc=rc)
+    call state_setexport1d(exportState, 'Flrr_flood', input=flood, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport1d(exportState, 'Flrr_flood', begr, endr, input=flood, do_area_correction=.true., rc=rc)
+    call state_setexport1d(exportState, 'Flrr_volr', input=volr, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_setexport1d(exportState, 'Flrr_volr', begr, endr, input=volr, do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call state_setexport1d(exportState, 'Flrr_volrmch', begr, endr, input=volrmch, do_area_correction=.true., rc=rc)
+    call state_setexport1d(exportState, 'Flrr_volrmch', input=volrmch, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if ( flds_r2l_stream_channel_depths ) then
-       call state_setexport1d(exportState, 'Sr_tdepth', begr, endr, input=tdepth, do_area_correction=.true., rc=rc)
+       call state_setexport1d(exportState, 'Sr_tdepth', input=tdepth, do_area_correction=.true., rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       call state_setexport1d(exportState, 'Sr_tdepth_max', begr, endr, input=tdepth_max, do_area_correction=.true., rc=rc)
+       call state_setexport1d(exportState, 'Sr_tdepth_max', input=tdepth_max, do_area_correction=.true., rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
@@ -562,7 +573,7 @@ contains
   end subroutine fldlist_realize
 
   !===============================================================================
-  subroutine state_getimport1d(state, fldname, begr, endr, area, output, do_area_correction, rc)
+  subroutine state_getimport1d(state, fldname, area, output, do_area_correction, rc)
 
     ! ----------------------------------------------
     ! Map import state field to output array
@@ -573,11 +584,9 @@ contains
     ! input/output variables
     type(ESMF_State)    , intent(in)    :: state
     character(len=*)    , intent(in)    :: fldname
-    integer             , intent(in)    :: begr
-    integer             , intent(in)    :: endr
-    real(r8)            , intent(in)    :: area(begr:endr)
+    real(r8)            , intent(in)    :: area(:)
     logical             , intent(in)    :: do_area_correction
-    real(r8)            , intent(out)   :: output(begr:endr)
+    real(r8)            , intent(out)   :: output(:)
     integer             , intent(out)   :: rc
 
     ! local variables
@@ -605,14 +614,14 @@ contains
     if (do_area_correction) then
        fldptr1d(:) = fldptr1d(:) * med2mod_areacor(:)
     end if
-    do g = begr,endr
-       output(g) = fldptr1d(g-begr+1) * area(g)*0.001_r8
+    do g = 1,size(output)
+       output(g) = fldptr1d(g) * area(g)*0.001_r8
     end do
 
  end subroutine state_getimport1d
 
   !===============================================================================
-  subroutine state_getimport2d(state, fldname, begr, endr, ntracers, area, output, do_area_correction, rc)
+  subroutine state_getimport2d(state, fldname, area, output, do_area_correction, rc)
 
     ! ----------------------------------------------
     ! Map import state field to output array
@@ -623,17 +632,14 @@ contains
     ! input/output variables
     type(ESMF_State)    , intent(in)    :: state
     character(len=*)    , intent(in)    :: fldname
-    integer             , intent(in)    :: begr
-    integer             , intent(in)    :: endr
-    integer             , intent(in)    :: ntracers
-    real(r8)            , intent(in)    :: area(begr:endr)
+    real(r8)            , intent(in)    :: area(:)
     logical             , intent(in)    :: do_area_correction
-    real(r8)            , intent(out)   :: output(begr:endr,ntracers)
+    real(r8)            , intent(out)   :: output(:,:)
     integer             , intent(out)   :: rc
 
     ! local variables
     type(ESMF_Field)  :: lfield
-    integer           :: g, i, nt
+    integer           :: g, nt
     real(R8), pointer :: fldptr2d(:,:)
     character(len=*), parameter :: subname='(rof_import_export:state_getimport2d)'
     ! ----------------------------------------------
@@ -653,12 +659,14 @@ contains
     end if
 
     if (do_area_correction) then
-        fldptr2d(ntracers,:) = fldptr2d(ntracers,:) * med2mod_areacor(:)
+       do nt = 1,size(fldptr2d, dim=2)
+          fldptr2d(:,nt) = fldptr2d(:,nt) * med2mod_areacor(:)
+       end do
     end if
 
-    do nt = 1,ntracers
-       do g = begr,endr
-          output(g,nt) = fldptr2d(nt,g-begr+1) * area(g)*0.001_r8
+    do nt = 1,size(output, dim=2)
+       do g = 1, size(output, dim=1)
+          output(g,nt) = fldptr2d(nt,g) * area(g)*0.001_r8
        end do
     end do
 
@@ -666,7 +674,7 @@ contains
 
   !===============================================================================
 
-  subroutine state_setexport1d(state, fldname, begr, endr, input, do_area_correction, rc)
+  subroutine state_setexport1d(state, fldname, input, do_area_correction, rc)
 
     ! ----------------------------------------------
     ! Map input array to export state field
@@ -678,9 +686,7 @@ contains
     ! input/output variables
     type(ESMF_State)    , intent(inout) :: state
     character(len=*)    , intent(in)    :: fldname
-    integer             , intent(in)    :: begr
-    integer             , intent(in)    :: endr
-    real(r8)            , intent(in)    :: input(begr:endr)
+    real(r8)            , intent(in)    :: input(:)
     logical             , intent(in)    :: do_area_correction
     integer             , intent(out)   :: rc
 
@@ -708,8 +714,8 @@ contains
 
     ! set fldptr1d values to input array
     fldptr1d(:) = 0._r8
-    do g = begr,endr
-       fldptr1d(g-begr+1) = input(g)
+    do g = 1,size(input)
+       fldptr1d(g) = input(g)
     end do
     if (do_area_correction) then
        fldptr1d(:) = fldptr1d(:) * mod2med_areacor(:)
@@ -719,7 +725,7 @@ contains
 
   !===============================================================================
 
-  subroutine state_setexport2d(state, fldname, begr, endr, ntracers, input, do_area_correction, rc)
+  subroutine state_setexport2d(state, fldname, input, do_area_correction, rc)
 
     ! ----------------------------------------------
     ! Map input array to export state field
@@ -731,16 +737,13 @@ contains
     ! input/output variables
     type(ESMF_State)    , intent(inout) :: state
     character(len=*)    , intent(in)    :: fldname
-    integer             , intent(in)    :: begr
-    integer             , intent(in)    :: endr
-    integer             , intent(in)    :: ntracers
-    real(r8)            , intent(in)    :: input(begr:endr,ntracers)
+    real(r8)            , intent(in)    :: input(:,:)
     logical             , intent(in)    :: do_area_correction
     integer             , intent(out)   :: rc
 
     ! local variables
     type(ESMF_Field)            :: lfield
-    integer                     :: g, i, nt
+    integer                     :: g, nt
     real(R8), pointer           :: fldptr2d(:,:)
     character(len=*), parameter :: subname='(rof_import_export:state_setexport2d)'
     ! ----------------------------------------------
@@ -762,9 +765,9 @@ contains
 
     ! set fldptr2d values to input array
     fldptr2d(:,:) = 0._r8
-    do nt = 1,ntracers
-       do g = begr,endr
-          fldptr2d(nt,g-begr+1) = input(g,nt)
+    do nt = 1,size(fldptr2d, dim=2)
+       do g = 1,size(fldptr2d, dim=1)
+          fldptr2d(nt,g) = input(g,nt)
        end do
        if (do_area_correction) then
           fldptr2d(nt,:) = fldptr2d(nt,:) * mod2med_areacor(:)
