@@ -58,7 +58,7 @@ contains
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
     character(len=*) , intent(in)  :: flds_scalar_name
-    logical          , intent(in)  :: do_rtmflood
+    logical          , intent(in)  :: do_rtmflood       ! Flooding is active
     integer          , intent(out) :: rc
 
     ! local variables

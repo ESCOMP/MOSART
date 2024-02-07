@@ -46,9 +46,8 @@ module RtmMod
    public :: MOSART_init1         ! Initialize MOSART grid
    public :: MOSART_init2         ! Initialize MOSART maps
    public :: MOSART_run           ! River routing model
-
-   ! private member functions
-   private :: MOSART_FloodInit
+   !
+   ! !PRIVATE MEMBER FUNCTIONS:
    private :: MOSART_SubTimestep
 
    ! MOSART tracers
@@ -83,7 +82,8 @@ module RtmMod
    real(r8),pointer :: rlonw(:)    ! longitude of 1d west grid cell edge (deg)
    real(r8),pointer :: rlone(:)    ! longitude of 1d east grid cell edge (deg)
 
-   logical :: do_rtmflood
+   logical :: do_rtmflood          ! Turn flooding on
+
    character(len=256) :: nlfilename_rof = 'mosart_in'
    character(len=256) :: fnamer      ! name of netcdf restart file
    character(*), parameter :: u_FILE_u = &
@@ -94,11 +94,11 @@ contains
 
    !-----------------------------------------------------------------------
    subroutine MOSART_read_namelist(flood_active)
-      !
       ! Read and distribute mosart namelist
       !
-      ! arguments
       logical, intent(out) :: flood_active
+      !
+      ! Read and distribute mosart namelist
       !
       ! local variables
       integer           :: i
@@ -123,7 +123,6 @@ contains
            delt_mosart
 
       ! Preset values
-      do_rtmflood = .false.
       ice_runoff  = .true.
       finidat_rtm = ' '
       nrevsn_rtm  = ' '
@@ -161,8 +160,8 @@ contains
       call mpi_bcast (decomp_option         , len(decomp_option)         , MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (bypass_routing_option , len(bypass_routing_option) , MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (qgwl_runoff_option    , len(qgwl_runoff_option)    , MPI_CHARACTER, 0, mpicom_rof, ier)
-
       call mpi_bcast (do_rtmflood, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
+
       call mpi_bcast (ice_runoff,  1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
       call mpi_bcast (rtmhist_nhtfrq, size(rtmhist_nhtfrq), MPI_INTEGER,   0, mpicom_rof, ier)
@@ -905,7 +904,6 @@ contains
       if (do_rtmflood) then
          write(iulog,*) subname,' Flood not validated in this version, abort'
          call shr_sys_abort(subname//' Flood feature unavailable')
-         call MOSART_FloodInit (frivinp_rtm, rtmCTL%begr, rtmCTL%endr, rtmCTL%fthresh, evel)
       else
          effvel(:) = effvel0  ! downstream velocity (m/s)
          rtmCTL%fthresh(:) = abs(spval)
@@ -2222,85 +2220,6 @@ contains
       call t_stopf('mosartr_tot')
 
    end subroutine MOSART_run
-
-   !-----------------------------------------------------------------------
-
-   subroutine MOSART_FloodInit(frivinp, begr, endr, fthresh, evel )
-
-      ! Arguments
-      character(len=*) , intent(in)  :: frivinp
-      integer          , intent(in)  :: begr, endr
-      real(r8)         , intent(out) :: fthresh(begr:endr)
-      real(r8)         , intent(out) :: evel(begr:endr,nt_rtm)
-
-      ! Local variables
-      real(r8), pointer  :: rslope(:)
-      real(r8), pointer  :: max_volr(:)
-      integer , pointer  :: compdof(:) ! computational degrees of freedom for pio
-      integer            :: nt,n,cnt   ! indices
-      logical            :: readvar    ! read variable in or not
-      integer            :: ier        ! status variable
-      integer            :: dids(2)    ! variable dimension ids
-      type(file_desc_t)  :: ncid       ! pio file desc
-      type(var_desc_t)   :: vardesc    ! pio variable desc
-      type(io_desc_t)    :: iodesc     ! pio io desc
-      character(len=256) :: locfn      ! local file name
-
-      ! MOSART Flood variables for spatially varying celerity
-      real(r8) :: effvel(nt_rtm) = 0.7_r8   ! downstream velocity (m/s)
-      real(r8) :: min_ev(nt_rtm) = 0.35_r8  ! minimum downstream velocity (m/s)
-      real(r8) :: fslope = 1.0_r8           ! maximum slope for which flooding can occur
-      character(len=*),parameter :: subname = '(MOSART_FloodInit) '
-      !-----------------------------------------------------------------------
-
-      allocate(rslope(begr:endr), max_volr(begr:endr), stat=ier)
-      if (ier /= 0) call shr_sys_abort(subname // ' allocation ERROR')
-
-      ! Assume that if SLOPE is on river input dataset so is MAX_VOLR and that
-      ! both have the same io descriptor
-
-      call getfil(frivinp, locfn, 0 )
-      call ncd_pio_openfile (ncid, trim(locfn), 0)
-      call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
-      ier = pio_inq_varid(ncid, name='SLOPE', vardesc=vardesc)
-      if (ier /= PIO_noerr) then
-         if (mainproc) write(iulog,*) subname//' variable SLOPE is not on dataset'
-         readvar = .false.
-      else
-         readvar = .true.
-      end if
-      call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
-      if (readvar) then
-         ier = pio_inq_vardimid(ncid, vardesc, dids)
-         allocate(compdof(rtmCTL%lnumr))
-         cnt = 0
-         do n = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            compDOF(cnt) = rtmCTL%gindex(n)
-         enddo
-         call pio_initdecomp(pio_subsystem, pio_double, dids, compDOF, iodesc)
-         deallocate(compdof)
-         ! tcraig, there ia bug here, shouldn't use same vardesc for two different variable
-         call pio_read_darray(ncid, vardesc, iodesc, rslope, ier)
-         call pio_read_darray(ncid, vardesc, iodesc, max_volr, ier)
-         call pio_freedecomp(ncid, iodesc)
-      else
-         rslope(:)   = 1._r8
-         max_volr(:) = spval
-      end if
-      call pio_closefile(ncid)
-
-      do nt = 1,nt_rtm
-         do n = rtmCTL%begr, rtmCTL%endr
-            fthresh(n) = 0.95*max_volr(n)*max(1._r8,rslope(n))
-            ! modify velocity based on gridcell average slope (Manning eqn)
-            evel(n,nt) = max(min_ev(nt),effvel(nt_rtm)*sqrt(max(0._r8,rslope(n))))
-         end do
-      end do
-
-      deallocate(rslope, max_volr)
-
-   end subroutine MOSART_FloodInit
 
    !----------------------------------------------------------------------------
 
