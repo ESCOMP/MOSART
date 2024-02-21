@@ -110,7 +110,8 @@
       <value>UNSET</value>
     </values>
     <desc>
-      Full pathname of initialfile
+      Full pathname of initial conditions file. If blank or UNSET Mosart will startup from
+      cold start initial conditions.
     </desc>
   </entry>
 

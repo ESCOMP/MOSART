@@ -166,7 +166,7 @@ contains
          write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
          write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
          write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
-         write(iulog,'(a,l)' ) '   use_halo_optoin       = ',use_halo_option
+         write(iulog,'(a,l)' ) '   use_halo_option       = ',use_halo_option
          write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
          write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
          write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
@@ -386,6 +386,7 @@ contains
       ! Local variables
       ! BUDGET terms 1-10 are for volumes (m3)
       ! BUDGET terms 11-30 are for flows (m3/s)
+      ! even (2n) budget terms refer to current state odd terms (2n-1) rever to previous state.
       integer            :: i, j, n, nr, ns, nt, n2, nf ! indices
       real(r8)           :: budget_terms(30,ntracers)   ! BUDGET terms
       real(r8)           :: budget_input
