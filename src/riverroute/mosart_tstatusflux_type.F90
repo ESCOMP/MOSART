@@ -38,7 +38,6 @@ module mosart_tstatusflux_type
       real(r8), pointer :: vt(:,:)      ! flow velocity, [m/s]
       real(r8), pointer :: tt(:,:)      ! mean travel time of the water within the channel, [s]
       !! fluxes
-      real(r8), pointer :: tevap(:,:)   ! evaporation, [m/s]
       real(r8), pointer :: etin(:,:)    ! lateral inflow from hillslope, including surface and subsurface runoff generation components, [m3/s]
       real(r8), pointer :: etout(:,:)   ! discharge from sub-network into the main reach, [m3/s]
 
@@ -54,7 +53,6 @@ module mosart_tstatusflux_type
       real(r8), pointer :: vr(:,:)      ! flow velocity, [m/s]
       real(r8), pointer :: tr(:,:)      ! mean travel time of the water within the channel, [s]
       !! exchange fluxes
-      real(r8), pointer :: erlg(:,:)        ! evaporation, [m/s]
       real(r8), pointer :: erlateral(:,:)   ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
       real(r8), pointer :: erin(:,:)        ! inflow from upstream links, [m3/s]
       real(r8), pointer :: erout(:,:)       ! outflow into downstream links, [m3/s]
@@ -140,8 +138,6 @@ contains
       this%vr = 0._r8
       allocate (this%tr(begr:endr,ntracers))
       this%tr = 0._r8
-      allocate (this%erlg(begr:endr,ntracers))
-      this%erlg = 0._r8
       allocate (this%erlateral(begr:endr,ntracers))
       this%erlateral = 0._r8
       allocate (this%erin(begr:endr,ntracers))
