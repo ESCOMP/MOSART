@@ -67,7 +67,6 @@ module rof_comp_nuopc
   integer                 :: flds_scalar_index_ny = 0
   integer                 :: flds_scalar_index_nextsw_cday = 0._r8
   integer                 :: nthrds
-
   integer     , parameter :: debug = 1
   character(*), parameter :: modName =  "(rof_comp_nuopc)"
   character(*), parameter :: u_FILE_u = &

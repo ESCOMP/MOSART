@@ -1,4 +1,52 @@
 ===============================================================
+Tag name:  mosart1_0_49
+Originator(s): mvertens
+Date: Feb 02, 2024
+One-line Summary: Remove MCT, some cleanup and high level refactoring
+
+Removes all MCT references from the code and replaces them with ESMF routehandles and mapping calls
+major changes to RtmMod.F90 along with other code cleanup described below
+
+RtmVar
+Now contains new ESMF data types needed for the MOSART mapping
+       type(ESMF_Field)       , public :: srcField
+       type(ESMF_Field)       , public :: dstField
+       type(ESMF_RouteHandle) , public :: rh_dnstream
+       type(ESMF_RouteHandle) , public :: rh_direct
+       type(ESMF_RouteHandle) , public :: rh_eroutUp
+
+RtmMod:
+now have two new init phases for mosart. The first init phase is now called MOSART_init1 and replaces Rtmini. This has mostly what was there before but moves the creation of all routehandles to the second init phase - MOSART_init2 which must be called after the mesh has been read in. Also - moved the section of code for MOSART_init2 to be right below the section for MOSART_init1.
+removed the mapping for Smatp_dnstrm since it was not used and there is no reason to create a map that is not needed. The associated code that was commented out for this has also been removed.
+renamed RtmRun to MOSART_run
+new indentation
+MOSART_physics.F90
+now using the computed routehandle rh_eroutUp
+new indentation
+Removed namelist variable do_rtmflood and xml variable MOSART_FLOOD_MODE. Also removed subroutine MOSART_FloodInit in RtmMod.F90 which was never activated and in fact the model aborted if you tried to invoke it.
+Verified that this was no longer needed in consult with @swensosc.
+masterproc -> mainproc
+updated the MOSART testlist for derecho and betzy (betzy is a NorESM platform) and added a PFS test
+
+Issues resolved:
+  Resolves #65 -- Remove MCT
+  Resolves #75 -- masterproc to mainproc
+  Resolves #73 -- testlist to Derecho
+  Resolved #85 -- Remove RtmFileUtils
+
+Testing: standard testing
+  izumi -- PASS
+  cheyenne -- PASS  (following change answers but determined to be OK)
+ERP_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-qgrwlOpts
+PEM_D.f10_f10_mg37.I1850Clm50Sp.derecho_intel.mosart-inplacethreshold
+SMS_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-decompOpts
+
+(first two due to baseline not having history output, so rerunning shows b4b)
+(Last one shows roundoff level answer changes)
+
+See https://github.com/ESCOMP/MOSART/pull/74 for more details
+
+===============================================================
 Tag name:  mosart1_0_48
 Originator(s): erik
 Date: Nov 13, 2022
