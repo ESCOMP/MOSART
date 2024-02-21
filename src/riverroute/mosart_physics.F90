@@ -10,7 +10,7 @@ module mosart_physics
    use shr_kind_mod      , only : r8 => shr_kind_r8
    use shr_const_mod     , only : SHR_CONST_REARTH, SHR_CONST_PI
    use shr_sys_mod       , only : shr_sys_abort
-   use mosart_vars       , only : iulog, barrier_timers, mpicom_rof
+   use mosart_vars       , only : iulog, barrier_timers, mpicom_rof, bypass_routing_option
    use mosart_data       , only : Tctl, TUnit, TRunoff, TPara, ctl
    use perf_mod          , only : t_startf, t_stopf
    use nuopc_shr_methods , only : chkerr
@@ -287,7 +287,6 @@ contains
    subroutine Routing_KW(nr, nt, theDeltaT)
       !  classic kinematic wave routing method
 
-      use RtmVar            , only : bypass_routing_option
       ! Arguments
       integer, intent(in) :: nr, nt
       real(r8), intent(in) :: theDeltaT
@@ -324,8 +323,7 @@ contains
 
       TRunoff%dwr(nr,nt) = TRunoff%erlateral(nr,nt) + TRunoff%erin(nr,nt) + TRunoff%erout(nr,nt) + temp_gwl
 
-      if((TRunoff%wr(iunit,nt)/theDeltaT + TRunoff%dwr(iunit,nt)) < -TINYVALUE &
-           .and. (trim(bypass_routing_option) /= 'none') ) then
+      if ((TRunoff%wr(nr,nt)/theDeltaT + TRunoff%dwr(nr,nt)) < -TINYVALUE .and. (trim(bypass_routing_option)/='none') ) then
          write(iulog,*) 'mosart: ERROR main channel going negative: ', nr, nt
          write(iulog,*) theDeltaT, TRunoff%wr(nr,nt), &
               TRunoff%wr(nr,nt)/theDeltaT, TRunoff%dwr(nr,nt), temp_gwl
