@@ -448,6 +448,7 @@ contains
       end if
 
       budget_check = .false.
+      !TODO make budget check frequency adjustable
       if (day == 1 .and. mon == 1) budget_check = .true.
       if (tod == 0) budget_check = .true.
       budget_terms = 0._r8
@@ -579,6 +580,7 @@ contains
       dst_direct(:,:) = 0._r8
 
       ! set euler_calc = false for frozen runoff
+      ! TODO: will be reworked after addition of multiple tracers 
       Tunit%euler_calc(nt) = .false.
 
       cnt = 0

@@ -151,6 +151,7 @@ contains
          end if
       end do
 
+      ! TODO: Will be reworked after addition of extra tracers
       this%euler_calc = .true.
 
       allocate(this%frac(begr:endr))
