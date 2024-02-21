@@ -46,21 +46,21 @@ module mosart_control_type
      real(r8)          :: totarea                    ! global area
 
      ! inputs to MOSART
-     real(r8), pointer :: qsur(:,:) => null()        ! coupler surface forcing [m3/s]
-     real(r8), pointer :: qsub(:,:) => null()        ! coupler subsurface forcing [m3/s]
-     real(r8), pointer :: qgwl(:,:) => null()        ! coupler glacier/wetland/lake forcing [m3/s]
+     real(r8), pointer :: qsur(:,:) => null()        ! surface runoff from coupler [m3/s] (lnd)
+     real(r8), pointer :: qsub(:,:) => null()        ! subsurfacer runoff from coupler [m3/s] (lnd)
+     real(r8), pointer :: qgwl(:,:) => null()        ! glacier/wetland/lake runoff from coupler [m3/s] (lnd)
 
      ! outputs from MOSART
-     real(r8), pointer :: flood(:) => null()         ! coupler return flood water sent back to clm [m3/s]
-     real(r8), pointer :: runoff(:,:) => null()      ! coupler return mosart basin derived flow [m3/s]
-     real(r8), pointer :: direct(:,:) => null()      ! coupler return direct flow [m3/s]
-     real(r8), pointer :: qirrig(:) => null()        ! coupler irrigation [m3/s]
-     real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage
+     real(r8), pointer :: flood(:) => null()         ! flood water to coupler [m3/s] (lnd)
+     real(r8), pointer :: runoff(:,:) => null()      ! runoff (from outlet to reach) to coupler [m3/s]
+     real(r8), pointer :: direct(:,:) => null()      ! direct flow to coupler [m3/s]
+     real(r8), pointer :: qirrig(:) => null()        ! irrigation flow to coupler [m3/s]
+     real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage [m3/s]
 
      ! storage, runoff
-     real(r8), pointer :: runofflnd(:,:) => null()   ! runoff masked for land (m3 H2O/s)
-     real(r8), pointer :: runoffocn(:,:) => null()   ! runoff masked for ocn  (m3 H2O/s)
-     real(r8), pointer :: runofftot(:,:) => null()   ! total runoff masked for ocn  (m3 H2O/s)
+     real(r8), pointer :: runofflnd(:,:) => null()   ! runoff masked for land [m3/s]
+     real(r8), pointer :: runoffocn(:,:) => null()   ! runoff masked for ocn  [m3/s]
+     real(r8), pointer :: runofftot(:,:) => null()   ! total runoff masked for ocn  [m3/s]
      real(r8), pointer :: dvolrdt(:,:) => null()     ! change in storage (mm/s)
      real(r8), pointer :: dvolrdtlnd(:,:) => null()  ! dvolrdt masked for land (mm/s)
      real(r8), pointer :: dvolrdtocn(:,:) => null()  ! dvolrdt masked for ocn  (mm/s)
@@ -68,12 +68,12 @@ module mosart_control_type
      real(r8), pointer :: fthresh(:) => null()       ! water flood threshold
 
      ! flux variables
-     real(r8), pointer :: flow(:,:) => null()        ! mosart flow (m3/s)
-     real(r8), pointer :: evel(:,:) => null()        ! effective tracer velocity (m/s)
+     real(r8), pointer :: flow(:,:) => null()        ! stream flow out of gridcell (m3/s)
+     real(r8), pointer :: evel(:,:) => null()        ! effective tracer velocity (m/s) NOT_USED
      real(r8), pointer :: erout_prev(:,:) => null()  ! erout previous timestep (m3/s)
      real(r8), pointer :: eroutup_avg(:,:) => null() ! eroutup average over coupling period (m3/s)
      real(r8), pointer :: erlat_avg(:,:) => null()   ! erlateral average over coupling period (m3/s)
-     real(r8), pointer :: effvel(:) => null()
+     real(r8), pointer :: effvel(:) => null()        ! effective velocity for a tracer NOT_USED
 
      ! halo operations
      type(ESMF_RouteHandle) :: haloHandle

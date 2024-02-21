@@ -16,8 +16,8 @@ module mosart_tstatusflux_type
       real(r8), pointer :: yh(:,:)      ! depth of surface water, [m]
       real(r8), pointer :: wsat(:,:)    ! storage of surface water within saturated area at hillslope [m]
       real(r8), pointer :: wunsat(:,:)  ! storage of surface water within unsaturated area at hillslope [m]
-      real(r8), pointer :: qhorton(:,:) ! Infiltration excess runoff generated from hillslope, [m/s]
-      real(r8), pointer :: qdunne(:,:)  ! Saturation excess runoff generated from hillslope, [m/s]
+      real(r8), pointer :: qhorton(:,:) ! Infiltration excess runoff generated from hillslope, [m/s] NOT_USED
+      real(r8), pointer :: qdunne(:,:)  ! Saturation excess runoff generated from hillslope, [m/s] NOT_USED
       real(r8), pointer :: qsur(:,:)    ! Surface runoff generated from hillslope, [m/s]
       real(r8), pointer :: qsub(:,:)    ! Subsurface runoff generated from hillslope, [m/s]
       real(r8), pointer :: qgwl(:,:)    ! gwl runoff term from glacier, wetlands and lakes, [m/s]
@@ -36,7 +36,7 @@ module mosart_tstatusflux_type
       real(r8), pointer :: rt(:,:)      ! hydraulic radii, [m]
       real(r8), pointer :: pt(:,:)      ! wetness perimeter, [m]
       real(r8), pointer :: vt(:,:)      ! flow velocity, [m/s]
-      real(r8), pointer :: tt(:,:)      ! mean travel time of the water within the channel, [s]
+      real(r8), pointer :: tt(:,:)      ! mean travel time of the water within the channel, [s] NOT_USED
       !! fluxes
       real(r8), pointer :: etin(:,:)    ! lateral inflow from hillslope, including surface and subsurface runoff generation components, [m3/s]
       real(r8), pointer :: etout(:,:)   ! discharge from sub-network into the main reach, [m3/s]
@@ -51,7 +51,7 @@ module mosart_tstatusflux_type
       real(r8), pointer :: rr(:,:)      ! hydraulic radius, [m]
       real(r8), pointer :: pr(:,:)      ! wetness perimeter, [m]
       real(r8), pointer :: vr(:,:)      ! flow velocity, [m/s]
-      real(r8), pointer :: tr(:,:)      ! mean travel time of the water within the channel, [s]
+      real(r8), pointer :: tr(:,:)      ! mean travel time of the water within the channel, [s] NOT_USED
       !! exchange fluxes
       real(r8), pointer :: erlateral(:,:)   ! lateral flow from hillslope, including surface and subsurface runoff generation components, [m3/s]
       real(r8), pointer :: erin(:,:)        ! inflow from upstream links, [m3/s]
@@ -61,11 +61,11 @@ module mosart_tstatusflux_type
       real(r8), pointer :: eroutUp_avg(:,:) ! outflow sum of upstream gridcells, average [m3/s]
       real(r8), pointer :: erlat_avg(:,:)   ! erlateral average [m3/s]
       real(r8), pointer :: flow(:,:)        ! streamflow from the outlet of the reach, [m3/s]
-      real(r8), pointer :: erin1(:,:)       ! inflow from upstream links during previous step, used for Muskingum method, [m3/s]
-      real(r8), pointer :: erin2(:,:)       ! inflow from upstream links during current step, used for Muskingum method, [m3/s]
-      real(r8), pointer :: ergwl(:,:)       ! flux item for the adjustment of water balance residual in glacie, wetlands and lakes dynamics [m3/s]
+      real(r8), pointer :: erin1(:,:)       ! inflow from upstream links during previous step, used for Muskingum method, [m3/s] NOT_USED
+      real(r8), pointer :: erin2(:,:)       ! inflow from upstream links during current step, used for Muskingum method, [m3/s] NOT_USED
+      real(r8), pointer :: ergwl(:,:)       ! flux item for the adjustment of water balance residual in glacie, wetlands and lakes dynamics [m3/s] NOT_USED
 
-      !! for Runge-Kutta algorithm
+      !! for Runge-Kutta algorithm NOT_USED
       real(r8), pointer :: wrtemp(:,:)  ! temporary storage item, for 4th order Runge-Kutta  algorithm;
       real(r8), pointer :: erintemp(:,:)
       real(r8), pointer :: erouttemp(:,:)
