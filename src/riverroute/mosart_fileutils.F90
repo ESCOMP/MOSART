@@ -1,29 +1,24 @@
-module RtmFileUtils
+module mosart_fileutils
 
-   !-----------------------------------------------------------------------
    ! Module containing file I/O utilities
-   !
-   ! !USES:
+
    use shr_sys_mod , only : shr_sys_abort
-   use RtmSpmd     , only : mainproc
-   use RtmVar      , only : iulog
-   !
-   ! !PUBLIC TYPES:
+   use shr_kind_mod, only : CL=>shr_kind_cl
+   use mosart_vars , only : iulog, mainproc
+
    implicit none
    private
-   !
+
    ! !PUBLIC MEMBER FUNCTIONS:
    public :: get_filename  !Returns filename given full pathname
    public :: getfil        !Obtain local copy of file
-   !
    !-----------------------------------------------------------------------
 
 contains
 
    !-----------------------------------------------------------------------
-   character(len=256) function get_filename (fulpath)
+   character(len=CL) function get_filename (fulpath)
 
-      ! !DESCRIPTION:
       ! Returns filename given full pathname
       !
       ! !ARGUMENTS:
@@ -47,12 +42,10 @@ contains
 
    subroutine getfil (fulpath, locfn, iflag)
 
-      ! !DESCRIPTION:
       ! Obtain local copy of file. First check current working directory,
       ! Next check full pathname[fulpath] on disk
       !
       ! !ARGUMENTS:
-      implicit none
       character(len=*), intent(in)  :: fulpath !Archival or permanent disk full pathname
       character(len=*), intent(out) :: locfn   !output local file name
       integer,          intent(in)  :: iflag   !0=>abort if file not found 1=>do not abort
@@ -96,4 +89,4 @@ contains
 
    end subroutine getfil
 
-end module RtmFileUtils
+end module mosart_fileutils

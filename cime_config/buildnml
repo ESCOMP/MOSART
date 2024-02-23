@@ -79,7 +79,7 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
     #----------------------------------------------------
 
     run_type = case.get_value("RUN_TYPE")
-    finidat_rtm = str(nmlgen.get_value("finidat_rtm"))
+    finidat = str(nmlgen.get_value("finidat"))
     if run_type == 'branch' or run_type == 'hybrid':
         run_refcase = case.get_value("RUN_REFCASE")
         run_refdate = case.get_value("RUN_REFDATE")
@@ -90,17 +90,17 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
             filename = "%s.mosart.r.%s-%s.nc" %(run_refcase, run_refdate, run_tod)
 
         if run_type == "hybrid":
-            nmlgen.add_default("finidat_rtm", value=filename, ignore_abs_path=True)
+            nmlgen.add_default("finidat", value=filename, ignore_abs_path=True)
         else:
 
-            nmlgen.add_default("nrevsn_rtm", value=filename)
-    elif finidat_rtm.strip() == '':
-        nmlgen.set_value('finidat_rtm', value=' ')
+            nmlgen.add_default("nrevsn", value=filename)
+    elif finidat.strip() == '':
+        nmlgen.set_value('finidat', value=' ')
     else:
-        if nmlgen.get_default('finidat_rtm') == 'UNSET':
-            nmlgen.add_default('finidat_rtm', value=' ', ignore_abs_path=True)
+        if nmlgen.get_default('finidat') == 'UNSET':
+            nmlgen.add_default('finidat', value=' ', ignore_abs_path=True)
         else:
-            nmlgen.add_default("finidat_rtm")
+            nmlgen.add_default("finidat")
 
     ncpl_base_period = case.get_value('NCPL_BASE_PERIOD')
     if ncpl_base_period == 'hour':
@@ -131,8 +131,8 @@ def _create_namelists(case, confdir, inst_string, infile, nmlgen, data_list_path
         coupling_period = basedt // mosart_ncpl
     nmlgen.set_value("coupling_period", value=coupling_period)
 
-    if ( nmlgen.get_value("frivinp_rtm") == "UNSET" and config["mosart_mode"] != "NULL" ):
-        raise SystemExit("ERROR: Direction file is NOT set and is required when MOSART is active: frivinp_rtm")
+    if ( nmlgen.get_value("frivinp") == "UNSET" and config["mosart_mode"] != "NULL" ):
+        raise SystemExit("ERROR: Direction file is NOT set and is required when MOSART is active: frivinp")
 
     bypass_routing_option = nmlgen.get_value("bypass_routing_option")
     qgwl_runoff_option    = nmlgen.get_value("qgwl_runoff_option")
