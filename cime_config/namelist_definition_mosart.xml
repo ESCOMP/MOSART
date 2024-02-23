@@ -280,4 +280,18 @@
     </desc>
   </entry>
 
+  <entry id="budget_frq">
+    <type>integer(6)</type>
+    <category>mosart</category>
+    <group>mosart_inparm</group>
+    <values>
+      <value>-24</value>
+    </values>
+    <desc>
+      Frequency to perform budget check. Similar to nhtfrq, 
+      positive means in time steps,  0=monthly, negative means hours
+      (i.e. 24 means every 24 time-steps and -24 means every day
+    </desc>
+  </entry>
+
 </entry_id>
