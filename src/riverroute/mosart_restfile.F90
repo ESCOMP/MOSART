@@ -1,47 +1,55 @@
-module RtmRestFile
+module mosart_restfile
 
-   !-----------------------------------------------------------------------
    ! Read from and write to the MOSART restart file.
-   !
-   ! !USES:
-   use shr_kind_mod  , only : r8 => shr_kind_r8
-   use shr_sys_mod   , only : shr_sys_abort
-   use RtmSpmd       , only : mainproc
-   use RtmVar        , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
-                              caseid, nsrest, brnch_retain_casename, &
-                              finidat_rtm, nrevsn_rtm, spval, &
-                              nsrContinue, nsrBranch, nsrStartup, &
-                              ctitle, version, username, hostname, conventions, source, &
-                              nt_rtm, nt_rtm, rtm_tracers
-   use RtmHistFile   , only : RtmHistRestart
-   use RtmFileUtils  , only : getfil
-   use RtmTimeManager, only : timemgr_restart, get_nstep, get_curr_date, is_last_step
-   use RunoffMod     , only : rtmCTL
-   use RtmIO
-   use RtmDateTime
-   !
-   ! !PUBLIC TYPES:
+
+   use shr_kind_mod,       only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
+   use shr_sys_mod,        only : shr_sys_abort
+   use mosart_vars,        only : iulog, inst_suffix, caseid, nsrest, &
+                                  spval, mainproc, nsrContinue, nsrBranch, nsrStartup, &
+                                  ctitle, version, username, hostname, conventions, source
+   use mosart_data,        only : ctl, Trunoff
+   use mosart_histfile,    only : mosart_hist_restart
+   use mosart_fileutils,   only : getfil
+   use mosart_timemanager, only : timemgr_restart, get_nstep, get_curr_date
+   use mosart_io,          only : ncd_pio_createfile, ncd_enddef, ncd_pio_openfile, ncd_pio_closefile, &
+                                  ncd_defdim, ncd_putatt, ncd_defvar, ncd_io, ncd_global, ncd_double, &
+                                  ncd_getdatetime
+   use pio,                only : file_desc_t
+
    implicit none
    private
+
+   ! public member functions:
+   public :: mosart_rest_FileName
+   public :: mosart_rest_FileRead
+   public :: mosart_rest_FileWrite
+   public :: mosart_rest_Getfile
+   public :: mosart_rest_TimeManager
+   public :: mosart_rest_restart
    !
-   ! !PUBLIC MEMBER FUNCTIONS:
-   public :: RtmRestFileName
-   public :: RtmRestFileRead
-   public :: RtmRestFileWrite
-   public :: RtmRestGetfile
-   public :: RtmRestTimeManager
-   public :: RtmRestart
-   !
-   ! !PRIVATE MEMBER FUNCTIONS:
+   ! private member functions:
    private :: restFile_read_pfile
    private :: restFile_write_pfile    ! Writes restart pointer file
    private :: restFile_dimset
-   !-----------------------------------------------------------------------
 
+   ! true => allow case name to remain the same for branch run
+   ! by default this is not allowed
+   logical, public :: brnch_retain_casename = .false.
+
+   ! file name for local restart pointer file
+   character(len=CL) :: rpntfil = 'rpointer.rof'
+
+   ! initial conditions file name
+   character(len=CL), public :: finidat
+
+   ! restart data file name for branch run
+   character(len=CL), public :: nrevsn
+
+!-----------------------------------------------------------------------
 contains
+!-----------------------------------------------------------------------
 
-   !-----------------------------------------------------------------------
-   subroutine RtmRestFileWrite( file, rdate )
+   subroutine mosart_rest_FileWrite( file, rdate )
 
       !-------------------------------------
       ! Read/write MOSART restart file.
@@ -65,14 +73,14 @@ contains
       end if
       call ncd_pio_createfile(ncid, trim(file))
       call restFile_dimset( ncid )
-      call RtmRestart( ncid, flag='define' )
-      call RtmHistRestart ( ncid, flag='define', rdate=rdate )
+      call mosart_rest_restart ( ncid, flag='define' )
+      call mosart_hist_restart ( ncid, flag='define', rdate=rdate )
       call timemgr_restart( ncid, flag='define' )
       call ncd_enddef(ncid)
 
       ! Write restart file variables
-      call RtmRestart( ncid, flag='write' )
-      call RtmHistRestart ( ncid, flag='write' )
+      call mosart_rest_restart( ncid, flag='write' )
+      call mosart_hist_restart ( ncid, flag='write' )
       call timemgr_restart( ncid, flag='write' )
       call ncd_pio_closefile(ncid)
 
@@ -92,11 +100,11 @@ contains
          write(iulog,'(72a1)') ("-",i=1,60)
       end if
 
-   end subroutine RtmRestFileWrite
+   end subroutine mosart_rest_FileWrite
 
    !-----------------------------------------------------------------------
 
-   subroutine RtmRestFileRead( file )
+   subroutine mosart_rest_FileRead( file )
 
       !-------------------------------------
       ! Read a MOSART restart file.
@@ -112,8 +120,8 @@ contains
       ! Read file
       if (mainproc) write(iulog,*) 'Reading restart dataset'
       call ncd_pio_openfile (ncid, trim(file), 0)
-      call RtmRestart( ncid, flag='read' )
-      call RtmHistRestart(ncid, flag='read')
+      call mosart_rest_restart(ncid, flag='read')
+      call mosart_hist_restart(ncid, flag='read')
       call ncd_pio_closefile(ncid)
 
       ! Write out diagnostic info
@@ -123,11 +131,11 @@ contains
          write(iulog,*)
       end if
 
-   end subroutine RtmRestFileRead
+   end subroutine mosart_rest_FileRead
 
    !-----------------------------------------------------------------------
 
-   subroutine RtmRestTimeManager( file )
+   subroutine mosart_rest_TimeManager( file )
 
       !-------------------------------------
       ! Read a MOSART restart file.
@@ -153,23 +161,23 @@ contains
          write(iulog,*)
       end if
 
-   end subroutine RtmRestTimeManager
+   end subroutine mosart_rest_TimeManager
 
    !-----------------------------------------------------------------------
 
-   subroutine RtmRestGetfile( file, path )
+   subroutine mosart_rest_Getfile( file )
 
       !-------------------------------------
       ! Determine and obtain netcdf restart file
 
       ! Arguments:
       character(len=*), intent(out) :: file  ! name of netcdf restart file
-      character(len=*), intent(out) :: path  ! full pathname of netcdf restart file
 
-      ! LOCAL VARIABLES:
-      integer :: status                      ! return status
-      integer :: length                      ! temporary
-      character(len=256) :: ftest,ctest      ! temporaries
+      ! Local variables:
+      integer :: status                 ! return status
+      integer :: length                 ! temporary
+      character(len=CL) :: ftest,ctest ! temporaries
+      character(len=CL) :: path        ! full pathname of netcdf restart file
       !-------------------------------------
 
       ! Continue run:
@@ -180,13 +188,13 @@ contains
       end if
 
       ! Branch run:
-      ! Restart file pathname is obtained from namelist "nrevsn_rtm"
+      ! Restart file pathname is obtained from namelist "nrevsn"
       if (nsrest==nsrBranch) then
-         length = len_trim(nrevsn_rtm)
-         if (nrevsn_rtm(length-2:length) == '.nc') then
-            path = trim(nrevsn_rtm)
+         length = len_trim(nrevsn)
+         if (nrevsn(length-2:length) == '.nc') then
+            path = trim(nrevsn)
          else
-            path = trim(nrevsn_rtm) // '.nc'
+            path = trim(nrevsn) // '.nc'
          end if
          call getfil( path, file, 0 )
 
@@ -207,10 +215,10 @@ contains
 
       ! Initial run
       if (nsrest==nsrStartup) then
-         call getfil( finidat_rtm, file, 0 )
+         call getfil( finidat, file, 0 )
       end if
 
-   end subroutine RtmRestGetfile
+   end subroutine mosart_rest_Getfile
 
    !-----------------------------------------------------------------------
 
@@ -223,16 +231,16 @@ contains
       character(len=*), intent(out) :: pnamer ! full path of restart file
 
       ! Local variables
-      integer :: nio              ! restart unit
-      integer :: ier              ! error return from fortran open
-      integer :: i                ! index
-      character(len=256) :: locfn ! Restart pointer file name
+      integer :: nio             ! restart unit
+      integer :: ier             ! error return from fortran open
+      integer :: i               ! index
+      character(len=CL) :: locfn ! Restart pointer file name
       !-------------------------------------
 
       ! Obtain the restart file from the restart pointer file.
       ! For restart runs, the restart pointer file contains the full pathname
       ! of the restart file. For branch runs, the namelist variable
-      ! [nrevsn_rtm] contains the full pathname of the restart file.
+      ! [nrevsn] contains the full pathname of the restart file.
       ! New history files are always created for branch runs.
 
       if (mainproc) then
@@ -266,7 +274,7 @@ contains
       ! Local variables
       integer :: nio ! restart pointer file unit number
       integer :: ier ! error return from fortran open
-      character(len=256) :: filename  ! local file name
+      character(len=CL) :: filename  ! local file name
       !-------------------------------------
 
       if (mainproc) then
@@ -285,17 +293,17 @@ contains
 
    !-----------------------------------------------------------------------
 
-   character(len=256) function RtmRestFileName( rdate )
+   character(len=CL) function mosart_rest_FileName( rdate )
 
       ! Arguments
       character(len=*), intent(in) :: rdate   ! input date for restart file name
 
-      RtmRestFileName = "./"//trim(caseid)//".mosart"//trim(inst_suffix)//".r."//trim(rdate)//".nc"
+      mosart_rest_FileName = "./"//trim(caseid)//".mosart"//trim(inst_suffix)//".r."//trim(rdate)//".nc"
       if (mainproc) then
-         write(iulog,*)'writing restart file ',trim(RtmRestFileName),' for model date = ',rdate
+         write(iulog,*)'writing restart file ',trim(mosart_rest_FileName),' for model date = ',rdate
       end if
 
-   end function RtmRestFileName
+   end function mosart_rest_FileName
 
    !------------------------------------------------------------------------
 
@@ -308,24 +316,24 @@ contains
       type(file_desc_t), intent(inout) :: ncid
 
       ! Local Variables:
-      integer :: dimid               ! netCDF dimension id
-      integer :: ier                 ! error status
-      character(len=  8) :: curdate  ! current date
-      character(len=  8) :: curtime  ! current time
-      character(len=256) :: str
+      integer :: dimid              ! netCDF dimension id
+      integer :: ier                ! error status
+      character(len= 8) :: curdate  ! current date
+      character(len= 8) :: curtime  ! current time
+      character(len=CL) :: str
       character(len=*),parameter :: subname='restFile_dimset'
       !-------------------------------------
 
       ! Define dimensions
 
-      call ncd_defdim(ncid, 'rtmlon'  , rtmlon         , dimid)
-      call ncd_defdim(ncid, 'rtmlat'  , rtmlat         , dimid)
-      call ncd_defdim(ncid, 'string_length', 64        , dimid)
+      call ncd_defdim(ncid, 'nlon'  , ctl%nlon  , dimid)
+      call ncd_defdim(ncid, 'nlat'  , ctl%nlat  , dimid)
+      call ncd_defdim(ncid, 'string_length', CS , dimid)
 
       ! Define global attributes
 
       call ncd_putatt(ncid, NCD_GLOBAL, 'Conventions', trim(conventions))
-      call getdatetime(curdate, curtime)
+      call ncd_getdatetime(curdate, curtime)
       str = 'created on ' // curdate // ' ' // curtime
       call ncd_putatt(ncid, NCD_GLOBAL, 'history' , trim(str))
       call ncd_putatt(ncid, NCD_GLOBAL, 'username', trim(username))
@@ -341,69 +349,71 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine RtmRestart(ncid, flag)
+   subroutine mosart_rest_restart(ncid, flag)
 
       !-------------------------------------
       ! Read/write MOSART restart data.
       !
       ! Arguments:
-      type(file_desc_t), intent(inout)  :: ncid ! netcdf id
-      character(len=*) , intent(in) :: flag   ! 'read' or 'write'
+      type(file_desc_t), intent(inout) :: ncid ! netcdf id
+      character(len=*) , intent(in)    :: flag ! 'read' or 'write'
 
       ! Local variables
-      logical :: readvar          ! determine if variable is on initial file
-      integer :: nt,nv,n          ! indices
+      logical            :: readvar ! determine if variable is on initial file
+      integer            :: n,nt,nv ! indices
+      integer            :: nvariables
       real(r8) , pointer :: dfld(:) ! temporary array
-      character(len=32)  :: vname,uname
-      character(len=255) :: lname
+      character(len=CS)  :: vname,uname
+      character(len=CL)  :: lname
       !-------------------------------------
 
-      do nv = 1,7
-         do nt = 1,nt_rtm
+      nvariables = 7
+      do nv = 1,nvariables
+         do nt = 1,ctl%ntracers
 
             if (nv == 1) then
-               vname = 'RTM_VOLR_'//trim(rtm_tracers(nt))
+               vname = 'VOLR_'//trim(ctl%tracer_names(nt))
                lname = 'water volume in cell (volr)'
                uname = 'm3'
-               dfld  => rtmCTL%volr(:,nt)
+               dfld  => ctl%volr(:,nt)
             elseif (nv == 2) then
-               vname = 'RTM_RUNOFF_'//trim(rtm_tracers(nt))
+               vname = 'RUNOFF_'//trim(ctl%tracer_names(nt))
                lname = 'runoff (runoff)'
                uname = 'm3/s'
-               dfld  => rtmCTL%runoff(:,nt)
+               dfld  => ctl%runoff(:,nt)
             elseif (nv == 3) then
-               vname = 'RTM_DVOLRDT_'//trim(rtm_tracers(nt))
+               vname = 'DVOLRDT_'//trim(ctl%tracer_names(nt))
                lname = 'water volume change in cell (dvolrdt)'
                uname = 'mm/s'
-               dfld  => rtmCTL%dvolrdt(:,nt)
+               dfld  => ctl%dvolrdt(:,nt)
             elseif (nv == 4) then
-               vname = 'RTM_WH_'//trim(rtm_tracers(nt))
+               vname = 'WH_'//trim(ctl%tracer_names(nt))
                lname = 'surface water storage at hillslopes in cell'
                uname = 'm'
-               dfld  => rtmCTL%wh(:,nt)
+               dfld  => Trunoff%wh(:,nt)
             elseif (nv == 5) then
-               vname = 'RTM_WT_'//trim(rtm_tracers(nt))
+               vname = 'WT_'//trim(ctl%tracer_names(nt))
                lname = 'water storage in tributary channels in cell'
                uname = 'm3'
-               dfld  => rtmCTL%wt(:,nt)
+               dfld  => Trunoff%wt(:,nt)
             elseif (nv == 6) then
-               vname = 'RTM_WR_'//trim(rtm_tracers(nt))
+               vname = 'WR_'//trim(ctl%tracer_names(nt))
                lname = 'water storage in main channel in cell'
                uname = 'm3'
-               dfld  => rtmCTL%wr(:,nt)
+               dfld  => Trunoff%wr(:,nt)
             elseif (nv == 7) then
-               vname = 'RTM_EROUT_'//trim(rtm_tracers(nt))
+               vname = 'EROUT_'//trim(ctl%tracer_names(nt))
                lname = 'instataneous flow out of main channel in cell'
                uname = 'm3/s'
-               dfld  => rtmCTL%erout(:,nt)
+               dfld  => Trunoff%erout(:,nt)
             else
-               write(iulog,*) 'Rtm ERROR: illegal nv value a ',nv
+               write(iulog,*) 'ERROR: illegal nv value a ',nv
                call shr_sys_abort()
             endif
 
             if (flag == 'define') then
                call ncd_defvar(ncid=ncid, varname=trim(vname), &
-                    xtype=ncd_double,  dim1name='rtmlon', dim2name='rtmlat', &
+                    xtype=ncd_double,  dim1name='nlon', dim2name='nlat', &
                     long_name=trim(lname), units=trim(uname), fill_value=spval)
             else if (flag == 'read' .or. flag == 'write') then
                call ncd_io(varname=trim(vname), data=dfld, dim1name='allrof', &
@@ -421,30 +431,30 @@ contains
       enddo
 
       if (flag == 'read') then
-         do n = rtmCTL%begr,rtmCTL%endr
-            do nt = 1,nt_rtm
-               if (abs(rtmCTL%volr(n,nt))    > 1.e30) rtmCTL%volr(n,nt) = 0.
-               if (abs(rtmCTL%runoff(n,nt))  > 1.e30) rtmCTL%runoff(n,nt) = 0.
-               if (abs(rtmCTL%dvolrdt(n,nt)) > 1.e30) rtmCTL%dvolrdt(n,nt) = 0.
-               if (abs(rtmCTL%wh(n,nt))      > 1.e30) rtmCTL%wh(n,nt) = 0.
-               if (abs(rtmCTL%wt(n,nt))      > 1.e30) rtmCTL%wt(n,nt) = 0.
-               if (abs(rtmCTL%wr(n,nt))      > 1.e30) rtmCTL%wr(n,nt) = 0.
-               if (abs(rtmCTL%erout(n,nt))   > 1.e30) rtmCTL%erout(n,nt) = 0.
+         do n = ctl%begr,ctl%endr
+            do nt = 1,ctl%ntracers
+               if (abs(ctl%volr(n,nt))      > 1.e30) ctl%volr(n,nt) = 0.
+               if (abs(ctl%runoff(n,nt))    > 1.e30) ctl%runoff(n,nt) = 0.
+               if (abs(ctl%dvolrdt(n,nt))   > 1.e30) ctl%dvolrdt(n,nt) = 0.
+               if (abs(Trunoff%wh(n,nt))    > 1.e30) Trunoff%wh(n,nt) = 0.
+               if (abs(Trunoff%wt(n,nt))    > 1.e30) Trunoff%wt(n,nt) = 0.
+               if (abs(Trunoff%wr(n,nt))    > 1.e30) Trunoff%wr(n,nt) = 0.
+               if (abs(Trunoff%erout(n,nt)) > 1.e30) Trunoff%erout(n,nt) = 0.
             end do
-            if (rtmCTL%mask(n) == 1) then
-               do nt = 1,nt_rtm
-                  rtmCTL%runofflnd(n,nt) = rtmCTL%runoff(n,nt)
-                  rtmCTL%dvolrdtlnd(n,nt)= rtmCTL%dvolrdt(n,nt)
+            if (ctl%mask(n) == 1) then
+               do nt = 1,ctl%ntracers
+                  ctl%runofflnd(n,nt) = ctl%runoff(n,nt)
+                  ctl%dvolrdtlnd(n,nt)= ctl%dvolrdt(n,nt)
                end do
-            elseif (rtmCTL%mask(n) >= 2) then
-               do nt = 1,nt_rtm
-                  rtmCTL%runoffocn(n,nt) = rtmCTL%runoff(n,nt)
-                  rtmCTL%dvolrdtocn(n,nt)= rtmCTL%dvolrdt(n,nt)
+            elseif (ctl%mask(n) >= 2) then
+               do nt = 1,ctl%ntracers
+                  ctl%runoffocn(n,nt) = ctl%runoff(n,nt)
+                  ctl%dvolrdtocn(n,nt)= ctl%dvolrdt(n,nt)
                enddo
             endif
          enddo
       endif
 
-   end subroutine RtmRestart
+   end subroutine mosart_rest_restart
 
-end module RtmRestFile
+end module mosart_restfile
