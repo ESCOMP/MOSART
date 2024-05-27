@@ -49,12 +49,14 @@ module mosart_control_type
      real(r8), pointer :: qsur(:,:) => null()        ! surface runoff from coupler [m3/s] (lnd)
      real(r8), pointer :: qsub(:,:) => null()        ! subsurfacer runoff from coupler [m3/s] (lnd)
      real(r8), pointer :: qgwl(:,:) => null()        ! glacier/wetland/lake runoff from coupler [m3/s] (lnd)
+     real(r8), pointer :: qirrig(:) => null()        ! irrigation flow from coupler [m3/s]
+     real(r8), pointer :: qglc_liq(:) => null()      ! glacier liquid runoff from coupler [m3/s] (glc)
+     real(r8), pointer :: qglc_ice(:) => null()      ! glacier ice runoff from coupler [m3/s] (glc)
 
      ! outputs from MOSART
      real(r8), pointer :: flood(:) => null()         ! flood water to coupler [m3/s] (lnd)
      real(r8), pointer :: runoff(:,:) => null()      ! runoff (from outlet to reach) to coupler [m3/s]
      real(r8), pointer :: direct(:,:) => null()      ! direct flow to coupler [m3/s]
-     real(r8), pointer :: qirrig(:) => null()        ! irrigation flow to coupler [m3/s]
      real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage [m3/s]
 
      ! storage, runoff
@@ -303,6 +305,8 @@ contains
          this%qgwl(begr:endr,ntracers),       &
          this%qirrig(begr:endr),              &
          this%qirrig_actual(begr:endr),       &
+         this%qglc_liq(begr:endr),            &
+         this%qglc_ice(begr:endr),            &
          !
          this%evel(begr:endr,ntracers),       &
          this%flow(begr:endr,ntracers),       &
@@ -332,6 +336,8 @@ contains
     this%qsur(:,:)        = 0._r8
     this%qsub(:,:)        = 0._r8
     this%qgwl(:,:)        = 0._r8
+    this%qglc_liq(:)      = 0._r8
+    this%qglc_ice(:)      = 0._r8
     this%fthresh(:)       = abs(spval)
     this%flow(:,:)        = 0._r8
     this%erout_prev(:,:)  = 0._r8
@@ -1176,7 +1182,7 @@ contains
           dfld_dx(n) = dfld_dx(n) + (fld_surrounding(ax_indices(i)) - fld_surrounding(sx_indices(i)))
           dfld_dy(n) = dfld_dy(n) + (fld_surrounding(ay_indices(i)) - fld_surrounding(sy_indices(i)))
        enddo
-       
+
        dfld_dx(n) = dfld_dx(n) / (8._r8*mean_dx)
        dfld_dy(n) = dfld_dy(n) / (8._r8*mean_dy)
 
