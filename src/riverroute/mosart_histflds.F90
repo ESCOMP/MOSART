@@ -31,6 +31,8 @@ module mosart_histflds
   type(hist_pointer_type), allocatable :: h_qgwl(:)
 
   real(r8), pointer :: h_volr_mch(:)
+  real(r8), pointer :: h_qglc_liq(:)
+  real(r8), pointer :: h_qglc_ice(:)
 
 !------------------------------------------------------------------------
 contains
@@ -75,6 +77,8 @@ contains
       end do
 
       allocate(h_volr_mch(begr:endr))
+      allocate(h_qglc_liq(begr:endr))
+      allocate(h_qglc_ice(begr:endr))
 
       !-------------------------------------------------------
       ! Build master field list of all possible fields in a history file.
@@ -138,6 +142,14 @@ contains
            avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
            ptr_rof=ctl%qirrig_actual, default='inactive')
 
+      call mosart_hist_addfld (fname='QGLC_LIQ', units='m3',  &
+           avgflag='A', long_name='liquid runoff from glc input', &
+           ptr_rof=h_qglc_liq, default='inactive')
+
+      call mosart_hist_addfld (fname='QGLC_ICE', units='m3',  &
+           avgflag='A', long_name='ice runoff from glc input', &
+           ptr_rof=h_qglc_ice, default='inactive')
+
       ! print masterlist of history fields
       call mosart_hist_printflds()
 
@@ -169,6 +181,8 @@ contains
          h_qgwl(nt)%data(:)       = ctl%qgwl(:,nt)
       end do
       h_volr_mch(:) = Trunoff%wr(:,1)
+      h_qglc_liq(:) = ctl%qglc_liq(:)
+      h_qglc_ice(:) = ctl%qglc_ice(:)
 
    end subroutine mosart_histflds_set
 

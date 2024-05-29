@@ -644,16 +644,12 @@ contains
       call ncd_putatt(lnfid, ncd_global, 'username'     , trim(username))
       call ncd_putatt(lnfid, ncd_global, 'version'      , trim(version))
       call ncd_putatt(lnfid, ncd_global, 'model_doi_url', trim(model_doi_url))
-      write(6,*)'DEBUG: I am here7'
 
       call ncd_putatt(lnfid, ncd_global, 'case_title', trim(ctitle))
-      write(6,*)'DEBUG: I am here8'
       call ncd_putatt(lnfid, ncd_global, 'case_id', trim(caseid))
-      write(6,*)'DEBUG: I am here9'
 
       str = get_filename(frivinp)
       call ncd_putatt(lnfid, ncd_global, 'input_dataset', trim(str))
-      write(6,*)'DEBUG: I am here10'
 
       !
       ! add global attribute time_period_freq
@@ -679,7 +675,6 @@ contains
 999   format(a,i0)
 
       call ncd_putatt(lnfid, ncd_global, 'time_period_freq', trim(time_period_freq))
-      write(6,*)'DEBUG: I am here6'
 
       ! Define dimensions.
       ! Time is an unlimited dimension. Character string is treated as an array of characters.
@@ -689,12 +684,10 @@ contains
       call ncd_defdim(lnfid, 'lat'   , ctl%nlat , dimid)
       call ncd_defdim(lnfid, 'allrof', ctl%numr , dimid)
       call ncd_defdim(lnfid, 'string_length', 8, strlen_dimid)
-      write(6,*)'DEBUG: I am here7'
 
       if ( .not. lhistrest )then
          call ncd_defdim(lnfid, 'hist_interval', 2, hist_interval_dimid)
          call ncd_defdim(lnfid, 'time', ncd_unlimited, time_dimid)
-         write(6,*)'DEBUG: I am here8'
          if (mainproc)then
             write(iulog,*) trim(subname),' : Successfully defined netcdf history file ',t
          end if

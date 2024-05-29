@@ -109,8 +109,8 @@ contains
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_liq') ! liq runoff from glc
-    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_ice') ! ice runoff from glc
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_rofl') ! liq runoff from glc
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_rofi') ! ice runoff from glc
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -290,11 +290,11 @@ contains
     ctl%qsub(begr:endr, nfrz) = 0.0_r8
     ctl%qgwl(begr:endr, nfrz) = 0.0_r8
 
-    call state_getimport(importState, 'Fgrg_liq', begr, endr, ctl%area, output=ctl%qglc_liq(:), &
+    call state_getimport(importState, 'Fgrg_rofl', begr, endr, ctl%area, output=ctl%qglc_liq(:), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Fgrg_ice', begr, endr, ctl%area, output=ctl%qglc_ice(:), &
+    call state_getimport(importState, 'Fgrg_rofi', begr, endr, ctl%area, output=ctl%qglc_ice(:), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
