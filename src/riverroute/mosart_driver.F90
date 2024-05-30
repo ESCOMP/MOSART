@@ -394,7 +394,7 @@ contains
       !
       ! Local variables
       integer            :: i, j, n, nr, ns, nt, n2, nf ! indices
-      integer            :: nt_ice, nt_liq
+      integer            :: nt_ice, nt_liq              ! incices
       logical            :: budget_check                ! if budget check needs to be performed
       real(r8)           :: volr_init                   ! temporary storage to compute dvolrdt
       integer            :: yr, mon, day, ymd, tod      ! time information
@@ -567,6 +567,12 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-----------------------------------------------------
+      !--- initialize ctl%direct
+      !-----------------------------------------------------
+
+      ctl%direct = 0._r8
+
+      !-----------------------------------------------------
       !--- direct to outlet: all frozen runoff (from lnd and glc)
       !-----------------------------------------------------
 
@@ -580,7 +586,7 @@ contains
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         src_direct(nt,cnt) = TRunoff%qsur(nr,nt_ice) + TRunoff%qsub(nr,nt_ice) + TRunoff%qgwl(nr,nt_ice) + ctl%qglc_ice(nr)
+         src_direct(nt_ice,cnt) = TRunoff%qsur(nr,nt_ice) + TRunoff%qsub(nr,nt_ice) + TRunoff%qgwl(nr,nt_ice) + ctl%qglc_ice(nr)
          TRunoff%qsur(nr,nt_ice) = 0._r8
          TRunoff%qsub(nr,nt_ice) = 0._r8
          TRunoff%qgwl(nr,nt_ice) = 0._r8
@@ -590,11 +596,10 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       ! copy direct transfer water to output field
-      ctl%direct = 0._r8
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         ctl%direct(nr,nt_ice) = ctl%direct(nr,nt_ice) + dst_direct(nt,cnt)
+         ctl%direct(nr,nt_ice) = ctl%direct(nr,nt_ice) + dst_direct(nt_ice,cnt)
       enddo
 
       !-----------------------------------------------------
@@ -614,7 +619,6 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       ! copy direct transfer water to output field
-      ctl%direct = 0._r8
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
@@ -685,7 +689,7 @@ contains
                endif
             endif
             ! Add glc->rof liquid going directly to outlet
-            src_direct(nt,cnt) = src_direct(nt,cnt) + ctl%qglc_liq(nr)
+            src_direct(nt_liq,cnt) = src_direct(nt_liq,cnt) + ctl%qglc_liq(nr)
          enddo
       endif
 
