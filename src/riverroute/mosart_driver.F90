@@ -8,7 +8,6 @@ module mosart_driver
    use shr_sys_mod        , only : shr_sys_abort
    use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
-   use shr_string_mod     , only : shr_string_listGetNum, shr_string_listGetName
    use mosart_vars        , only : re, spval, iulog, ice_runoff, &
                                    frivinp, nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
@@ -62,6 +61,8 @@ module mosart_driver
 
    character(len=CL) :: nlfilename_rof = 'mosart_in'
    character(len=CL) :: fnamer              ! name of netcdf restart file
+
+   integer :: nt_liq, nt_ice
 
    character(*), parameter :: u_FILE_u = &
         __FILE__
@@ -149,12 +150,10 @@ contains
       call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (budget_frq,1,MPI_INTEGER,0,mpicom_rof,ier)
 
-      ! Determine number of tracers and array of tracer names
-      ctl%ntracers = shr_string_listGetNum(mosart_tracers)
-      allocate(ctl%tracer_names(ctl%ntracers))
-      do i = 1,ctl%ntracers
-         call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
-      end do
+      ! Determine number of tracers and array of tracer names and initialize module variables
+      call ctl%init_tracer_names(mosart_tracers)
+      nt_liq = ctl%nt_liq
+      nt_ice = ctl%nt_ice
 
       runtyp(:)               = 'missing'
       runtyp(nsrStartup  + 1) = 'initial'
@@ -394,7 +393,6 @@ contains
       !
       ! Local variables
       integer            :: i, j, n, nr, ns, nt, n2, nf ! indices
-      integer            :: nt_ice, nt_liq              ! incices
       logical            :: budget_check                ! if budget check needs to be performed
       real(r8)           :: volr_init                   ! temporary storage to compute dvolrdt
       integer            :: yr, mon, day, ymd, tod      ! time information
@@ -419,9 +417,6 @@ contains
       call t_startf('mosartr_tot')
 
       rc = ESMF_SUCCESS
-
-      nt_liq = 1
-      nt_ice = 2
 
       !-----------------------------------------------------
       ! Get date info
@@ -570,26 +565,45 @@ contains
       !--- initialize ctl%direct
       !-----------------------------------------------------
 
-      ctl%direct = 0._r8
+      ctl%direct(:,:) = 0._r8
+      ctl%direct_glc(:,:) = 0._r8
 
       !-----------------------------------------------------
-      !--- direct to outlet: all frozen runoff (from lnd and glc)
+      !--- direct to outlet: all liquid and frozen runoff from glc
       !-----------------------------------------------------
 
       src_direct(:,:) = 0._r8
       dst_direct(:,:) = 0._r8
 
-      ! set euler_calc = false for frozen runoff
-      ! TODO: will be reworked after addition of multiple tracers
-      Tunit%euler_calc(nt) = .false.
+      cnt = 0
+      do nr = begr,endr
+         cnt = cnt + 1
+         src_direct(nt_liq,cnt) = ctl%qglc_liq(nr)
+         src_direct(nt_ice,cnt) = ctl%qglc_ice(nr)
+      enddo
+
+      call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+      ! copy direct transfer water to output field
+      cnt = 0
+      do nr = begr,endr
+         cnt = cnt + 1
+         ctl%direct_glc(nr,nt_liq) = ctl%direct_glc(nr,nt_liq) + dst_direct(nt_liq,cnt)
+         ctl%direct_glc(nr,nt_ice) = ctl%direct_glc(nr,nt_ice) + dst_direct(nt_ice,cnt)
+      enddo
+
+      !-----------------------------------------------------
+      !--- direct to outlet: all frozen runoff from lnd
+      !-----------------------------------------------------
+
+      src_direct(:,:) = 0._r8
+      dst_direct(:,:) = 0._r8
 
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         src_direct(nt_ice,cnt) = TRunoff%qsur(nr,nt_ice) + TRunoff%qsub(nr,nt_ice) + TRunoff%qgwl(nr,nt_ice) + ctl%qglc_ice(nr)
-         TRunoff%qsur(nr,nt_ice) = 0._r8
-         TRunoff%qsub(nr,nt_ice) = 0._r8
-         TRunoff%qgwl(nr,nt_ice) = 0._r8
+         src_direct(nt_ice,cnt) = TRunoff%qsur(nr,nt_ice) + TRunoff%qsub(nr,nt_ice) + TRunoff%qgwl(nr,nt_ice)
       enddo
 
       call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
@@ -602,28 +616,14 @@ contains
          ctl%direct(nr,nt_ice) = ctl%direct(nr,nt_ice) + dst_direct(nt_ice,cnt)
       enddo
 
-      !-----------------------------------------------------
-      !--- direct to outlet: all liquid runoff from glc
-      !-----------------------------------------------------
+      ! set euler_calc = false for frozen runoff
+      ! TODO: will be reworked after addition of multiple tracers
+      Tunit%euler_calc(nt_ice) = .false.
 
-      src_direct(:,:) = 0._r8
-      dst_direct(:,:) = 0._r8
-
-      cnt = 0
-      do nr = begr,endr
-         cnt = cnt + 1
-         src_direct(nt_liq,cnt) = ctl%qglc_liq(nr)
-      enddo
-
-      call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-      ! copy direct transfer water to output field
-      cnt = 0
-      do nr = begr,endr
-         cnt = cnt + 1
-         ctl%direct(nr,nt_liq) = ctl%direct(nr,nt_liq) + dst_direct(nt_liq,cnt)
-      enddo
+      ! Set Trunoff%qsur, TRunoff%qsub and Trunoff%qgwl to zero for nt_ice
+      TRunoff%qsur(:,nt_ice) = 0._r8
+      TRunoff%qsub(:,nt_ice) = 0._r8
+      TRunoff%qgwl(:,nt_ice) = 0._r8
 
       !-----------------------------------------------------
       !--- direct to outlet: qgwl
@@ -662,7 +662,7 @@ contains
       endif
 
       !-----------------------------------------------------
-      !--- direct in place qgwl, qgwl, qglc_liq and qflc_ice
+      !--- direct in place qgwl, qgwl
       !-----------------------------------------------------
 
       if (trim(bypass_routing_option) == 'direct_in_place') then
@@ -688,8 +688,6 @@ contains
                   TRunoff%qgwl(nr,nt_liq) = 0._r8
                endif
             endif
-            ! Add glc->rof liquid going directly to outlet
-            src_direct(nt_liq,cnt) = src_direct(nt_liq,cnt) + ctl%qglc_liq(nr)
          enddo
       endif
 
@@ -872,6 +870,13 @@ contains
             endif
          enddo
       enddo
+
+      ! final update from glc input
+      do nr = begr,endr
+        ctl%runofftot(nr,nt_liq) = ctl%runoff(nr,nt_liq) + ctl%direct_glc(nr,nt_liq)
+        ctl%runofftot(nr,nt_ice) = ctl%runoff(nr,nt_ice) + ctl%direct_glc(nr,nt_ice)
+      end do
+
       call t_stopf('mosartr_subcycling')
 
       !-----------------------------------

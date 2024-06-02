@@ -23,6 +23,7 @@ module mosart_histflds
   type(hist_pointer_type), allocatable :: h_runoffocn(:)
   type(hist_pointer_type), allocatable :: h_runofftot(:)
   type(hist_pointer_type), allocatable :: h_direct(:)
+  type(hist_pointer_type), allocatable :: h_direct_glc(:)
   type(hist_pointer_type), allocatable :: h_dvolrdtlnd(:)
   type(hist_pointer_type), allocatable :: h_dvolrdtocn(:)
   type(hist_pointer_type), allocatable :: h_volr(:)
@@ -31,8 +32,8 @@ module mosart_histflds
   type(hist_pointer_type), allocatable :: h_qgwl(:)
 
   real(r8), pointer :: h_volr_mch(:)
-  real(r8), pointer :: h_qglc_liq(:)
-  real(r8), pointer :: h_qglc_ice(:)
+  real(r8), pointer :: h_qglc_liq_input(:)
+  real(r8), pointer :: h_qglc_ice_input(:)
 
 !------------------------------------------------------------------------
 contains
@@ -62,6 +63,7 @@ contains
       allocate(h_qsur(ntracers))
       allocate(h_qsub(ntracers))
       allocate(h_qgwl(ntracers))
+      allocate(h_direct_glc(2))
 
       do nt = 1,ntracers
          allocate(h_runofflnd(nt)%data(begr:endr))
@@ -75,10 +77,12 @@ contains
          allocate(h_qsub(nt)%data(begr:endr))
          allocate(h_qgwl(nt)%data(begr:endr))
       end do
+      allocate(h_direct_glc(ctl%nt_liq)%data(begr:endr))
+      allocate(h_direct_glc(ctl%nt_ice)%data(begr:endr))
 
       allocate(h_volr_mch(begr:endr))
-      allocate(h_qglc_liq(begr:endr))
-      allocate(h_qglc_ice(begr:endr))
+      allocate(h_qglc_liq_input(begr:endr))
+      allocate(h_qglc_ice_input(begr:endr))
 
       !-------------------------------------------------------
       ! Build master field list of all possible fields in a history file.
@@ -95,7 +99,7 @@ contains
 
          call mosart_hist_addfld (fname='RIVER_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s',  &
               avgflag='A', long_name='MOSART river discharge into ocean: '//trim(ctl%tracer_names(nt)), &
-              ptr_rof=h_runoffocn(nt)%data, default='inactive')
+              ptr_rof=h_runoffocn(nt)%data, default='active')
 
          call mosart_hist_addfld (fname='TOTAL_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s', &
               avgflag='A', long_name='MOSART total discharge into ocean: '//trim(ctl%tracer_names(nt)), &
@@ -104,6 +108,10 @@ contains
          call mosart_hist_addfld (fname='DIRECT_DISCHARGE_TO_OCEAN'//'_'//trim(ctl%tracer_names(nt)), units='m3/s', &
               avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(ctl%tracer_names(nt)), &
               ptr_rof=h_direct(nt)%data, default='active')
+
+         call mosart_hist_addfld (fname='DIRECT_DISCHARGE_TO_OCEAN_GLC'//'_'//trim(ctl%tracer_names(nt)), units='m3/s', &
+              avgflag='A', long_name='MOSART direct discharge into ocean from glc: '//trim(ctl%tracer_names(nt)), &
+              ptr_rof=h_direct_glc(nt)%data, default='active')
 
          call mosart_hist_addfld (fname='STORAGE'//'_'//trim(ctl%tracer_names(nt)), units='m3',  &
               avgflag='A', long_name='MOSART storage: '//trim(ctl%tracer_names(nt)), &
@@ -142,13 +150,13 @@ contains
            avgflag='A', long_name='Actual irrigation (if limited by river storage)', &
            ptr_rof=ctl%qirrig_actual, default='inactive')
 
-      call mosart_hist_addfld (fname='QGLC_LIQ', units='m3',  &
+      call mosart_hist_addfld (fname='QGLC_LIQ_INPUT', units='m3',  &
            avgflag='A', long_name='liquid runoff from glc input', &
-           ptr_rof=h_qglc_liq, default='inactive')
+           ptr_rof=h_qglc_liq_input, default='active')
 
-      call mosart_hist_addfld (fname='QGLC_ICE', units='m3',  &
+      call mosart_hist_addfld (fname='QGLC_ICE_INPUT', units='m3',  &
            avgflag='A', long_name='ice runoff from glc input', &
-           ptr_rof=h_qglc_ice, default='inactive')
+           ptr_rof=h_qglc_ice_input, default='active')
 
       ! print masterlist of history fields
       call mosart_hist_printflds()
@@ -168,6 +176,10 @@ contains
 
       ! Local variables
       integer :: nt
+      integer :: nt_liq, nt_ice
+
+      nt_liq = ctl%nt_liq
+      nt_ice = ctl%nt_ice
 
       do nt = 1,ntracers
          h_runofflnd(nt)%data(:)  = ctl%runofflnd(:,nt)
@@ -181,8 +193,10 @@ contains
          h_qgwl(nt)%data(:)       = ctl%qgwl(:,nt)
       end do
       h_volr_mch(:) = Trunoff%wr(:,1)
-      h_qglc_liq(:) = ctl%qglc_liq(:)
-      h_qglc_ice(:) = ctl%qglc_ice(:)
+      h_qglc_liq_input(:) = ctl%qglc_liq(:)
+      h_qglc_ice_input(:) = ctl%qglc_ice(:)
+      h_direct_glc(nt_liq)%data(:) = ctl%direct_glc(:,nt_liq)
+      h_direct_glc(nt_ice)%data(:) = ctl%direct_glc(:,nt_ice)
 
    end subroutine mosart_histflds_set
 

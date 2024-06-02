@@ -125,8 +125,8 @@ contains
       integer :: nt_liq, nt_ice
       !-------------------------------------------------
 
-      nt_liq = 1
-      nt_ice = 2
+      nt_liq = ctl%nt_liq
+      nt_ice = ctl%nt_ice
       do nr = begr, endr
          do nt = 1, ntracers
             this%beg_vol_grc(nr, nt) = ctl%volr(nr, nt)
@@ -180,11 +180,11 @@ contains
       tmp_in = 0.0_r8
       tmp_glob = 0.0_r8
 
-      nt_liq = 1
+      nt_liq = ctl%nt_liq
       do nr = begr, endr
          do nt = 1, ntracers
             this%end_vol_grc(nr, nt) = ctl%volr(nr, nt)
-            this%out_grc(nr, nt) = this%out_grc(nr, nt) + ctl%direct(nr, nt)
+            this%out_grc(nr, nt) = this%out_grc(nr, nt) + ctl%direct(nr, nt) + ctl%direct_glc(nr, nt)
             if (nt == nt_liq) then
                this%out_grc(nr, nt) = this%out_grc(nr, nt) + ctl%flood(nr)
             end if
@@ -195,9 +195,8 @@ contains
             end if
             this%out_grc(nr,nt) = this%out_grc(nr,nt) * dt
             this%lag_grc(nr,nt) = this%lag_grc(nr,nt) * dt
-            this%net_grc(nr, nt) = this%end_vol_grc(nr, nt) - this%beg_vol_grc(nr, nt) &
-                                   - (this%in_grc(nr, nt) - this%out_grc(nr, nt))
-            this%accum_grc(nr, nt) = this%accum_grc(nr, nt) + this%net_grc(nr, nt)
+            this%net_grc(nr,nt) = this%end_vol_grc(nr,nt) - this%beg_vol_grc(nr,nt) - (this%in_grc(nr,nt)-this%out_grc(nr,nt))
+            this%accum_grc(nr,nt) = this%accum_grc(nr,nt) + this%net_grc(nr,nt)
          end do
       end do
 
