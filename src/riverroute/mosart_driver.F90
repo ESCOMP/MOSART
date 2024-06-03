@@ -465,7 +465,6 @@ contains
         call t_stopf('mosartr_budgetset')
       endif
 
-
       ! initialize data for euler solver, in m3/s here
       do nr = begr,endr
          do nt = 1,ntracers
@@ -565,7 +564,6 @@ contains
       !-----------------------------------------------------
 
       ctl%direct(:,:) = 0._r8
-      ctl%direct_glc(:,:) = 0._r8
 
       !-----------------------------------------------------
       !--- direct to outlet: all liquid and frozen runoff from glc
@@ -588,8 +586,8 @@ contains
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         ctl%direct_glc(nr,nt_liq) = ctl%direct_glc(nr,nt_liq) + dst_direct(nt_liq,cnt)
-         ctl%direct_glc(nr,nt_ice) = ctl%direct_glc(nr,nt_ice) + dst_direct(nt_ice,cnt)
+         ctl%direct_glc(nr,nt_liq) = dst_direct(nt_liq,cnt)
+         ctl%direct_glc(nr,nt_ice) = dst_direct(nt_ice,cnt)
       enddo
 
       !-----------------------------------------------------
