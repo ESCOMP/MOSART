@@ -6,7 +6,6 @@ module mosart_driver
 
    use shr_kind_mod       , only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_CL
    use shr_sys_mod        , only : shr_sys_abort
-   use shr_mpi_mod        , only : shr_mpi_sum, shr_mpi_max
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
    use shr_string_mod     , only : shr_string_listGetNum, shr_string_listGetName
    use mosart_vars        , only : re, spval, iulog, ice_runoff, &
@@ -167,7 +166,7 @@ contains
          write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
          write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
          write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
-         write(iulog,'(a,l)' ) '   use_halo_option       = ',use_halo_option
+         write(iulog,'(a,l1)') '   use_halo_option       = ',use_halo_option
          write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
          write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
          write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
