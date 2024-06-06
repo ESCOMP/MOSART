@@ -196,17 +196,19 @@ contains
       integer          , intent(in)    :: mode   ! file mode
 
       ! Local variables
+      integer :: oldmethod
       integer :: ierr
       character(len=*),parameter :: subname='ncd_pio_openfile' ! subroutine name
       !-----------------------------------------------------------------------
 
+      call pio_seterrorhandling(pio_subsystem, PIO_BCAST_ERROR, oldmethod)
       ierr = pio_openfile(pio_subsystem, file, io_type, fname, mode)
-
       if(ierr/= PIO_NOERR) then
          call shr_sys_abort(subname//'ERROR: Failed to open file')
       else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
          write(iulog,*) 'Opened existing file ', trim(fname), file%fh
       end if
+      call pio_seterrorhandling(pio_subsystem, oldmethod)
 
    end subroutine ncd_pio_openfile
 
@@ -237,6 +239,7 @@ contains
       character(len=*),  intent(in)    :: fname   ! File name to create
 
       ! Local variables
+      integer :: oldmethod
       integer :: ierr
       integer :: iomode
       character(len=*),parameter :: subname='ncd_pio_createfile' ! subroutine name
@@ -247,13 +250,14 @@ contains
       if(io_type == PIO_IOTYPE_NETCDF .or. io_type == PIO_IOTYPE_PNETCDF) then
          iomode = ior(iomode, io_format)
       endif
+      call pio_seterrorhandling(pio_subsystem, PIO_BCAST_ERROR, oldmethod)
       ierr = pio_createfile(pio_subsystem, file, io_type, fname, iomode)
-
       if(ierr/= PIO_NOERR) then
          call shr_sys_abort( subname//' ERROR: Failed to open file to write: '//trim(fname))
       else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
          write(iulog,*) 'Opened file ', trim(fname),  ' to write', file%fh
       end if
+      call pio_seterrorhandling(pio_subsystem, oldmethod)
 
    end subroutine ncd_pio_createfile
 
@@ -272,6 +276,7 @@ contains
       logical, optional, intent(in)     :: print_err ! If should print about error
 
       ! Local variables
+      integer :: oldmethod
       integer :: ret     ! return value
       logical :: log_err ! if should log error
       character(len=*),parameter :: subname='check_var' ! subroutine name
@@ -284,14 +289,15 @@ contains
          log_err = .true.
       end if
       readvar = .true.
-      call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+      call pio_seterrorhandling(ncid, PIO_BCAST_ERROR, oldmethod)
       ret = pio_inq_varid (ncid, varname, vardesc)
       if (ret /= PIO_NOERR) then
          readvar = .false.
-         if (mainproc .and. log_err) &
-              write(iulog,*) subname//': variable ',trim(varname),' is not on dataset'
+         if (mainproc .and. log_err) then
+           write(iulog,*) subname//': variable ',trim(varname),' is not on dataset'
+         end if
       end if
-      call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+      call pio_seterrorhandling(ncid, oldmethod)
 
    end subroutine check_var
 
@@ -355,11 +361,12 @@ contains
       logical,optional, intent(out):: dimexist  ! if this dimension exists or not
 
       ! Local variables
+      integer :: oldmethod
       integer :: status
       !-----------------------------------------------------------------------
 
       if ( present(dimexist) )then
-         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR, oldmethod)
       end if
       status = PIO_inq_dimid(ncid,name,dimid)
       if ( present(dimexist) )then
@@ -368,7 +375,7 @@ contains
          else
             dimexist = .false.
          end if
-         call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+         call pio_seterrorhandling(ncid, oldmethod)
       end if
 
    end subroutine ncd_inqdid
@@ -430,6 +437,7 @@ contains
       integer          , intent(out)  :: nj
       integer          , intent(out)  :: ns
       ! Local variables
+      integer  :: oldmethod
       integer  :: dimid                                ! netCDF id
       integer  :: ier                                  ! error status
       character(len=CS) :: subname = 'surfrd_filedims' ! subroutine name
@@ -438,7 +446,7 @@ contains
       ni = 0
       nj = 0
 
-      call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+      call pio_seterrorhandling(ncid, PIO_BCAST_ERROR, oldmethod)
       ier = pio_inq_dimid (ncid, 'lon', dimid)
       if (ier == PIO_NOERR) ier = pio_inq_dimlen(ncid, dimid, ni)
       ier = pio_inq_dimid (ncid, 'lat', dimid)
@@ -460,7 +468,7 @@ contains
          if (ier == PIO_NOERR) nj = 1
       end if
 
-      call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+      call pio_seterrorhandling(ncid, oldmethod)
 
       if (ni == 0 .or. nj == 0) then
          write(iulog,*) trim(subname),' ERROR: ni,nj = ',ni,nj,' cannot be zero '
@@ -492,13 +500,14 @@ contains
       logical, optional, intent(out)   :: readvar   ! does variable exist
 
       ! Local variables
+      integer :: oldmethod
       integer :: ret               ! return code
       character(len=*),parameter :: subname='ncd_inqvid' ! subroutine name
       !-----------------------------------------------------------------------
 
       if (present(readvar)) then
          readvar = .false.
-         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+         call pio_seterrorhandling(pio_subsystem, PIO_BCAST_ERROR, oldmethod)
          ret = pio_inq_varid(ncid,name,vardesc)
          if (ret /= PIO_NOERR) then
             if (mainproc) write(iulog,*) subname//': variable ',trim(name),' is not on dataset'
@@ -506,7 +515,7 @@ contains
          else
             readvar = .true.
          end if
-         call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+         call pio_seterrorhandling(ncid, oldmethod)
       else
          ret = pio_inq_varid(ncid,name,vardesc)
       endif
