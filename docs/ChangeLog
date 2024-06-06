@@ -1,4 +1,52 @@
 ===============================================================
+Tag name:  mosart1_1_01
+Originator(s): mvertens
+Date: Jun 06, 2024
+One-line Summary: major mosart refactor including addition of new halo capability
+
+Removed all references to rtm
+
+files have been renamed and namelists no longer contain rtm in the name
+
+New modularity:
+
+introduced new modules with new derived types and methods
+mosart_control_type.F90
+mosart_tctl_type.F90
+mosart_tparameter_type.F90
+mosart_tspatialunit_type.F90
+mosart_tstatusflux_type.F90
+
+the new modules modularize a lot of the complexity and variables that were previously found in RunOffMod.F90 and permit decomposition initialization to be more flexible and transparent.
+
+New halo capability
+
+Ability to have halo regions and communication using ESMF. This is needed for computing derivatives in upcoming new additions to MOSART.
+New halo namelist - use_halo_option. When this is set to true halos can be activated. See the test_halo subroutine in mosart_control_type.F90 module.
+Verified that the results for the halos are bfb identical regardless of the number of processors that are used.
+-To set the values for the exclusive region that will be used in halo operations - you need to access the pointer as is done in the test_halo routine in mosart_control_type.F90:
+     n = 0
+      do nr = this%begr,this%endr
+         n = n + 1
+         this%halo_arrayptr(n) = this%latc(nr)*10. + this%lonc(nr)/100.
+      end do
+
+      call ESMF_ArrayHalo(this%haloArray, routehandle=this%haloHandle, rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+Issues addressed:
+Fixes #93 "if (ierr /= PIO_NOERR)" will not be invoked unless PIO_BCAST_ERROR is explicitly set
+Fixes #98 Change namelist items to remove "rtm" in the names of namelist variables
+Fixes #97 Remove RTM in more of the MOSART code (filenames, subroutines, variables etc.)
+Fixes #99 Add a new mosart_noresm testlist
+
+Testing: standard testing
+  izumi -- OK
+  cheyenne -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/76 for more details
+
+===============================================================
 Tag name:  mosart1_0_49
 Originator(s): mvertens
 Date: Feb 02, 2024
