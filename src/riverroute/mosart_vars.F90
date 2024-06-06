@@ -31,12 +31,13 @@ module mosart_vars
    integer              :: nsrest = iundef ! Type of run
 
    ! Namelist variables
-   character(len=CL)  :: frivinp               ! MOSART input data file name
-   logical            :: ice_runoff            ! true => runoff is split into liquid and ice, otherwise just liquid
-   character(len=CS)  :: decomp_option         ! decomp option
-   character(len=CS)  :: bypass_routing_option ! bypass routing model method
-   character(len=CS)  :: qgwl_runoff_option    ! method for handling qgwl runoff
-   integer            :: budget_frq = -24            ! budget check frequency
+   character(len=CL)  :: frivinp                ! MOSART input data file name
+   logical            :: ice_runoff             ! true => runoff is split into liquid and ice, otherwise just liquid
+   character(len=CS)  :: decomp_option          ! decomp option
+   character(len=CS)  :: bypass_routing_option  ! bypass routing model method
+   character(len=CS)  :: qgwl_runoff_option     ! method for handling qgwl runoff
+   integer            :: budget_frq = -24       ! budget check frequency
+   logical            :: separate_glc2cn_fluxes ! true => send fluxes from glc through mozart separately to mediator
 
    ! Metadata variables used in history and restart generation
    character(len=CL)  :: caseid  = ' '          ! case id
