@@ -1159,10 +1159,10 @@ contains
     integer  :: i, n, nr               ! local indices
     real(r8) :: deg2rad
     real(r8) :: mean_dx, mean_dy, dlon, dlat
-    real(r8) :: ax_indices(4)                 ! x indices to add
-    real(r8) :: sx_indices(4)                 ! x indices to subtract
-    real(r8) :: ay_indices(4)                 ! y indices to add
-    real(r8) :: sy_indices(4)                 ! y indices to subtract
+    integer  :: ax_indices(4)                 ! x indices to add
+    integer  :: sx_indices(4)                 ! x indices to subtract
+    integer  :: ay_indices(4)                 ! y indices to add
+    integer  :: sy_indices(4)                 ! y indices to subtract
     real(r8) :: fld_surrounding(max_num_halo)
     real(r8) :: dx(max_num_halo)
     real(r8) :: dy(max_num_halo)
