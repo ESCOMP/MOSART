@@ -200,8 +200,8 @@ contains
       character(len=*),parameter :: subname='ncd_pio_openfile' ! subroutine name
       !-----------------------------------------------------------------------
 
-      call pio_seterrorhandling(file, PIO_BCAST_ERROR)
       ierr = pio_openfile(pio_subsystem, file, io_type, fname, mode)
+
       if(ierr/= PIO_NOERR) then
          call shr_sys_abort(subname//'ERROR: Failed to open file')
       else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
@@ -247,8 +247,8 @@ contains
       if(io_type == PIO_IOTYPE_NETCDF .or. io_type == PIO_IOTYPE_PNETCDF) then
          iomode = ior(iomode, io_format)
       endif
-      call pio_seterrorhandling(file, PIO_BCAST_ERROR)
       ierr = pio_createfile(pio_subsystem, file, io_type, fname, iomode)
+
       if(ierr/= PIO_NOERR) then
          call shr_sys_abort( subname//' ERROR: Failed to open file to write: '//trim(fname))
       else if(pio_iotask_rank(pio_subsystem)==0 .and. mainproc) then
