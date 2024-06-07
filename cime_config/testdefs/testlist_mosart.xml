@@ -62,8 +62,8 @@
   </test>
   <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/default">
     <machines>
-      <machine name="betzy" compiler="intel" category="mosart"></machine>
-      <machine name="izumi" compiler="nag" category="mosart_noresm"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+      <machine name="izumi" compiler="nag" category="mosart"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>

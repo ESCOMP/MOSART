@@ -1,10 +1,9 @@
 module mosart_control_type
 
-  use shr_kind_mod,      only : r8 => shr_kind_r8, CL => SHR_KIND_CL, CS => SHR_KIND_CS
+  use shr_kind_mod,      only : r8 => shr_kind_r8, CS => shr_kind_cs
   use shr_sys_mod,       only : shr_sys_abort
   use shr_const_mod,     only : shr_const_pi, shr_const_rearth
-  use shr_string_mod,    only : shr_string_listGetNum, shr_string_listGetName
-  use shr_mpi_mod,       only : shr_mpi_sum, shr_mpi_max
+  use shr_mpi_mod,       only : shr_mpi_sum
   use mosart_io,         only : ncd_io, ncd_pio_openfile, ncd_pio_closefile
   use mosart_vars,       only : mainproc, iam, npes, mpicom_rof, iulog, spval, re
   use pio,               only : file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
@@ -472,7 +471,6 @@ contains
     integer, pointer           :: halo_list(:)
     integer, pointer           :: seqlist(:)
     integer, allocatable       :: store_halo_index(:)
-    integer                    :: nglob
     character(len=*),parameter :: subname = '(mosart_control_type: init_decomp) '
     !-----------------------------------------------------------------------
 
