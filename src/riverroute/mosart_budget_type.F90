@@ -9,7 +9,6 @@ module mosart_budget_type
    use mosart_vars,        only: re, spval, barrier_timers, iulog, mainproc, npes, iam, mpicom_rof
    use mosart_data,        only: ctl, Tctl, Tunit, TRunoff, Tpara
    use mosart_timemanager, only: get_nstep, get_curr_date
-   use mpi
 
    implicit none
    private
@@ -45,6 +44,13 @@ module mosart_budget_type
       procedure, public :: check_budget
    end type budget_type
    public :: budget_type
+
+   integer, parameter :: index_beg_vol_grc = 1
+   integer, parameter :: index_end_vol_grc = 2
+   integer, parameter :: index_in_grc      = 3
+   integer, parameter :: index_out_grc     = 4
+   integer, parameter :: index_net_grc     = 5
+   integer, parameter :: index_lag_grc     = 6
 
    character(*), parameter :: u_FILE_u = &
                               __FILE__
@@ -201,12 +207,12 @@ contains
       end do
 
       do nt = 1, ntracers
-         tmp_in(1, nt) = sum(this%beg_vol_grc(:, nt))
-         tmp_in(2, nt) = sum(this%end_vol_grc(:, nt))
-         tmp_in(3, nt) = sum(this%in_grc(:, nt))
-         tmp_in(4, nt) = sum(this%out_grc(:, nt))
-         tmp_in(5, nt) = sum(this%net_grc(:, nt))
-         tmp_in(6, nt) = sum(this%lag_grc(:, nt))
+         tmp_in(index_beg_vol_grc, nt) = sum(this%beg_vol_grc(:, nt))
+         tmp_in(index_end_vol_grc, nt) = sum(this%end_vol_grc(:, nt))
+         tmp_in(index_in_grc, nt)      = sum(this%in_grc(:, nt))
+         tmp_in(index_out_grc, nt)     = sum(this%out_grc(:, nt))
+         tmp_in(index_net_grc, nt)     = sum(this%net_grc(:, nt))
+         tmp_in(index_lag_grc, nt)     = sum(this%lag_grc(:, nt))
       end do
 
       tmp_in = tmp_in*1e-6_r8 !convert to million m3
@@ -216,12 +222,12 @@ contains
          error_budget = .false.
          abserr = 0.0_r8
          relerr = 0.0_r8
-         this%beg_vol_glob(nt) = tmp_glob(1, nt)
-         this%end_vol_glob(nt) = tmp_glob(2, nt)
-         this%in_glob(nt) = tmp_glob(3, nt)
-         this%out_glob(nt) = tmp_glob(4, nt)
-         this%net_glob(nt) = tmp_glob(5, nt)
-         this%lag_glob(nt) = tmp_glob(6, nt)
+         this%beg_vol_glob(nt) = tmp_glob(index_beg_vol_grc, nt)
+         this%end_vol_glob(nt) = tmp_glob(index_end_vol_grc, nt)
+         this%in_glob(nt)      = tmp_glob(index_in_grc, nt)
+         this%out_glob(nt)     = tmp_glob(index_out_grc, nt)
+         this%net_glob(nt)     = tmp_glob(index_net_grc, nt)
+         this%lag_glob(nt)     = tmp_glob(index_lag_grc, nt)
          if (this%do_budget(nt)) then
             if (abs(this%net_glob(nt) - this%lag_glob(nt)*dt) > this%tolerance) then
                error_budget = .true.

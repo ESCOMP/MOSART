@@ -3,7 +3,7 @@ module mosart_timemanager
    use shr_kind_mod   , only: r8 => shr_kind_r8, CS => shr_kind_CS
    use shr_sys_mod    , only: shr_sys_abort
    use shr_string_mod , only: shr_string_toUpper
-   use mosart_vars    , only: isecspday, iulog, nsrest, nsrContinue, mpicom_rof, mainproc
+   use mosart_vars    , only: isecspday, iulog, nsrest, nsrContinue, mainproc
    use ESMF           , only: ESMF_MAXSTR, ESMF_Calendar, ESMF_Clock, ESMF_Time, ESMF_TimeInterval, &
                               ESMF_TimeIntervalSet, ESMF_TimeIntervalGet, ESMF_TimeSet, ESMF_TimeGet, &
                               ESMF_ClockCreate, ESMF_ClockGet, ESMF_ClockAdvance, &
