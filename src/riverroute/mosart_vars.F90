@@ -3,6 +3,7 @@ module mosart_vars
    use shr_kind_mod             , only : r8 => shr_kind_r8, CL => SHR_KIND_CL, CS => shr_kind_CS
    use shr_const_mod            , only : SHR_CONST_CDAY,SHR_CONST_REARTH
    use shr_sys_mod              , only : shr_sys_abort
+   use ESMF                     , only : ESMF_VM
 
    implicit none
    public
@@ -13,6 +14,7 @@ module mosart_vars
    integer :: npes                     ! number of processors for mosart
    integer :: mpicom_rof               ! communicator group for mosart
    logical :: barrier_timers = .false. ! barrier timers
+   type(ESMF_VM) :: vm                 ! ESMF VM
 
    ! Constants
    integer  , parameter :: iundef    = -9999999

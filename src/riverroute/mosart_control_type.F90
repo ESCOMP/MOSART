@@ -3,13 +3,14 @@ module mosart_control_type
   use shr_kind_mod,      only : r8 => shr_kind_r8, CS => shr_kind_cs
   use shr_sys_mod,       only : shr_sys_abort
   use shr_const_mod,     only : shr_const_pi, shr_const_rearth
+  use shr_string_mod,    only : shr_string_listGetNum, shr_string_listGetName
   use shr_mpi_mod,       only : shr_mpi_sum
   use mosart_io,         only : ncd_io, ncd_pio_openfile, ncd_pio_closefile
-  use mosart_vars,       only : mainproc, iam, npes, mpicom_rof, iulog, spval, re
+  use mosart_vars,       only : mainproc, iam, npes, mpicom_rof, iulog, spval, re, vm
   use pio,               only : file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
   use ESMF,              only : ESMF_DistGrid, ESMF_Array, ESMF_RouteHandle, ESMF_SUCCESS, &
                                 ESMF_DistGridCreate, ESMF_ArrayCreate, ESMF_ArrayHaloStore, &
-                                ESMF_ArrayHalo, ESMF_ArrayGet
+                                ESMF_ArrayHalo, ESMF_ArrayGet, ESMF_VMAllReduce, ESMF_REDUCE_SUM
   use perf_mod,          only : t_startf, t_stopf
   use nuopc_shr_methods, only : chkerr
 
@@ -181,7 +182,8 @@ contains
     real(r8)          :: rlatn(this%nlat)                 ! latitude of 1d north grid cell edge (deg)
     real(r8)          :: rlonw(this%nlon)                 ! longitude of 1d west grid cell edge (deg)
     real(r8)          :: rlone(this%nlon)                 ! longitude of 1d east grid cell edge (deg)
-    real(r8)          :: larea                            ! tmp local sum of area
+    real(r8)          :: larea(1)                         ! tmp local sum of area
+    real(r8)          :: totarea(1)                       ! tmp total area
     real(r8)          :: deg2rad                          ! pi/180
     integer           :: g, n, i, j, nr, nt               ! iterators
     real(r8)          :: edgen                            ! North edge of the direction file
@@ -402,15 +404,19 @@ contains
        this%area(nr) = area_global(n)
     enddo
 
-    larea = 0.0_r8
+    larea(1) = 0.0_r8
     do nr = begr,endr
-       larea = larea + this%area(nr)
+       larea(1) = larea(1) + this%area(nr)
     end do
     if (minval(this%mask) < 1) then
        write(iulog,*) subname,'ERROR this mask lt 1 ',minval(this%mask),maxval(this%mask)
        call shr_sys_abort(subname//' ERROR this mask')
     endif
-    call shr_mpi_sum(larea, this%totarea, mpicom_rof, 'mosart totarea', all=.true.)
+
+    call ESMF_VMAllReduce(vm, larea, totarea, 1, ESMF_REDUCE_SUM, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    this%totarea = totarea(1)
+
     if (mainproc) then
        write(iulog,*) subname,'  earth area ',4.0_r8*shr_const_pi*1.0e6_r8*re*re
        write(iulog,*) subname,' mosart area ',this%totarea
