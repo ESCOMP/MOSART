@@ -30,6 +30,7 @@ module mosart_control_type
      character(len=3), allocatable :: tracer_names(:)! tracer names
      integer :: nt_liq                               ! index of liquid tracer in tracer_names
      integer :: nt_ice                               ! index of ice tracer in tracer_names
+     logical :: rof_from_glc                         ! if true, will receive liq and ice runoff from glc
 
      ! decomp info
      integer :: begr                                 ! local start index

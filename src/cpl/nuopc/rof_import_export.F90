@@ -27,6 +27,7 @@ module rof_import_export
   private :: state_getimport
   private :: state_setexport
   private :: check_for_nans
+  private :: fldchk
 
   type fld_list_type
      character(len=128) :: stdname
@@ -234,6 +235,12 @@ contains
             min_med2mod_areacor_glob(1), max_med2mod_areacor_glob(1), 'MOSART'
     end if
 
+    if (fldchk(importState, 'Fgrg_rofl') .and. fldchk(importState, 'Fgrg_rofl')) then
+      ctl%rof_from_glc = .true.
+    else
+      ctl%rof_from_glc = .false.
+    end if
+
   end subroutine realize_fields
 
   !===============================================================================
@@ -291,13 +298,18 @@ contains
     ctl%qsub(begr:endr, nice) = 0.0_r8
     ctl%qgwl(begr:endr, nice) = 0.0_r8
 
-    call state_getimport(importState, 'Fgrg_rofl', begr, endr, ctl%area, output=ctl%qglc_liq(:), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-    call state_getimport(importState, 'Fgrg_rofi', begr, endr, ctl%area, output=ctl%qglc_ice(:), &
-         do_area_correction=.true., rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (ctl%rof_from_glc) then
+      call state_getimport(importState, 'Fgrg_rofl', begr, endr, ctl%area, output=ctl%qglc_liq(:), &
+           do_area_correction=.true., rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call state_getimport(importState, 'Fgrg_rofi', begr, endr, ctl%area, output=ctl%qglc_ice(:), &
+           do_area_correction=.true., rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else
+      ctl%qglc_liq(:) = 0._r8
+      ctl%qglc_ice(:) = 0._r8
+    end if
+    write(6,*)'DEBUG: ctl%rof_from_glc = ',ctl%rof_from_glc
 
   end subroutine import_fields
 
@@ -678,5 +690,26 @@ contains
        call shr_sys_abort(' ERROR: One or more of the output from MOSART to the coupler are NaN ' )
     end if
   end subroutine check_for_nans
+
+  !===============================================================================
+  logical function fldchk(state, fldname)
+    ! ----------------------------------------------
+    ! Determine if field with fldname is in the input state
+    ! ----------------------------------------------
+
+    ! input/output variables
+    type(ESMF_State), intent(in)  :: state
+    character(len=*), intent(in)  :: fldname
+
+    ! local variables
+    type(ESMF_StateItem_Flag)   :: itemFlag
+    ! ----------------------------------------------
+    call ESMF_StateGet(state, trim(fldname), itemFlag)
+    if (itemflag /= ESMF_STATEITEM_NOTFOUND) then
+       fldchk = .true.
+    else
+       fldchk = .false.
+    endif
+  end function fldchk
 
 end module rof_import_export

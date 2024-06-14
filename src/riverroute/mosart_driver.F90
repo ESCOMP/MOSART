@@ -574,26 +574,31 @@ contains
       !--- direct to outlet: all liquid and frozen runoff from glc
       !-----------------------------------------------------
 
-      src_direct(:,:) = 0._r8
-      dst_direct(:,:) = 0._r8
+      if (ctl%rof_from_glc) then
+        src_direct(:,:) = 0._r8
+        dst_direct(:,:) = 0._r8
 
-      cnt = 0
-      do nr = begr,endr
-         cnt = cnt + 1
-         src_direct(nt_liq,cnt) = ctl%qglc_liq(nr)
-         src_direct(nt_ice,cnt) = ctl%qglc_ice(nr)
-      enddo
+        cnt = 0
+        do nr = begr,endr
+          cnt = cnt + 1
+          src_direct(nt_liq,cnt) = ctl%qglc_liq(nr)
+          src_direct(nt_ice,cnt) = ctl%qglc_ice(nr)
+        enddo
 
-      call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
+        call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-      ! copy direct transfer water to output field
-      cnt = 0
-      do nr = begr,endr
-         cnt = cnt + 1
-         ctl%direct_glc(nr,nt_liq) = dst_direct(nt_liq,cnt)
-         ctl%direct_glc(nr,nt_ice) = dst_direct(nt_ice,cnt)
-      enddo
+        ! copy direct transfer water to output field
+        cnt = 0
+        do nr = begr,endr
+          cnt = cnt + 1
+          ctl%direct_glc(nr,nt_liq) = dst_direct(nt_liq,cnt)
+          ctl%direct_glc(nr,nt_ice) = dst_direct(nt_ice,cnt)
+        enddo
+      else
+        ctl%direct_glc(:,:) = 0._r8
+        ctl%direct_glc(:,:) = 0._r8
+      end if
 
       !-----------------------------------------------------
       !--- direct to outlet: all frozen runoff from lnd
