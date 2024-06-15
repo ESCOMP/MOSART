@@ -9,7 +9,7 @@ module rof_import_export
   use NUOPC_Model         , only : NUOPC_ModelGet
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use shr_sys_mod         , only : shr_sys_abort
-  use mosart_vars         , only : iulog, mainproc, ice_runoff, separate_glc2ocn_fluxes, vm
+  use mosart_vars         , only : iulog, mainproc, mpicom_rof, ice_runoff, separate_glc2ocn_fluxes
   use mosart_data         , only : ctl, TRunoff, TUnit
   use mosart_timemanager  , only : get_nstep
   use nuopc_shr_methods   , only : chkerr
@@ -132,8 +132,8 @@ contains
     use ESMF          , only : ESMF_GridComp, ESMF_StateGet
     use ESMF          , only : ESMF_Mesh, ESMF_MeshGet
     use ESMF          , only : ESMF_Field, ESMF_FieldGet, ESMF_FieldRegridGetArea
-    use ESMF          , only : ESMF_GridCompGet, ESMF_VMAllReduce, ESMF_REDUCE_MAX, ESMF_REDUCE_MIN
     use shr_const_mod , only : shr_const_rearth
+    use shr_mpi_mod   , only : shr_mpi_min, shr_mpi_max
 
     ! input/output variables
     type(ESMF_GridComp) , intent(inout) :: gcomp
@@ -152,14 +152,14 @@ contains
     real(r8), allocatable :: model_areas(:)
     real(r8), pointer     :: dataptr(:)
     real(r8)              :: re = shr_const_rearth*0.001_r8 ! radius of earth (km)
-    real(r8)              :: max_mod2med_areacor(1)
-    real(r8)              :: max_med2mod_areacor(1)
-    real(r8)              :: min_mod2med_areacor(1)
-    real(r8)              :: min_med2mod_areacor(1)
-    real(r8)              :: max_mod2med_areacor_glob(1)
-    real(r8)              :: max_med2mod_areacor_glob(1)
-    real(r8)              :: min_mod2med_areacor_glob(1)
-    real(r8)              :: min_med2mod_areacor_glob(1)
+    real(r8)              :: max_mod2med_areacor
+    real(r8)              :: max_med2mod_areacor
+    real(r8)              :: min_mod2med_areacor
+    real(r8)              :: min_med2mod_areacor
+    real(r8)              :: max_mod2med_areacor_glob
+    real(r8)              :: max_med2mod_areacor_glob
+    real(r8)              :: min_mod2med_areacor_glob
+    real(r8)              :: min_med2mod_areacor_glob
     character(len=*), parameter :: subname='(rof_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
@@ -214,31 +214,29 @@ contains
     deallocate(model_areas)
     deallocate(mesh_areas)
 
-    min_mod2med_areacor(1) = minval(mod2med_areacor)
-    max_mod2med_areacor(1) = maxval(mod2med_areacor)
-    min_med2mod_areacor(1) = minval(med2mod_areacor)
-    max_med2mod_areacor(1) = maxval(med2mod_areacor)
-
-    call ESMF_VMAllReduce(vm, max_mod2med_areacor, max_mod2med_areacor_glob, 1, ESMF_REDUCE_MAX, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllReduce(vm, min_mod2med_areacor, min_mod2med_areacor_glob, 1, ESMF_REDUCE_MIN, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllReduce(vm, max_med2mod_areacor, max_med2mod_areacor_glob, 1, ESMF_REDUCE_MAX, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllReduce(vm, min_med2mod_areacor, min_med2mod_areacor_glob, 1, ESMF_REDUCE_MIN, rc=rc)
-    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    min_mod2med_areacor = minval(mod2med_areacor)
+    max_mod2med_areacor = maxval(mod2med_areacor)
+    min_med2mod_areacor = minval(med2mod_areacor)
+    max_med2mod_areacor = maxval(med2mod_areacor)
+    call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom_rof)
+    call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom_rof)
+    call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom_rof)
+    call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom_rof)
 
     if (mainproc) then
        write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
-            min_mod2med_areacor_glob(1), max_mod2med_areacor_glob(1), 'MOSART'
+            min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'MOSART'
        write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
-            min_med2mod_areacor_glob(1), max_med2mod_areacor_glob(1), 'MOSART'
+            min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'MOSART'
     end if
 
     if (fldchk(importState, 'Fgrg_rofl') .and. fldchk(importState, 'Fgrg_rofl')) then
       ctl%rof_from_glc = .true.
     else
       ctl%rof_from_glc = .false.
+    end if
+    if (mainproc) then
+      write(iulog,'(A,l1)') trim(subname) //' rof from glc is ',ctl%rof_from_glc
     end if
 
   end subroutine realize_fields
@@ -309,7 +307,6 @@ contains
       ctl%qglc_liq(:) = 0._r8
       ctl%qglc_ice(:) = 0._r8
     end if
-    write(6,*)'DEBUG: ctl%rof_from_glc = ',ctl%rof_from_glc
 
   end subroutine import_fields
 
