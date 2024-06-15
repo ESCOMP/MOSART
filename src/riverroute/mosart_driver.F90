@@ -880,8 +880,8 @@ contains
 
       ! final update from glc input
       do nr = begr,endr
-        ctl%runofftot(nr,nt_liq) = ctl%runoff(nr,nt_liq) + ctl%direct_glc(nr,nt_liq)
-        ctl%runofftot(nr,nt_ice) = ctl%runoff(nr,nt_ice) + ctl%direct_glc(nr,nt_ice)
+        ctl%runofftot(nr,nt_liq) = ctl%runofftot(nr,nt_liq) + ctl%direct_glc(nr,nt_liq)
+        ctl%runofftot(nr,nt_ice) = ctl%runofftot(nr,nt_ice) + ctl%direct_glc(nr,nt_ice)
       end do
 
       call t_stopf('mosartr_subcycling')
