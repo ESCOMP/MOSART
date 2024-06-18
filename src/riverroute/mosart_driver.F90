@@ -107,7 +107,7 @@ contains
       use_halo_option = .false.
       mosart_tracers = 'LIQ:ICE'
       mosart_euler_calc = 'T:F'
-      separate_glc2ocn_fluxes = .false.
+      separate_glc2ocn_fluxes = .true.
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
