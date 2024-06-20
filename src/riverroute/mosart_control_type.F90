@@ -134,6 +134,9 @@ contains
 
   subroutine init_tracer_names(this, mosart_tracers)
 
+    ! This sets the indices for liquid and ice runoff. In the future additional tracers
+    ! will be enabled so this is a starting point.
+
     ! Arguments
     class(control_type) :: this
     character(len=CS)   :: mosart_tracers    ! colon delimited string of tracer names
