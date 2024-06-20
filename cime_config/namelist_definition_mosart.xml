@@ -294,18 +294,4 @@
     </desc>
   </entry>
 
-  <entry id="separate_glc2ocn_fluxes">
-    <type>logical</type>
-    <category>mosart</category>
-    <group>mosart_inparm</group>
-    <values>
-      <value>.true.</value>
-    </values>
-    <desc>
-      Default: .true.
-      If .true., glc2ocn fluxes that are passed through mosart will be sent
-      as a separate fields to the mediator.
-    </desc>
-  </entry>
-
 </entry_id>

@@ -39,7 +39,6 @@ module mosart_vars
    character(len=CS)  :: bypass_routing_option  ! bypass routing model method
    character(len=CS)  :: qgwl_runoff_option     ! method for handling qgwl runoff
    integer            :: budget_frq = -24       ! budget check frequency
-   logical            :: separate_glc2ocn_fluxes ! true => send fluxes from glc through mozart separately to mediator
 
    ! Metadata variables used in history and restart generation
    character(len=CL)  :: caseid  = ' '          ! case id

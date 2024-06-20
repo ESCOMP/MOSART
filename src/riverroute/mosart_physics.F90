@@ -280,7 +280,7 @@ contains
       if(Tctl%RoutingMethod == 1) then
          call Routing_KW(nr, nt, theDeltaT)
       else
-         call shr_sys_abort( "mosart: Please check the routing method! There are only 4 methods available." )
+         call shr_sys_abort( "mosart: Please check the routing method! There is only 1 method currently available." )
       end if
 
    end subroutine mainchannelRouting

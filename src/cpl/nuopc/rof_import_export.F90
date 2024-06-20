@@ -9,7 +9,7 @@ module rof_import_export
   use NUOPC_Model         , only : NUOPC_ModelGet
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use shr_sys_mod         , only : shr_sys_abort
-  use mosart_vars         , only : iulog, mainproc, mpicom_rof, ice_runoff, separate_glc2ocn_fluxes
+  use mosart_vars         , only : iulog, mainproc, mpicom_rof, ice_runoff
   use mosart_data         , only : ctl, TRunoff, TUnit
   use mosart_timemanager  , only : get_nstep
   use nuopc_shr_methods   , only : chkerr
@@ -87,10 +87,8 @@ contains
     call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
-    if (separate_glc2ocn_fluxes) then
-      call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl_glc')
-      call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi_glc')
-    end if
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl_glc')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi_glc')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
@@ -383,17 +381,10 @@ contains
        end do
     end if
 
-    if (separate_glc2ocn_fluxes) then
-      do n = begr,endr
-        rofl_glc(n) = ctl%direct_glc(n,nliq) / (ctl%area(n)*0.001_r8)
-        rofi_glc(n) = ctl%direct_glc(n,nice) / (ctl%area(n)*0.001_r8)
-      end do
-    else
-      do n = begr,endr
-        rofl(n) = rofl(n) + ctl%direct_glc(n,nliq) / (ctl%area(n)*0.001_r8)
-        rofi(n) = rofi(n) + ctl%direct_glc(n,nice) / (ctl%area(n)*0.001_r8)
-      end do
-    end if
+    do n = begr,endr
+      rofl_glc(n) = ctl%direct_glc(n,nliq) / (ctl%area(n)*0.001_r8)
+      rofi_glc(n) = ctl%direct_glc(n,nice) / (ctl%area(n)*0.001_r8)
+    end do
 
     ! Flooding back to land, sign convention is positive in land->rof direction
     ! so if water is sent from rof to land, the flux must be negative.
@@ -417,13 +408,11 @@ contains
     call state_setexport(exportState, 'Forr_rofi', begr, endr, input=rofi, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (separate_glc2ocn_fluxes) then
-      call state_setexport(exportState, 'Forr_rofl_glc', begr, endr, input=rofl_glc, do_area_correction=.true., rc=rc)
-      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call state_setexport(exportState, 'Forr_rofl_glc', begr, endr, input=rofl_glc, do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-      call state_setexport(exportState, 'Forr_rofi_glc', begr, endr, input=rofi_glc, do_area_correction=.true., rc=rc)
-      if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
+    call state_setexport(exportState, 'Forr_rofi_glc', begr, endr, input=rofi_glc, do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call state_setexport(exportState, 'Flrr_flood', begr, endr, input=flood, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return

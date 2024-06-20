@@ -10,7 +10,7 @@ module mosart_tctl_type
       integer  :: DLevelH2R     ! The base number of channel routing sub-time-steps within one hillslope routing step.
                                 ! Usually channel routing requires small time steps than hillslope routing.
       integer  :: DLevelR       ! The number of channel routing sub-time-steps at a higher level within one channel routing step at a lower level.
-      integer  :: RoutingMethod ! Flag for routing methods. 1 --> variable storage method from SWAT model; 2 --> Muskingum method?
+      integer  :: RoutingMethod ! Flag for routing methods. 1 --> variable storage method from SWAT model
    contains
       procedure :: Init
    end type Tctl_type

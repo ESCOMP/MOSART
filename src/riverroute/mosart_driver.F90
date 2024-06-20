@@ -11,8 +11,7 @@ module mosart_driver
                                    frivinp, nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
                                    bypass_routing_option, qgwl_runoff_option, barrier_timers, &
-                                   mainproc, npes, iam, mpicom_rof, budget_frq, isecspday, &
-                                   separate_glc2ocn_fluxes
+                                   mainproc, npes, iam, mpicom_rof, budget_frq, isecspday
    use mosart_data        , only : ctl, Tctl, Tunit, TRunoff, Tpara
    use mosart_budget_type , only : budget_type
    use mosart_fileutils   , only : getfil
@@ -92,8 +91,7 @@ contains
       namelist /mosart_inparm / frivinp, finidat, nrevsn, coupling_period, ice_runoff, &
            ndens, mfilt, nhtfrq, fincl1,  fincl2, fincl3, fexcl1,  fexcl2, fexcl3, &
            avgflag_pertape, decomp_option, bypass_routing_option, qgwl_runoff_option, &
-           use_halo_option, delt_mosart, mosart_tracers, mosart_euler_calc, budget_frq, &
-           separate_glc2ocn_fluxes
+           use_halo_option, delt_mosart, mosart_tracers, mosart_euler_calc, budget_frq
 
       ! Preset values
       ice_runoff  = .true.
@@ -107,7 +105,6 @@ contains
       use_halo_option = .false.
       mosart_tracers = 'LIQ:ICE'
       mosart_euler_calc = 'T:F'
-      separate_glc2ocn_fluxes = .true.
 
       nlfilename_rof = "mosart_in" // trim(inst_suffix)
       inquire (file = trim(nlfilename_rof), exist = lexist)
@@ -151,7 +148,6 @@ contains
       call mpi_bcast (mosart_tracers, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (budget_frq,1,MPI_INTEGER,0,mpicom_rof,ier)
-      call mpi_bcast (separate_glc2ocn_fluxes, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
       ! Determine number of tracers and array of tracer names and initialize module variables
       call ctl%init_tracer_names(mosart_tracers)
@@ -174,7 +170,6 @@ contains
          write(iulog,'(a)'   ) '   qgwl runoff option      = '//trim(qgwl_runoff_option)
          write(iulog,'(a)'   ) '   mosart tracers          = '//trim(mosart_tracers)
          write(iulog,'(a)'   ) '   mosart euler calc       = '//trim(mosart_euler_calc)
-         write(iulog,'(a,l1)') '   separate_glc2ocn_fluxes = ',separate_glc2ocn_fluxes
          if (nsrest == nsrStartup .and. finidat /= ' ') then
            write(iulog,'(a)') '   mosart initial data     = '//trim(finidat)
          end if
