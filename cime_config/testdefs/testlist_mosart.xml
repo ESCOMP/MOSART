@@ -21,6 +21,15 @@
       <option name="comment"  >Restart test without DEBUG</option>
     </options>
   </test>
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I1850Clm50BgcCropG" testmods="mosart/default">
+    <machines>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Restart test without DEBUG with CISM</option>
+    </options>
+  </test>
   <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
