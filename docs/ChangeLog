@@ -1,4 +1,27 @@
 ===============================================================
+Tag name:  mosart1_1_02
+Originator(s): mvertens
+Date: Jun 21, 2024
+One-line Summary: cism runoff will be now routed to ocn via mosart
+
+Enables CISM runoff to be routed to the ocean via mosart.
+
+All runoff from CISM will be routed directly to the outlet points
+New fields will be advertised in the mosart cap
+call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl_glc')
+call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi_glc')
+
+Issues addressed:
+Fixes #92
+Fixes #102
+
+Testing: standard testing
+  izumi -- OK
+  cheyenne -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/94 for more details
+
+===============================================================
 Tag name:  mosart1_1_01
 Originator(s): mvertens
 Date: Jun 06, 2024
