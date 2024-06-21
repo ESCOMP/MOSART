@@ -7,7 +7,6 @@ module mosart_driver
    use shr_kind_mod       , only : r8 => shr_kind_r8, CS => shr_kind_cs, CL => shr_kind_CL
    use shr_sys_mod        , only : shr_sys_abort
    use shr_const_mod      , only : SHR_CONST_PI, SHR_CONST_CDAY
-   use shr_string_mod     , only : shr_string_listGetNum, shr_string_listGetName
    use mosart_vars        , only : re, spval, iulog, ice_runoff, &
                                    frivinp, nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                    inst_index, inst_suffix, inst_name, decomp_option, &
@@ -43,11 +42,11 @@ module mosart_driver
    public :: mosart_run           ! River routing model
 
    ! mosart namelists
-   integer :: coupling_period ! mosart coupling period
-   integer :: delt_mosart     ! mosart internal timestep (->nsub)
-   logical :: use_halo_option ! enable halo capability using ESMF
-   character(len=CS) :: mosart_tracers    ! colon delimited string of tracer names
-   character(len=CS) :: mosart_euler_calc ! colon delimited string of logicals for using Euler  algorithm
+   integer           :: coupling_period         ! mosart coupling period
+   integer           :: delt_mosart             ! mosart internal timestep (->nsub)
+   logical           :: use_halo_option         ! enable halo capability using ESMF
+   character(len=CS) :: mosart_tracers          ! colon delimited string of tracer names
+   character(len=CS) :: mosart_euler_calc       ! colon delimited string of logicals for using Euler  algorithm
 
    ! subcycling
    integer   :: nsub_save ! previous nsub
@@ -61,6 +60,8 @@ module mosart_driver
 
    character(len=CL) :: nlfilename_rof = 'mosart_in'
    character(len=CL) :: fnamer              ! name of netcdf restart file
+
+   integer :: nt_liq, nt_ice
 
    character(*), parameter :: u_FILE_u = &
         __FILE__
@@ -148,12 +149,10 @@ contains
       call mpi_bcast (mosart_euler_calc, CS, MPI_CHARACTER, 0, mpicom_rof, ier)
       call mpi_bcast (budget_frq,1,MPI_INTEGER,0,mpicom_rof,ier)
 
-      ! Determine number of tracers and array of tracer names
-      ctl%ntracers = shr_string_listGetNum(mosart_tracers)
-      allocate(ctl%tracer_names(ctl%ntracers))
-      do i = 1,ctl%ntracers
-         call shr_string_listGetName(mosart_tracers, i, ctl%tracer_names(i))
-      end do
+      ! Determine number of tracers and array of tracer names and initialize module variables
+      call ctl%init_tracer_names(mosart_tracers)
+      nt_liq = ctl%nt_liq
+      nt_ice = ctl%nt_ice
 
       runtyp(:)               = 'missing'
       runtyp(nsrStartup  + 1) = 'initial'
@@ -162,17 +161,17 @@ contains
 
       if (mainproc) then
          write(iulog,*) 'define run:'
-         write(iulog,'(a)'   ) '   run type              = '//trim(runtyp(nsrest+1))
-         write(iulog,'(a,i8)') '   coupling_period       = ',coupling_period
-         write(iulog,'(a,i8)') '   delt_mosart           = ',delt_mosart
-         write(iulog,'(a)'   ) '   decomp option         = '//trim(decomp_option)
-         write(iulog,'(a,l1)') '   use_halo_option       = ',use_halo_option
-         write(iulog,'(a)'   ) '   bypass_routing option = '//trim(bypass_routing_option)
-         write(iulog,'(a)'   ) '   qgwl runoff option    = '//trim(qgwl_runoff_option)
-         write(iulog,'(a)'   ) '   mosart tracers        = '//trim(mosart_tracers)
-         write(iulog,'(a)'   ) '   mosart euler calc     = '//trim(mosart_euler_calc)
+         write(iulog,'(a)'   ) '   run type                = '//trim(runtyp(nsrest+1))
+         write(iulog,'(a,i8)') '   coupling_period         = ',coupling_period
+         write(iulog,'(a,i8)') '   delt_mosart             = ',delt_mosart
+         write(iulog,'(a)'   ) '   decomp option           = '//trim(decomp_option)
+         write(iulog,'(a,l1)') '   use_halo_option         = ',use_halo_option
+         write(iulog,'(a)'   ) '   bypass_routing option   = '//trim(bypass_routing_option)
+         write(iulog,'(a)'   ) '   qgwl runoff option      = '//trim(qgwl_runoff_option)
+         write(iulog,'(a)'   ) '   mosart tracers          = '//trim(mosart_tracers)
+         write(iulog,'(a)'   ) '   mosart euler calc       = '//trim(mosart_euler_calc)
          if (nsrest == nsrStartup .and. finidat /= ' ') then
-            write(iulog,'(a)') '   mosart initial data   = '//trim(finidat)
+           write(iulog,'(a)') '   mosart initial data     = '//trim(finidat)
          end if
       endif
 
@@ -466,8 +465,7 @@ contains
         call t_stopf('mosartr_budgetset')
       endif
 
-
-      ! data for euler solver, in m3/s here
+      ! initialize data for euler solver, in m3/s here
       do nr = begr,endr
          do nt = 1,ntracers
             TRunoff%qsur(nr,nt) = ctl%qsur(nr,nt)
@@ -483,7 +481,6 @@ contains
       !-----------------------------------
 
       call t_startf('mosartr_irrig')
-      nt = 1
       ctl%qirrig_actual = 0._r8
       do nr = begr,endr
 
@@ -492,10 +489,10 @@ contains
 
          ! compare irrig_volume to main channel storage;
          ! add overage to subsurface runoff
-         if(irrig_volume > TRunoff%wr(nr,nt)) then
-            ctl%qsub(nr,nt) = ctl%qsub(nr,nt) + (TRunoff%wr(nr,nt) - irrig_volume) / coupling_period
-            TRunoff%qsub(nr,nt) = ctl%qsub(nr,nt)
-            irrig_volume = TRunoff%wr(nr,nt)
+         if(irrig_volume > TRunoff%wr(nr,nt_liq)) then
+            ctl%qsub(nr,nt_liq) = ctl%qsub(nr,nt_liq) + (TRunoff%wr(nr,nt_liq) - irrig_volume) / coupling_period
+            TRunoff%qsub(nr,nt_liq) = ctl%qsub(nr,nt_liq)
+            irrig_volume = TRunoff%wr(nr,nt_liq)
          endif
 
          ! actual irrigation rate [m3/s]
@@ -504,7 +501,7 @@ contains
          ctl%qirrig_actual(nr) = - irrig_volume / coupling_period
 
          ! remove irrigation from wr (main channel)
-         TRunoff%wr(nr,nt) = TRunoff%wr(nr,nt) - irrig_volume
+         TRunoff%wr(nr,nt_liq) = TRunoff%wr(nr,nt_liq) - irrig_volume
 
       enddo
       call t_stopf('mosartr_irrig')
@@ -517,14 +514,13 @@ contains
       !-----------------------------------
 
       call t_startf('mosartr_flood')
-      nt = 1
       ctl%flood = 0._r8
       do nr = begr,endr
          ! initialize ctl%flood to zero
          if (ctl%mask(nr) == 1) then
-            if (ctl%volr(nr,nt) > ctl%fthresh(nr)) then
+            if (ctl%volr(nr,nt_liq) > ctl%fthresh(nr)) then
                ! determine flux that is sent back to the land this is in m3/s
-               ctl%flood(nr) = (ctl%volr(nr,nt)-ctl%fthresh(nr)) / (delt_coupling)
+               ctl%flood(nr) = (ctl%volr(nr,nt_liq)-ctl%fthresh(nr)) / (delt_coupling)
 
                ! ctl%flood will be sent back to land - so must subtract this
                ! from the input runoff from land
@@ -535,7 +531,7 @@ contains
                !   it at the end or even during the run loop as the
                !   new volume is computed.  fluxout depends on volr, so
                !   how this is implemented does impact the solution.
-               TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) - ctl%flood(nr)
+               TRunoff%qsur(nr,nt_liq) = TRunoff%qsur(nr,nt_liq) - ctl%flood(nr)
             endif
          endif
       enddo
@@ -564,45 +560,80 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       !-----------------------------------------------------
-      !--- all frozen runoff passed direct to outlet
+      !--- initialize ctl%direct
       !-----------------------------------------------------
 
-      nt = 2
+      ctl%direct(:,:) = 0._r8
+
+      !-----------------------------------------------------
+      !--- direct to outlet: all liquid and frozen runoff from glc
+      !-----------------------------------------------------
+
+      if (ctl%rof_from_glc) then
+        src_direct(:,:) = 0._r8
+        dst_direct(:,:) = 0._r8
+
+        cnt = 0
+        do nr = begr,endr
+          cnt = cnt + 1
+          src_direct(nt_liq,cnt) = ctl%qglc_liq(nr)
+          src_direct(nt_ice,cnt) = ctl%qglc_ice(nr)
+        enddo
+
+        call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
+        if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+        ! copy direct transfer water to output field
+        cnt = 0
+        do nr = begr,endr
+          cnt = cnt + 1
+          ctl%direct_glc(nr,nt_liq) = dst_direct(nt_liq,cnt)
+          ctl%direct_glc(nr,nt_ice) = dst_direct(nt_ice,cnt)
+        enddo
+      else
+        ctl%direct_glc(:,:) = 0._r8
+        ctl%direct_glc(:,:) = 0._r8
+      end if
+
+      !-----------------------------------------------------
+      !--- direct to outlet: all frozen runoff from lnd
+      !-----------------------------------------------------
+
       src_direct(:,:) = 0._r8
       dst_direct(:,:) = 0._r8
-
-      ! set euler_calc = false for frozen runoff
-      ! TODO: will be reworked after addition of multiple tracers 
-      Tunit%euler_calc(nt) = .false.
 
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         src_direct(nt,cnt) = TRunoff%qsur(nr,nt) + TRunoff%qsub(nr,nt) + TRunoff%qgwl(nr,nt)
-         TRunoff%qsur(nr,nt) = 0._r8
-         TRunoff%qsub(nr,nt) = 0._r8
-         TRunoff%qgwl(nr,nt) = 0._r8
+         src_direct(nt_ice,cnt) = TRunoff%qsur(nr,nt_ice) + TRunoff%qsub(nr,nt_ice) + TRunoff%qgwl(nr,nt_ice)
       enddo
 
       call ESMF_FieldSMM(Tunit%srcfield, Tunit%dstfield, Tunit%rh_direct, termorderflag=ESMF_TERMORDER_SRCSEQ, rc=rc)
       if (chkerr(rc,__LINE__,u_FILE_u)) return
 
       ! copy direct transfer water to output field
-      ctl%direct = 0._r8
       cnt = 0
       do nr = begr,endr
          cnt = cnt + 1
-         ctl%direct(nr,nt) = ctl%direct(nr,nt) + dst_direct(nt,cnt)
+         ctl%direct(nr,nt_ice) = ctl%direct(nr,nt_ice) + dst_direct(nt_ice,cnt)
       enddo
 
+      ! set euler_calc = false for frozen runoff
+      ! TODO: will be reworked after addition of multiple tracers
+      Tunit%euler_calc(nt_ice) = .false.
+
+      ! Set Trunoff%qsur, TRunoff%qsub and Trunoff%qgwl to zero for nt_ice
+      TRunoff%qsur(:,nt_ice) = 0._r8
+      TRunoff%qsub(:,nt_ice) = 0._r8
+      TRunoff%qgwl(:,nt_ice) = 0._r8
+
       !-----------------------------------------------------
-      !--- direct to outlet qgwl
+      !--- direct to outlet: qgwl
       !-----------------------------------------------------
 
       !-- liquid runoff components
       if (trim(bypass_routing_option) == 'direct_to_outlet') then
 
-         nt = 1
          src_direct(:,:) = 0._r8
          dst_direct(:,:) = 0._r8
 
@@ -611,12 +642,12 @@ contains
          do nr = begr,endr
             cnt = cnt + 1
             if (trim(qgwl_runoff_option) == 'all') then
-               src_direct(nt,cnt) = TRunoff%qgwl(nr,nt)
-               TRunoff%qgwl(nr,nt) = 0._r8
+               src_direct(nt_liq,cnt) = TRunoff%qgwl(nr,nt_liq)
+               TRunoff%qgwl(nr,nt_liq) = 0._r8
             else if (trim(qgwl_runoff_option) == 'negative') then
-               if(TRunoff%qgwl(nr,nt) < 0._r8) then
-                  src_direct(nt,cnt) = TRunoff%qgwl(nr,nt)
-                  TRunoff%qgwl(nr,nt) = 0._r8
+               if(TRunoff%qgwl(nr,nt_liq) < 0._r8) then
+                  src_direct(nt_liq,cnt) = TRunoff%qgwl(nr,nt_liq)
+                  TRunoff%qgwl(nr,nt_liq) = 0._r8
                endif
             endif
          enddo
@@ -628,63 +659,57 @@ contains
          cnt = 0
          do nr = begr,endr
             cnt = cnt + 1
-            ctl%direct(nr,nt) = ctl%direct(nr,nt) + dst_direct(nt,cnt)
+            ctl%direct(nr,nt_liq) = ctl%direct(nr,nt_liq) + dst_direct(nt_liq,cnt)
          enddo
       endif
 
       !-----------------------------------------------------
-      !--- direct in place qgwl
+      !--- direct in place qgwl, qgwl
       !-----------------------------------------------------
 
       if (trim(bypass_routing_option) == 'direct_in_place') then
-
-         nt = 1
          do nr = begr,endr
-
             if (trim(qgwl_runoff_option) == 'all') then
-               ctl%direct(nr,nt) = TRunoff%qgwl(nr,nt)
-               TRunoff%qgwl(nr,nt) = 0._r8
+               ctl%direct(nr,nt_liq) = TRunoff%qgwl(nr,nt_liq)
+               TRunoff%qgwl(nr,nt_liq) = 0._r8
             else if (trim(qgwl_runoff_option) == 'negative') then
-               if(TRunoff%qgwl(nr,nt) < 0._r8) then
-                  ctl%direct(nr,nt) = TRunoff%qgwl(nr,nt)
-                  TRunoff%qgwl(nr,nt) = 0._r8
+               if(TRunoff%qgwl(nr,nt_liq) < 0._r8) then
+                  ctl%direct(nr,nt_liq) = TRunoff%qgwl(nr,nt_liq)
+                  TRunoff%qgwl(nr,nt_liq) = 0._r8
                endif
             else if (trim(qgwl_runoff_option) == 'threshold') then
                ! --- calculate volume of qgwl flux during timestep
-               qgwl_volume = TRunoff%qgwl(nr,nt) * ctl%area(nr) * coupling_period
+               qgwl_volume = TRunoff%qgwl(nr,nt_liq) * ctl%area(nr) * coupling_period
                river_volume_minimum = river_depth_minimum * ctl%area(nr)
 
                ! if qgwl is negative, and adding it to the main channel
                ! would bring main channel storage below a threshold,
                ! send qgwl directly to ocean
-               if (((qgwl_volume + TRunoff%wr(nr,nt)) < river_volume_minimum) .and. (TRunoff%qgwl(nr,nt) < 0._r8)) then
-                  ctl%direct(nr,nt) = TRunoff%qgwl(nr,nt)
-                  TRunoff%qgwl(nr,nt) = 0._r8
+               if (((qgwl_volume + TRunoff%wr(nr,nt_liq)) < river_volume_minimum) .and. (TRunoff%qgwl(nr,nt_liq) < 0._r8)) then
+                  ctl%direct(nr,nt_liq) = TRunoff%qgwl(nr,nt_liq)
+                  TRunoff%qgwl(nr,nt_liq) = 0._r8
                endif
             endif
          enddo
-
       endif
 
       !-------------------------------------------------------
-      !--- add other direct terms, e.g. inputs outside of
-      !--- mosart mask, negative qsur
+      !--- direct in place: add other direct terms, e.g. inputs outside of mosart mask, negative qsur
       !-------------------------------------------------------
 
       if (trim(bypass_routing_option) == 'direct_in_place') then
          do nt = 1,ntracers
             do nr = begr,endr
-
                if (TRunoff%qsub(nr,nt) < 0._r8) then
                   ctl%direct(nr,nt) = ctl%direct(nr,nt) + TRunoff%qsub(nr,nt)
                   TRunoff%qsub(nr,nt) = 0._r8
                endif
-
                if (TRunoff%qsur(nr,nt) < 0._r8) then
                   ctl%direct(nr,nt) = ctl%direct(nr,nt) + TRunoff%qsur(nr,nt)
                   TRunoff%qsur(nr,nt) = 0._r8
                endif
-
+               ! Note Tunit%mask is set in Tunit%init and is obtained from reading in fdir
+               ! if fdir<0 then mask=0 (ocean), if fdir=0 then mask=2 (outlet) and if fdir>0 then mask=1 (land)
                if (Tunit%mask(nr) > 0) then
                   ! mosart euler
                else
@@ -697,11 +722,13 @@ contains
          enddo
       endif
 
-      if (trim(bypass_routing_option) == 'direct_to_outlet') then
+      !-------------------------------------------------------
+      !--- direct to outlet: add other direct terms, e.g. inputs outside of mosart mask, negative qsur
+      !-------------------------------------------------------
 
+      if (trim(bypass_routing_option) == 'direct_to_outlet') then
          src_direct(:,:) = 0._r8
          dst_direct(:,:) = 0._r8
-
          cnt = 0
          do nr = begr,endr
             cnt = cnt + 1
@@ -720,15 +747,20 @@ contains
 
                !---- water outside the basin ---
                !---- *** DO NOT TURN THIS ONE OFF, conservation will fail *** ---
+
+               ! Note Tunit%mask is set in Tunit%init and is obtained from reading in fdir
+               ! if fdir<0 then mask=0 (ocean), if fdir=0 then mask=2 (outlet) and if fdir>0 then mask=1 (land)
                if (Tunit%mask(nr) > 0) then
                   ! mosart euler
                else
-                  src_direct(nt,cnt) = src_direct(nt,cnt) + TRunoff%qsub(nr,nt) + TRunoff%qsur(nr,nt) &
-                       + TRunoff%qgwl(nr,nt)
+                  ! NOTE: that when nt = nt_ice, the TRunoff terms
+                  ! below have already been set to zero in the frozen
+                  ! runoff calculation above - where frozen runoff is always set to the outlet
+                  src_direct(nt,cnt) = src_direct(nt,cnt) + TRunoff%qsub(nr,nt) + TRunoff%qsur(nr,nt) + TRunoff%qgwl(nr,nt)
                   TRunoff%qsub(nr,nt) = 0._r8
                   TRunoff%qsur(nr,nt) = 0._r8
                   TRunoff%qgwl(nr,nt) = 0._r8
-               endif
+               end if
             enddo
          enddo
 
@@ -817,7 +849,6 @@ contains
       ctl%erlat_avg   = ctl%erlat_avg   / float(nsub)
 
       ! update states when subsycling completed
-      ! TODO: move of this to hist_set_flds
       ctl%runoff = 0._r8
       ctl%runofflnd = spval
       ctl%runoffocn = spval
@@ -841,12 +872,19 @@ contains
             endif
          enddo
       enddo
+
+      ! final update from glc input
+      do nr = begr,endr
+        ctl%runofftot(nr,nt_liq) = ctl%runofftot(nr,nt_liq) + ctl%direct_glc(nr,nt_liq)
+        ctl%runofftot(nr,nt_ice) = ctl%runofftot(nr,nt_ice) + ctl%direct_glc(nr,nt_ice)
+      end do
+
       call t_stopf('mosartr_subcycling')
 
       !-----------------------------------
       ! BUDGET
       !-----------------------------------
-      if (budget_check) then 
+      if (budget_check) then
         call t_startf('mosartr_budgetcheck')
         call budget%check_budget(begr,endr,ntracers,delt_coupling)
         call t_stopf('mosartr_budgetcheck')

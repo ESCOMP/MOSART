@@ -28,6 +28,15 @@ module mosart_physics
    public :: subnetworkrouting
    public :: mainchannelrouting
 
+   private :: Routing_KW
+   private :: CRVRMAN_nosqrt
+   private :: CREHT_nosqrt
+   private :: GRMR
+   private :: GRHT
+   private :: GRPT
+   private :: GRRR
+   private :: GRPR
+
    real(r8), parameter :: TINYVALUE = 1.0e-14_r8 ! double precision variable has a significance of about 16 decimal digits
    real(r8), parameter :: SLOPE1def = 0.1_r8     ! here give it a small value in order to avoid the abrupt change of hydraulic radidus etc.
    real(r8)            :: sinatanSLOPE1defr      ! 1.0/sin(atan(slope1))
@@ -270,14 +279,8 @@ contains
 
       if(Tctl%RoutingMethod == 1) then
          call Routing_KW(nr, nt, theDeltaT)
-      else if(Tctl%RoutingMethod == 2) then
-         call Routing_MC(nr, nt, theDeltaT)
-      else if(Tctl%RoutingMethod == 3) then
-         call Routing_THREW(nr, nt, theDeltaT)
-      else if(Tctl%RoutingMethod == 4) then
-         call Routing_DW(nr, nt, theDeltaT)
       else
-         call shr_sys_abort( "mosart: Please check the routing method! There are only 4 methods available." )
+         call shr_sys_abort( "mosart: Please check the routing method! There is only 1 method currently available." )
       end if
 
    end subroutine mainchannelRouting
@@ -343,39 +346,6 @@ contains
       !    end if
 
    end subroutine Routing_KW
-
-   !-----------------------------------------------------------------------
-
-   subroutine Routing_MC(nr, nt, theDeltaT)
-      !  Muskingum-Cunge routing method
-
-      ! Arguments
-      integer, intent(in) :: nr, nt
-      real(r8), intent(in) :: theDeltaT
-
-   end subroutine Routing_MC
-
-   !-----------------------------------------------------------------------
-
-   subroutine Routing_THREW(nr, nt, theDeltaT)
-      !  kinematic wave routing method from THREW model
-
-      ! Arguments
-      integer, intent(in) :: nr, nt
-      real(r8), intent(in) :: theDeltaT
-
-   end subroutine Routing_THREW
-
-   !-----------------------------------------------------------------------
-
-   subroutine Routing_DW(nr, nt, theDeltaT)
-      !  classic diffusion wave routing method
-
-      ! Arguments
-      integer, intent(in) :: nr, nt
-      real(r8), intent(in) :: theDeltaT
-
-   end subroutine Routing_DW
 
    !-----------------------------------------------------------------------
 

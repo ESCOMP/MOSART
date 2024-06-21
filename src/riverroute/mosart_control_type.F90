@@ -1,17 +1,18 @@
 module mosart_control_type
 
-  use shr_kind_mod,  only : r8 => shr_kind_r8
-  use shr_sys_mod,   only : shr_sys_abort
-  use shr_const_mod, only : shr_const_pi, shr_const_rearth
-  use shr_mpi_mod,   only : shr_mpi_sum
-  use mosart_io,     only : ncd_io, ncd_pio_openfile, ncd_pio_closefile
-  use mosart_vars,   only : mainproc, iam, npes, mpicom_rof, iulog, spval, re
-  use pio,           only : file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
-  use ESMF,          only : ESMF_DistGrid, ESMF_Array, ESMF_RouteHandle, ESMF_SUCCESS, &
-                            ESMF_DistGridCreate, ESMF_ArrayCreate, ESMF_ArrayHaloStore, &
-                            ESMF_ArrayHalo, ESMF_ArrayGet
-  use perf_mod,      only : t_startf, t_stopf
-  use nuopc_shr_methods  , only : chkerr
+  use shr_kind_mod,      only : r8 => shr_kind_r8, CS => shr_kind_cs
+  use shr_sys_mod,       only : shr_sys_abort
+  use shr_const_mod,     only : shr_const_pi, shr_const_rearth
+  use shr_string_mod,    only : shr_string_listGetNum, shr_string_listGetName
+  use shr_mpi_mod,       only : shr_mpi_sum
+  use mosart_io,         only : ncd_io, ncd_pio_openfile, ncd_pio_closefile
+  use mosart_vars,       only : mainproc, iam, npes, mpicom_rof, iulog, spval, re, vm
+  use pio,               only : file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
+  use ESMF,              only : ESMF_DistGrid, ESMF_Array, ESMF_RouteHandle, ESMF_SUCCESS, &
+                                ESMF_DistGridCreate, ESMF_ArrayCreate, ESMF_ArrayHaloStore, &
+                                ESMF_ArrayHalo, ESMF_ArrayGet, ESMF_VMAllReduce, ESMF_REDUCE_SUM
+  use perf_mod,          only : t_startf, t_stopf
+  use nuopc_shr_methods, only : chkerr
 
   implicit none
   private
@@ -27,6 +28,9 @@ module mosart_control_type
      ! tracers
      integer :: ntracers = -999                      ! number of tracers
      character(len=3), allocatable :: tracer_names(:)! tracer names
+     integer :: nt_liq                               ! index of liquid tracer in tracer_names
+     integer :: nt_ice                               ! index of ice tracer in tracer_names
+     logical :: rof_from_glc                         ! if true, will receive liq and ice runoff from glc
 
      ! decomp info
      integer :: begr                                 ! local start index
@@ -49,13 +53,16 @@ module mosart_control_type
      real(r8), pointer :: qsur(:,:) => null()        ! surface runoff from coupler [m3/s] (lnd)
      real(r8), pointer :: qsub(:,:) => null()        ! subsurfacer runoff from coupler [m3/s] (lnd)
      real(r8), pointer :: qgwl(:,:) => null()        ! glacier/wetland/lake runoff from coupler [m3/s] (lnd)
+     real(r8), pointer :: qirrig(:) => null()        ! irrigation flow from coupler [m3/s]
+     real(r8), pointer :: qglc_liq(:) => null()      ! glacier liquid runoff from coupler [m3/s] (glc)
+     real(r8), pointer :: qglc_ice(:) => null()      ! glacier ice runoff from coupler [m3/s] (glc)
 
      ! outputs from MOSART
      real(r8), pointer :: flood(:) => null()         ! flood water to coupler [m3/s] (lnd)
      real(r8), pointer :: runoff(:,:) => null()      ! runoff (from outlet to reach) to coupler [m3/s]
-     real(r8), pointer :: direct(:,:) => null()      ! direct flow to coupler [m3/s]
-     real(r8), pointer :: qirrig(:) => null()        ! irrigation flow to coupler [m3/s]
+     real(r8), pointer :: direct(:,:) => null()      ! direct flow to outlet from land input [m3/s]
      real(r8), pointer :: qirrig_actual(:) => null() ! minimum of irrigation and available main channel storage [m3/s]
+     real(r8), pointer :: direct_glc(:,:) =>null()   ! direct flow to outlet from glc input [m3/s]
 
      ! storage, runoff
      real(r8), pointer :: runofflnd(:,:) => null()   ! runoff masked for land [m3/s]
@@ -88,6 +95,7 @@ module mosart_control_type
    contains
 
      procedure, public  :: Init
+     procedure, public  :: init_tracer_names
      procedure, private :: init_decomp
      procedure, private :: test_halo
      procedure, public  :: calc_gradient
@@ -115,13 +123,52 @@ module mosart_control_type
   integer, public :: halo_w  = 7
   integer, public :: halo_nw = 8
 
+  ! The following are set from
+
   character(*), parameter :: u_FILE_u = &
        __FILE__
 
-  !========================================================================
+!========================================================================
 contains
-  !========================================================================
+!========================================================================
 
+  subroutine init_tracer_names(this, mosart_tracers)
+
+    ! This sets the indices for liquid and ice runoff. In the future additional tracers
+    ! will be enabled so this is a starting point.
+
+    ! Arguments
+    class(control_type) :: this
+    character(len=CS)   :: mosart_tracers    ! colon delimited string of tracer names
+
+    ! Local variables
+    integer :: nt
+    character(len=*),parameter :: subname = '(mosart_control_type: init_tracer_names)'
+    !-----------------------------------------------------------------------
+
+    ! Determine number of tracers and array of tracer names
+    this%ntracers = shr_string_listGetNum(mosart_tracers)
+    allocate(this%tracer_names(this%ntracers))
+    do nt = 1,this%ntracers
+      call shr_string_listGetName(mosart_tracers, nt, this%tracer_names(nt))
+    end do
+
+    ! Set tracers
+    this%nt_liq = 0
+    this%nt_ice = 0
+    do nt = 1,this%ntracers
+       if (trim(this%tracer_names(nt)) == 'LIQ') this%nt_liq = nt
+       if (trim(this%tracer_names(nt)) == 'ICE') this%nt_ice = nt
+    enddo
+    if (this%nt_liq == 0 .or. this%nt_ice == 0) then
+       write(iulog,*) trim(subname),': ERROR in tracers LIQ ICE ',this%nt_liq,this%nt_ice,this%tracer_names(:)
+       call shr_sys_abort()
+    endif
+
+  end subroutine init_tracer_names
+
+
+  !========================================================================
   subroutine Init(this, locfn, decomp_option, use_halo_option, IDkey, rc)
 
     ! Arguments
@@ -139,7 +186,8 @@ contains
     real(r8)          :: rlatn(this%nlat)                 ! latitude of 1d north grid cell edge (deg)
     real(r8)          :: rlonw(this%nlon)                 ! longitude of 1d west grid cell edge (deg)
     real(r8)          :: rlone(this%nlon)                 ! longitude of 1d east grid cell edge (deg)
-    real(r8)          :: larea                            ! tmp local sum of area
+    real(r8)          :: larea(1)                         ! tmp local sum of area
+    real(r8)          :: totarea(1)                       ! tmp total area
     real(r8)          :: deg2rad                          ! pi/180
     integer           :: g, n, i, j, nr, nt               ! iterators
     real(r8)          :: edgen                            ! North edge of the direction file
@@ -303,6 +351,8 @@ contains
          this%qgwl(begr:endr,ntracers),       &
          this%qirrig(begr:endr),              &
          this%qirrig_actual(begr:endr),       &
+         this%qglc_liq(begr:endr),            &
+         this%qglc_ice(begr:endr),            &
          !
          this%evel(begr:endr,ntracers),       &
          this%flow(begr:endr,ntracers),       &
@@ -311,6 +361,7 @@ contains
          this%erlat_avg(begr:endr,ntracers),  &
          !
          this%effvel(ntracers),               &
+         this%direct_glc(begr:endr,2), &
          stat=ier)
     if (ier /= 0) then
        write(iulog,*)'mosarart_control_type allocation error'
@@ -332,11 +383,14 @@ contains
     this%qsur(:,:)        = 0._r8
     this%qsub(:,:)        = 0._r8
     this%qgwl(:,:)        = 0._r8
+    this%qglc_liq(:)      = 0._r8
+    this%qglc_ice(:)      = 0._r8
     this%fthresh(:)       = abs(spval)
     this%flow(:,:)        = 0._r8
     this%erout_prev(:,:)  = 0._r8
     this%eroutup_avg(:,:) = 0._r8
     this%erlat_avg(:,:)   = 0._r8
+    this%direct_glc(:,:)  = 0._r8
 
     this%effvel(:) = effvel0  ! downstream velocity (m/s)
     do nt = 1,ntracers
@@ -354,15 +408,19 @@ contains
        this%area(nr) = area_global(n)
     enddo
 
-    larea = 0.0_r8
+    larea(1) = 0.0_r8
     do nr = begr,endr
-       larea = larea + this%area(nr)
+       larea(1) = larea(1) + this%area(nr)
     end do
     if (minval(this%mask) < 1) then
        write(iulog,*) subname,'ERROR this mask lt 1 ',minval(this%mask),maxval(this%mask)
        call shr_sys_abort(subname//' ERROR this mask')
     endif
-    call shr_mpi_sum(larea, this%totarea, mpicom_rof, 'mosart totarea', all=.true.)
+
+    call ESMF_VMAllReduce(vm, larea, totarea, 1, ESMF_REDUCE_SUM, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    this%totarea = totarea(1)
+
     if (mainproc) then
        write(iulog,*) subname,'  earth area ',4.0_r8*shr_const_pi*1.0e6_r8*re*re
        write(iulog,*) subname,' mosart area ',this%totarea
@@ -1175,7 +1233,7 @@ contains
           dfld_dx(n) = dfld_dx(n) + (fld_surrounding(ax_indices(i)) - fld_surrounding(sx_indices(i)))
           dfld_dy(n) = dfld_dy(n) + (fld_surrounding(ay_indices(i)) - fld_surrounding(sy_indices(i)))
        enddo
-       
+
        dfld_dx(n) = dfld_dx(n) / (8._r8*mean_dx)
        dfld_dy(n) = dfld_dy(n) / (8._r8*mean_dy)
 

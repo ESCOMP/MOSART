@@ -25,14 +25,14 @@ module rof_comp_nuopc
                                   model_label_DataInitialize => label_DataInitialize, &
                                   model_label_SetRunClock    => label_SetRunClock, &
                                   model_label_Finalize       => label_Finalize, &
-                                  SetVM, NUOPC_ModelGet
+                                  NUOPC_ModelGet
   use shr_kind_mod       , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL, CS=>SHR_KIND_CS
   use shr_sys_mod        , only : shr_sys_abort
   use shr_log_mod        , only : shr_log_getlogunit, shr_log_setlogunit
   use shr_cal_mod        , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
   use mosart_vars        , only : nsrStartup, nsrContinue, nsrBranch, &
                                   inst_index, inst_suffix, inst_name, &
-                                  mainproc, mpicom_rof, iam, npes, iulog, &
+                                  mainproc, mpicom_rof, iam, npes, iulog, vm, &
                                   nsrest, caseid, ctitle, version, hostname, username
   use mosart_data        , only : ctl
   use mosart_driver      , only : mosart_read_namelist, mosart_init1, mosart_init2, mosart_run
@@ -49,7 +49,6 @@ module rof_comp_nuopc
 
   ! Module routines
   public  :: SetServices
-  public  :: SetVM
   private :: InitializeP0
   private :: InitializeAdvertise
   private :: InitializeRealize
@@ -159,7 +158,6 @@ contains
     type(ESMF_Time)         :: refTime               ! Ref time
     type(ESMF_TimeInterval) :: timeStep              ! Model timestep
     type(ESMF_CalKind_Flag) :: esmf_caltype          ! esmf calendar type
-    type(ESMF_VM)           :: vm                    ! esmf virtual machine
     integer                 :: ref_ymd               ! reference date (YYYYMMDD)
     integer                 :: ref_tod               ! reference time of day (sec)
     integer                 :: yy,mm,dd              ! Temporaries for time query
@@ -186,6 +184,8 @@ contains
     !----------------------------------------------------------------------------
     ! generate local mpi comm
     !----------------------------------------------------------------------------
+
+    ! Note vm is in mosart_vars.F90 and can be shared among components
 
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return

@@ -27,6 +27,7 @@ module rof_import_export
   private :: state_getimport
   private :: state_setexport
   private :: check_for_nans
+  private :: fldchk
 
   type fld_list_type
      character(len=128) :: stdname
@@ -82,9 +83,12 @@ contains
          isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) read(cvalue,*) flds_r2l_stream_channel_depths
+
     call fldlist_add(fldsFrRof_num, fldsFrRof, trim(flds_scalar_name))
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofl_glc')
+    call fldlist_add(fldsFrRof_num, fldsFrRof, 'Forr_rofi_glc')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_flood')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volr')
     call fldlist_add(fldsFrRof_num, fldsFrRof, 'Flrr_volrmch')
@@ -109,6 +113,8 @@ contains
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofsub')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_rofi')
     call fldlist_add(fldsToRof_num, fldsToRof, 'Flrl_irrig')
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_rofl') ! liq runoff from glc
+    call fldlist_add(fldsToRof_num, fldsToRof, 'Fgrg_rofi') ! ice runoff from glc
 
     do n = 1,fldsToRof_num
        call NUOPC_Advertise(importState, standardName=fldsToRof(n)%stdname, &
@@ -222,6 +228,15 @@ contains
             min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'MOSART'
     end if
 
+    if (fldchk(importState, 'Fgrg_rofl') .and. fldchk(importState, 'Fgrg_rofl')) then
+      ctl%rof_from_glc = .true.
+    else
+      ctl%rof_from_glc = .false.
+    end if
+    if (mainproc) then
+      write(iulog,'(A,l1)') trim(subname) //' rof from glc is ',ctl%rof_from_glc
+    end if
+
   end subroutine realize_fields
 
   !===============================================================================
@@ -239,7 +254,7 @@ contains
     ! Local variables
     type(ESMF_State) :: importState
     integer          :: n,nt
-    integer          :: nliq, nfrz
+    integer          :: nliq, nice
     character(len=*), parameter :: subname='(rof_import_export:import_fields)'
     !---------------------------------------------------------------------------
 
@@ -250,17 +265,8 @@ contains
     call NUOPC_ModelGet(gcomp, importState=importState, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ! Set tracers
-    nliq = 0
-    nfrz = 0
-    do nt = 1,ctl%ntracers
-       if (trim(ctl%tracer_names(nt)) == 'LIQ') nliq = nt
-       if (trim(ctl%tracer_names(nt)) == 'ICE') nfrz = nt
-    enddo
-    if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(subname),': ERROR in tracers LIQ ICE ',nliq,nfrz,ctl%tracer_names(:)
-       call shr_sys_abort()
-    endif
+    nliq = ctl%nt_liq
+    nice = ctl%nt_ice
 
     ! determine output array and scale by unit convertsion
     ! NOTE: the call to state_getimport will convert from input kg/m2s to m3/s
@@ -277,7 +283,7 @@ contains
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call state_getimport(importState, 'Flrl_rofi', begr, endr, ctl%area, output=ctl%qsur(:,nfrz), &
+    call state_getimport(importState, 'Flrl_rofi', begr, endr, ctl%area, output=ctl%qsur(:,nice), &
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -285,8 +291,20 @@ contains
          do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ctl%qsub(begr:endr, nfrz) = 0.0_r8
-    ctl%qgwl(begr:endr, nfrz) = 0.0_r8
+    ctl%qsub(begr:endr, nice) = 0.0_r8
+    ctl%qgwl(begr:endr, nice) = 0.0_r8
+
+    if (ctl%rof_from_glc) then
+      call state_getimport(importState, 'Fgrg_rofl', begr, endr, ctl%area, output=ctl%qglc_liq(:), &
+           do_area_correction=.true., rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call state_getimport(importState, 'Fgrg_rofi', begr, endr, ctl%area, output=ctl%qglc_ice(:), &
+           do_area_correction=.true., rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else
+      ctl%qglc_liq(:) = 0._r8
+      ctl%qglc_ice(:) = 0._r8
+    end if
 
   end subroutine import_fields
 
@@ -305,9 +323,11 @@ contains
     ! Local variables
     type(ESMF_State) :: exportState
     integer          :: n,nt
-    integer          :: nliq, nfrz
+    integer          :: nliq, nice
     real(r8)         :: rofl(begr:endr)
     real(r8)         :: rofi(begr:endr)
+    real(r8)         :: rofl_glc(begr:endr)
+    real(r8)         :: rofi_glc(begr:endr)
     real(r8)         :: flood(begr:endr)
     real(r8)         :: volr(begr:endr)
     real(r8)         :: volrmch(begr:endr)
@@ -325,16 +345,8 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Set tracers
-    nliq = 0
-    nfrz = 0
-    do nt = 1,ctl%ntracers
-       if (trim(ctl%tracer_names(nt)) == 'LIQ') nliq = nt
-       if (trim(ctl%tracer_names(nt)) == 'ICE') nfrz = nt
-    enddo
-    if (nliq == 0 .or. nfrz == 0) then
-       write(iulog,*) trim(subname),': ERROR in tracers LIQ ICE ',nliq,nfrz,ctl%tracer_names(:)
-       call shr_sys_abort()
-    endif
+    nliq = ctl%nt_liq
+    nice = ctl%nt_ice
 
     if (first_time) then
        if (mainproc) then
@@ -351,23 +363,28 @@ contains
        ! separate liquid and ice runoff
        do n = begr,endr
           rofl(n) =  ctl%direct(n,nliq) / (ctl%area(n)*0.001_r8)
-          rofi(n) =  ctl%direct(n,nfrz) / (ctl%area(n)*0.001_r8)
+          rofi(n) =  ctl%direct(n,nice) / (ctl%area(n)*0.001_r8)
           if (ctl%mask(n) >= 2) then
              ! liquid and ice runoff are treated separately - this is what goes to the ocean
              rofl(n) = rofl(n) + ctl%runoff(n,nliq) / (ctl%area(n)*0.001_r8)
-             rofi(n) = rofi(n) + ctl%runoff(n,nfrz) / (ctl%area(n)*0.001_r8)
+             rofi(n) = rofi(n) + ctl%runoff(n,nice) / (ctl%area(n)*0.001_r8)
           end if
        end do
     else
        ! liquid and ice runoff added to liquid runoff, ice runoff is zero
        do n = begr,endr
-          rofl(n) = (ctl%direct(n,nfrz) + ctl%direct(n,nliq)) / (ctl%area(n)*0.001_r8)
+          rofl(n) = (ctl%direct(n,nice) + ctl%direct(n,nliq)) / (ctl%area(n)*0.001_r8)
           if (ctl%mask(n) >= 2) then
-             rofl(n) = rofl(n) + (ctl%runoff(n,nfrz) + ctl%runoff(n,nliq)) / (ctl%area(n)*0.001_r8)
+             rofl(n) = rofl(n) + (ctl%runoff(n,nice) + ctl%runoff(n,nliq)) / (ctl%area(n)*0.001_r8)
           endif
           rofi(n) = 0._r8
        end do
     end if
+
+    do n = begr,endr
+      rofl_glc(n) = ctl%direct_glc(n,nliq) / (ctl%area(n)*0.001_r8)
+      rofi_glc(n) = ctl%direct_glc(n,nice) / (ctl%area(n)*0.001_r8)
+    end do
 
     ! Flooding back to land, sign convention is positive in land->rof direction
     ! so if water is sent from rof to land, the flux must be negative.
@@ -389,6 +406,12 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call state_setexport(exportState, 'Forr_rofi', begr, endr, input=rofi, do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_setexport(exportState, 'Forr_rofl_glc', begr, endr, input=rofl_glc, do_area_correction=.true., rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call state_setexport(exportState, 'Forr_rofi_glc', begr, endr, input=rofi_glc, do_area_correction=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call state_setexport(exportState, 'Flrr_flood', begr, endr, input=flood, do_area_correction=.true., rc=rc)
@@ -653,5 +676,26 @@ contains
        call shr_sys_abort(' ERROR: One or more of the output from MOSART to the coupler are NaN ' )
     end if
   end subroutine check_for_nans
+
+  !===============================================================================
+  logical function fldchk(state, fldname)
+    ! ----------------------------------------------
+    ! Determine if field with fldname is in the input state
+    ! ----------------------------------------------
+
+    ! input/output variables
+    type(ESMF_State), intent(in)  :: state
+    character(len=*), intent(in)  :: fldname
+
+    ! local variables
+    type(ESMF_StateItem_Flag)   :: itemFlag
+    ! ----------------------------------------------
+    call ESMF_StateGet(state, trim(fldname), itemFlag)
+    if (itemflag /= ESMF_STATEITEM_NOTFOUND) then
+       fldchk = .true.
+    else
+       fldchk = .false.
+    endif
+  end function fldchk
 
 end module rof_import_export
