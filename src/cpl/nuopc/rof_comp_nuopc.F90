@@ -408,6 +408,7 @@ contains
     ! local variables
     type(ESMF_Mesh)       :: Emesh
     type(ESMF_VM)         :: vm
+    type(ESMF_Time)         :: currTime              ! Current time
     integer , allocatable :: gindex(:)             ! global index space on my processor
     integer               :: lbnum                 ! input to memory diagnostic
     character(CL)         :: cvalue                ! temporary
@@ -482,8 +483,10 @@ contains
     ! - Adjust area estimation from DRT algorithm for those outlet grids
     !     - useful for grid-based representation only
     !     - need to compute areas where they are not defined in input file
-
-    call mosart_init1(rc)
+    call ESMF_ClockGet(clock, currTime=currtime, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    
+    call mosart_init1(currtime, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !--------------------------------

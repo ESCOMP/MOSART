@@ -26,7 +26,7 @@ module mosart_driver
    use perf_mod           , only : t_startf, t_stopf
    use nuopc_shr_methods  , only : chkerr
    use ESMF               , only : ESMF_SUCCESS, ESMF_FieldGet, ESMF_FieldSMMStore, ESMF_FieldSMM, &
-                                   ESMF_TERMORDER_SRCSEQ, ESMF_Mesh
+                                   ESMF_TERMORDER_SRCSEQ, ESMF_Mesh, ESMF_Time
    use mosart_io          , only : ncd_pio_openfile, ncd_inqdid, ncd_inqdlen, ncd_pio_closefile, ncd_decomp_init, &
                                    pio_subsystem
    use pio                , only : file_desc_t
@@ -217,12 +217,13 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine mosart_init1(rc)
+   subroutine mosart_init1(currTime, rc)
 
       !-------------------------------------------------
       ! Initialize mosart grid, mask, decomp
       !
       ! Arguments
+      type(ESMF_Time), intent(in) :: currTime
       integer, intent(out) :: rc
       !
       ! Local variables
@@ -235,6 +236,7 @@ contains
       !-------------------------------------------------
 
       rc = ESMF_SUCCESS
+      call timemgr_init(dtime_in=coupling_period, curr_date_in=currTime)
 
       !-------------------------------------------------------
       ! Obtain restart file if appropriate
@@ -247,11 +249,11 @@ contains
       !-------------------------------------------------------
       ! Initialize time manager
       !-------------------------------------------------------
-      if (nsrest == nsrStartup) then
-         call timemgr_init(dtime_in=coupling_period)
-      else
-         call mosart_rest_timemanager(file=fnamer)
-      end if
+!      if (nsrest == nsrStartup) then
+
+!      else
+!         call mosart_rest_timemanager(file=fnamer)
+!      end if
 
       !-------------------------------------------------------
       ! Write out tracers to stdout

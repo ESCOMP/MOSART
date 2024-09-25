@@ -108,12 +108,13 @@ contains
 
    !=========================================================================================
 
-   subroutine timemgr_init( dtime_in )
+   subroutine timemgr_init( dtime_in, curr_date_in )
 
       ! Initialize the ESMF time manager from the sync clock
 
       ! Arguments
       integer, intent(in) :: dtime_in         ! Time-step (sec)
+      type(ESMF_Time), intent(in), optional :: curr_date_in
 
       ! Local variables
       integer                 :: rc                ! return code
@@ -144,8 +145,11 @@ contains
       start_date = TimeSetymd( start_ymd, start_tod, "start_date" )
 
       ! Initialize current date
-      curr_date = start_date
-
+      if(present(curr_date_in)) then
+         curr_date = curr_date_in
+      else         
+         curr_date = start_date
+      endif
       ! Initalize stop date.
       stop_date = TimeSetymd( 99991231, stop_tod, "stop_date" )
       call ESMF_TimeIntervalSet( step_size, s=dtime, rc=rc )
@@ -474,58 +478,30 @@ contains
          end if
       end if
 
-
       if (flag == 'read') then
 
-         ! Initialize calendar from restart info
-         call init_calendar()
+         ! Compare the timestep to restart file
+         if(dtime .ne. rst_step_sec) then
+            call shr_sys_abort( sub//'ERROR: dtime does not match restart file rst_step_sec')
+         endif
+         if(start_ymd .ne. rst_start_ymd) then
+            call shr_sys_abort( sub//'ERROR: start_ymd does not match restart file rst_start_ymd')
+         endif
+         if(start_tod .ne. rst_start_tod) then
+            call shr_sys_abort( sub//'ERROR: start_tod does not match restart file rst_start_tod')
+         endif
 
-         ! Initialize the timestep from restart info
-         dtime = rst_step_sec
-
-         ! Initialize start date from restart info
-         start_date = TimeSetymd( rst_start_ymd, rst_start_tod, "start_date" )
-
-         ! Initialize current date from restart info
-         curr_date = TimeSetymd( rst_curr_ymd, rst_curr_tod, "curr_date" )
-
-         ! Initialize stop date from sync clock or namelist input
-         stop_date = TimeSetymd( 99991231, stop_tod, "stop_date" )
+         if(ref_ymd .ne. rst_ref_ymd) then
+            call shr_sys_abort( sub//'ERROR: ref_ymd does not match restart file rst_ref_ymd')
+         endif
+         if(ref_tod .ne. rst_ref_tod) then
+            call shr_sys_abort( sub//'ERROR: ref_tod does not match restart file rst_ref_tod')
+         endif
 
          call ESMF_TimeIntervalSet( step_size, s=dtime, rc=rc )
          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting step_size')
          call ESMF_TimeIntervalSet( day_step_size, d=1, rc=rc )
          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting day_step_size')
-         if    ( stop_ymd /= uninit_int ) then
-            current = TimeSetymd( stop_ymd, stop_tod, "stop_date" )
-            if ( current < stop_date ) stop_date = current
-         else
-            call shr_sys_abort (sub//': Must specify stop_ymd')
-         end if
-
-         ! Error check
-         if ( stop_date <= start_date ) then
-            write(iulog,*)sub, ': stop date must be specified later than start date: '
-            call ESMF_TimeGet( start_date, yy=yr, mm=mon, dd=day, s=tod )
-            write(iulog,*) ' Start date (yr, mon, day, tod): ', yr, mon, day, tod
-            call ESMF_TimeGet( stop_date, yy=yr, mm=mon, dd=day, s=tod )
-            write(iulog,*) ' Stop date  (yr, mon, day, tod): ', yr, mon, day, tod
-            call shr_sys_abort
-         end if
-         if ( curr_date >= stop_date ) then
-            write(iulog,*)sub, ': stop date must be specified later than current date: '
-            call ESMF_TimeGet( curr_date, yy=yr, mm=mon, dd=day, s=tod )
-            write(iulog,*) ' Current date (yr, mon, day, tod): ', yr, mon, day, tod
-            call ESMF_TimeGet( stop_date, yy=yr, mm=mon, dd=day, s=tod )
-            write(iulog,*) ' Stop date    (yr, mon, day, tod): ', yr, mon, day, tod
-            call shr_sys_abort
-         end if
-
-         ! Initialize ref date from restart info
-         ref_date = TimeSetymd( rst_ref_ymd, rst_ref_tod, "ref_date" )
-
-         ! Initialize clock
-         call init_clock( start_date, ref_date, curr_date, stop_date )
 
          ! Print configuration summary to log file (stdout).
          if (mainproc) call timemgr_print()
