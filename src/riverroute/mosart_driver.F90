@@ -247,15 +247,6 @@ contains
       endif
 
       !-------------------------------------------------------
-      ! Initialize time manager
-      !-------------------------------------------------------
-!      if (nsrest == nsrStartup) then
-
-!      else
-!         call mosart_rest_timemanager(file=fnamer)
-!      end if
-
-      !-------------------------------------------------------
       ! Write out tracers to stdout
       !-------------------------------------------------------
       if (mainproc) then
