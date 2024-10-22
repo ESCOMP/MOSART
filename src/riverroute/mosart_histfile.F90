@@ -445,7 +445,7 @@ contains
       integer :: n               ! field index on defined tape
       integer :: begr          ! per-proc beginning land runoff index
       integer :: endr          ! per-proc ending land runoff index
-      character(len=1) :: avgflag_temp  ! local copy of hist_avgflag_pertape(t)
+      character(len=1) :: avgflag_temp  ! local copy of avgflag_pertape(t)
       character(len=*),parameter :: subname = 'htape_addfld'
       !-------------------------------------------------------
 
@@ -482,7 +482,7 @@ contains
 
       ! Override this field's avgflag if the namelist has set this tape to
       ! - instantaneous
-      avgflag_temp = hist_avgflag_pertape(t)
+      avgflag_temp = avgflag_pertape(t)
       if (avgflag_temp == 'I') then
          tape(t)%hlist(n)%avgflag = avgflag_temp
       end if
