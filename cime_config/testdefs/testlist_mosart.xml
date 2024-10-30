@@ -1,22 +1,56 @@
 <?xml version="1.0"?>
 <testlist version="2.0">
 
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/default">
+  <test name="PFS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/default">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
       <machine name="cheyenne" compiler="nvhpc" category="mosart"></machine>
       <machine name="izumi" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="gnu" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+=======
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+<<<<<<< HEAD
       <option name="comment"  >Restart test without DEBUG on all machines/compilers (except nag since nag needs DEBUG for CTSM)</option>
+||||||| abd2bc4
+      <option name="comment"  >Restart test without DEBUG on all machines/compilers</option>
+=======
+      <option name="comment"  >Performance test</option>
+    </options>
+  </test>
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/default">
+    <machines>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Restart test without DEBUG</option>
+    </options>
+  </test>
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I1850Clm50BgcCropG" testmods="mosart/default">
+    <machines>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment"  >Restart test without DEBUG with CISM</option>
+>>>>>>> mosart1.1.02
     </options>
   </test>
   <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -25,8 +59,8 @@
   </test>
   <test name="SMS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/mosartCold">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
-      <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -35,46 +69,43 @@
   </test>
   <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="gnu" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+=======
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
       <option name="comment"  >Test with MOSART turned off</option>
     </options>
   </test>
-  <test name="SMS_Lh3_Vmct" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Test with MCT and MOSART off</option>
-    </options>
-  </test>
   <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm51Sp" testmods="mosart/clmAccelSpinupIgnoreWarn">
     <machines>
-      <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
       <option name="comment"  >Test with CLM accelerated spinup, but ignore warnigns so it will send a warning but still run</option>
     </options>
   </test>
-  <test name="SMS_Lh3" grid="1x1_brazil" compset="I2000Clm50Sp" testmods="mosart/mosartGridNull">
-    <machines>
-      <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Test with grid where ROF is NULL which should turn MOSART off</option>
-    </options>
-  </test>
   <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/default">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
       <machine name="cheyenne" compiler="nvhpc" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="cheyenne" compiler="gnu" category="mosart"></machine>
+=======
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
       <machine name="izumi" compiler="nag" category="mosart"></machine>
       <machine name="izumi" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="gnu" category="mosart"></machine>
@@ -84,18 +115,10 @@
       <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
     </options>
   </test>
-  <test name="SMS_D_Ld5_Vmct" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/default">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Smoke test with DEBUG and MCT driver</option>
-    </options>
-  </test>
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -104,8 +127,15 @@
   </test>
   <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/passChannelDepths">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="nag" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+=======
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -114,8 +144,15 @@
   </test>
   <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="nag" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+=======
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -124,8 +161,15 @@
   </test>
   <test name="PEM_D" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/inplacethreshold">
     <machines>
+<<<<<<< HEAD
       <machine name="cheyenne" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="nag" category="mosart"></machine>
+||||||| abd2bc4
+      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+=======
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
+>>>>>>> mosart1.1.02
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -134,7 +178,8 @@
   </test>
   <test name="SMS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/nobypass">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="mosart"></machine>
+      <machine name="derecho" compiler="intel" category="mosart"></machine>
+      <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
