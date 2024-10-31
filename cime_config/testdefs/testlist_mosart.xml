@@ -14,7 +14,7 @@
       <option name="comment"  >Performance test</option>
     </options>
   </test>
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/default">
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/default">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -33,7 +33,7 @@
       <option name="comment"  >Restart test without DEBUG with CISM</option>
     </options>
   </test>
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/iceOff">
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -53,7 +53,7 @@
       <option name="comment"  >Run a Cold-Start with main machine and all compilers</option>
     </options>
   </test>
-  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/mosartOff">
+  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="gnu" category="mosart"></machine>
