@@ -1,7 +1,7 @@
 <?v3rsion="1.0"?>
 <testlist version="2.0">
 
-  <test name="PFS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/default">
+  <test name="PFS" grid="f10_f10_mg37" compset="I1850Clm60Sp" testmods="mosart/default">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="derecho" compiler="gnu" category="mosart"></machine>
@@ -14,7 +14,7 @@
       <option name="comment"  >Performance test</option>
     </options>
   </test>
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/default">
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/default">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -24,7 +24,7 @@
       <option name="comment"  >Restart test without DEBUG</option>
     </options>
   </test>
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I1850Clm50BgcCropG" testmods="mosart/default">
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I1850Clm60BgcCropG" testmods="mosart/default">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
     </machines>
@@ -33,7 +33,7 @@
       <option name="comment"  >Restart test without DEBUG with CISM</option>
     </options>
   </test>
-  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/iceOff">
+  <test name="ERS_Ld5" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/iceOff">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -43,7 +43,7 @@
       <option name="comment"  >Restart test without DEBUG with ice flow off</option>
     </options>
   </test>
-  <test name="SMS_Ld5" grid="f10_f10_mg37" compset="I2000Clm50BgcCrop" testmods="mosart/mosartCold">
+  <test name="SMS_Ld5" grid="f10_f10_mg37" compset="I2000Clm60BgcCrop" testmods="mosart/mosartCold">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -53,7 +53,7 @@
       <option name="comment"  >Run a Cold-Start with main machine and all compilers</option>
     </options>
   </test>
-  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm50BgcCru" testmods="mosart/mosartOff">
+  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm60BgcCru" testmods="mosart/mosartOff">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="izumi" compiler="gnu" category="mosart"></machine>
@@ -74,7 +74,7 @@
       <option name="comment"  >Test with CLM accelerated spinup, but ignore warnings so it will send a warning but still run</option>
     </options>
   </test>
-  <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/default">
+  <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm60Bgc" testmods="mosart/default">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="derecho" compiler="gnu" category="mosart"></machine>
@@ -89,7 +89,7 @@
       <option name="comment"  >Smoke test with DEBUG on all machines/compilers</option>
     </options>
   </test>
-  <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/decompOpts">
+  <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm60Bgc" testmods="mosart/decompOpts">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -99,7 +99,7 @@
       <option name="comment"  >decompOpts are not bit for bit on PE layout change</option>
     </options>
   </test>
-  <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/passChannelDepths">
+  <test name="SMS_D" grid="f10_f10_mg37" compset="I1850Clm60Bgc" testmods="mosart/passChannelDepths">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -110,7 +110,7 @@
       <option name="comment"  >Pass channel depths needed for hillslope model</option>
     </options>
   </test>
-  <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/qgrwlOpts">
+  <test name="ERP_D" grid="f10_f10_mg37" compset="I1850Clm60Bgc" testmods="mosart/qgrwlOpts">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -121,7 +121,7 @@
       <option name="comment"  >Exact restart test changing processor count with DEBUG on</option>
     </options>
   </test>
-  <test name="PEM_D" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/inplacethreshold">
+  <test name="PEM_D" grid="f10_f10_mg37" compset="I1850Clm60Sp" testmods="mosart/inplacethreshold">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
@@ -132,7 +132,7 @@
       <option name="comment"  >Change the processor count and set direct_in_place for threshold negative flow</option>
     </options>
   </test>
-  <test name="SMS" grid="f10_f10_mg37" compset="I1850Clm50Sp" testmods="mosart/nobypass">
+  <test name="SMS" grid="f10_f10_mg37" compset="I1850Clm60Sp" testmods="mosart/nobypass">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
