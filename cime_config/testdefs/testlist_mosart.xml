@@ -64,14 +64,14 @@
       <option name="comment"  >Test with MOSART turned off</option>
     </options>
   </test>
-  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm51Sp" testmods="mosart/clmAccelSpinupIgnoreWarn">
+  <test name="SMS_Lh3" grid="f10_f10_mg37" compset="I2000Clm60Sp" testmods="mosart/clmAccelSpinupIgnoreWarn">
     <machines>
       <machine name="derecho" compiler="intel" category="mosart"></machine>
       <machine name="betzy" compiler="intel" category="mosart_noresm"></machine>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment"  >Test with CLM accelerated spinup, but ignore warnigns so it will send a warning but still run</option>
+      <option name="comment"  >Test with CLM accelerated spinup, but ignore warnings so it will send a warning but still run</option>
     </options>
   </test>
   <test name="SMS_D_Ld5" grid="f10_f10_mg37" compset="I1850Clm50Bgc" testmods="mosart/default">
