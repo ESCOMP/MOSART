@@ -990,10 +990,12 @@ contains
        endif
        pid = max(pid,0)
        pid = min(pid,npes-1)
+#ifndef NDEBUG
        if (iam == pid) then
           write(iulog,'(2a,i9,a,i9,a,i9,a,i9)')' mosart decomp info',&
                ' proc = ',iam,' begr = ',begr,' endr = ',endr,' numr = ',lnumr
        endif
+#endif
        call mpi_barrier(mpicom_rof,ier)
     enddo
 

@@ -37,8 +37,9 @@
   <!-- R compsets -->
 
   <compset>
+    <!-- This compset is NOT yet functional, but it is a capability that would be good for testing -->
     <alias>R2000MOSART</alias>
-    <lname>2000_SATM_DLND%LCPL_SICE_SOCN_MIZUROUTE_SGLC_SWAV</lname>
+    <lname>2000_SATM_DLND%LCPL_SICE_SOCN_MOSART_SGLC_SWAV</lname>
   </compset>
 
 </compsets>
