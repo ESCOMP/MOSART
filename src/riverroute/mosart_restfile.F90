@@ -10,7 +10,7 @@ module mosart_restfile
    use mosart_data,        only : ctl, Trunoff
    use mosart_histfile,    only : mosart_hist_restart
    use mosart_fileutils,   only : getfil
-   use mosart_timemanager, only : timemgr_restart, get_nstep, get_curr_date
+   use mosart_timemanager, only : timemgr_restart, get_nstep, get_curr_date, get_prev_date
    use mosart_io,          only : ncd_pio_createfile, ncd_enddef, ncd_pio_openfile, ncd_pio_closefile, &
                                   ncd_defdim, ncd_putatt, ncd_defvar, ncd_io, ncd_global, ncd_double, &
                                   ncd_getdatetime
@@ -223,8 +223,9 @@ contains
    !-----------------------------------------------------------------------
 
    subroutine restFile_read_pfile( pnamer )
-
-      !-------------------------------------
+     use mpi, only : MPI_CHARACTER
+     use mosart_vars, only : mpicom_rof
+     !-------------------------------------
       ! Setup restart file and perform necessary consistency checks
 
       ! Arguments
@@ -234,6 +235,8 @@ contains
       integer :: nio             ! restart unit
       integer :: ier             ! error return from fortran open
       integer :: i               ! index
+      integer :: yr, mon, day, tod
+      character(len=17) :: timestamp
       character(len=CL) :: locfn ! Restart pointer file name
       !-------------------------------------
 
@@ -244,21 +247,29 @@ contains
       ! New history files are always created for branch runs.
 
       if (mainproc) then
-         write(iulog,*) 'Reading restart pointer file....'
+         call get_curr_date(yr, mon, day, tod)
+         write(timestamp,'(".",i4.4,"-",i2.2,"-",i2.2,"-",i5.5)'),yr,mon,day,tod
+         locfn = './'// trim(rpntfil)//trim(inst_suffix)//timestamp
+
+         write(iulog,*) 'Reading restart pointer file: '//trim(locfn)
+         open (newunit=nio, file=trim(locfn), status='old', form='formatted', iostat=ier)
+         if (ier /= 0) then
+            locfn = './'// trim(rpntfil)//trim(inst_suffix)
+            open (newunit=nio, file=trim(locfn), status='old', form='formatted', iostat=ier)
+            if (ier /= 0) then
+               write(iulog,'(a,i8)')'(restFile_read_pfile): failed to open file '//trim(locfn)//' ierr=',ier
+               call shr_sys_abort()
+            end if
+         endif
+         read (nio,'(a256)') pnamer
+         close(nio)
       endif
-      locfn = './'// trim(rpntfil)//trim(inst_suffix)
-      open (newunit=nio, file=trim(locfn), status='unknown', form='formatted', iostat=ier)
-      if (ier /= 0) then
-         write(iulog,'(a,i8)')'(restFile_read_pfile): failed to open file '//trim(locfn)//' ierr=',ier
-         call shr_sys_abort()
-      end if
-      read (nio,'(a256)') pnamer
-      close(nio)
-      if (mainproc) then
-         write(iulog,'(a)') 'Reading restart data.....'
+      call mpi_bcast (pnamer, CL, MPI_CHARACTER, 0, mpicom_rof, ier)
+      if(mainproc) then
+         write(iulog,'(a)') 'Reading restart data: ',trim(pnamer)
          write(iulog,'(72a1)') ("-",i=1,60)
       end if
-
+      
    end subroutine restFile_read_pfile
 
    !-----------------------------------------------------------------------
@@ -275,10 +286,14 @@ contains
       integer :: nio ! restart pointer file unit number
       integer :: ier ! error return from fortran open
       character(len=CL) :: filename  ! local file name
+      integer :: yr, mon, day, tod
+      character(len=17) :: timestamp
       !-------------------------------------
 
       if (mainproc) then
-         filename= './'// trim(rpntfil)//trim(inst_suffix)
+         call get_curr_date(yr, mon, day, tod)
+         write(timestamp,'(".",i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr, mon, day, tod
+         filename= './'// trim(rpntfil)//trim(inst_suffix)//timestamp
          open (newunit=nio, file=trim(filename), status='unknown', form='formatted', iostat=ier)
          if (ier /= 0) then
             write(iulog,'(a,i8)')'(restFile_write_pfile): failed to open file '//trim(filename)//' ierr=',ier
@@ -286,7 +301,7 @@ contains
          end if
          write(nio,'(a)') fnamer
          close(nio)
-         write(iulog,*)'Successfully wrote local restart pointer file'
+         write(iulog,*)'Successfully wrote local restart pointer file: '//trim(filename)
       end if
 
    end subroutine restFile_write_pfile
