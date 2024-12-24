@@ -1,5 +1,18 @@
 ===============================================================
-Tag name:  mosart1_1_05
+Tag name:  mosart1.1.06
+Originator(s): jedwards4b
+Date: Dec 24, 2024
+One-line Summary: Add simulation timestamp to rpointer filenames
+
+Add timestamps to rpointer files, initialize curr date from driver and compare 
+to what is in the restart files (instead of initializing from restart files).
+
+Testing: standard testing (ekluzek)
+  izumi ---- ?
+  derecho -- OK
+
+===============================================================
+Tag name:  mosart1.1.05
 Originator(s): slevis
 Date: Nov 12, 2024
 One-line Summary: Stop running 0th timestep
@@ -11,12 +24,12 @@ Relates to issue ESCOMP/CTSM#925 and PR ESCOMP/CTSM#2084.
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/67 for more details
 
 ===============================================================
-Tag name:  mosart1_1_04
+Tag name:  mosart1.1.04
 Originator(s): slevis
 Date: Nov 11, 2024
 One-line Summary: time now equals the middle of the time_bounds
@@ -28,12 +41,12 @@ Relates to issue #52 but does not separate instantaneous fields into separate hi
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/106 for more details
 
 ===============================================================
-Tag name:  mosart1_1_03
+Tag name:  mosart1.1.03
 Originator(s): ekluzek
 Date: Nov 6, 2024
 One-line Summary: Add more tests and merge in some other PRs
@@ -50,12 +63,12 @@ Resolves #107 change all mosart tests to clm60?
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/70 for more details
 
 ===============================================================
-Tag name:  mosart1_1_02
+Tag name:  mosart1.1.02
 Originator(s): mvertens
 Date: Jun 21, 2024
 One-line Summary: cism runoff will be now routed to ocn via mosart
@@ -73,12 +86,12 @@ Fixes #102
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/94 for more details
 
 ===============================================================
-Tag name:  mosart1_1_01
+Tag name:  mosart1.1.01
 Originator(s): mvertens
 Date: Jun 06, 2024
 One-line Summary: major mosart refactor including addition of new halo capability
@@ -121,7 +134,7 @@ Fixes #99 Add a new mosart_noresm testlist
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/76 for more details
 
@@ -163,7 +176,7 @@ Issues resolved:
 
 Testing: standard testing
   izumi -- PASS
-  cheyenne -- PASS  (following change answers but determined to be OK)
+  derecho -- PASS  (following change answers but determined to be OK)
 ERP_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-qgrwlOpts
 PEM_D.f10_f10_mg37.I1850Clm50Sp.derecho_intel.mosart-inplacethreshold
 SMS_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-decompOpts
