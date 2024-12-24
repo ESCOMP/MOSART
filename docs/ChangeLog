@@ -1,4 +1,60 @@
 ===============================================================
+Tag name:  mosart1_1_05
+Originator(s): slevis
+Date: Nov 12, 2024
+One-line Summary: Stop running 0th timestep
+
+For consistency with CAM and CTSM.
+
+Issues addressed:
+Relates to issue ESCOMP/CTSM#925 and PR ESCOMP/CTSM#2084.
+
+Testing: standard testing
+  izumi -- OK
+  cheyenne -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/67 for more details
+
+===============================================================
+Tag name:  mosart1_1_04
+Originator(s): slevis
+Date: Nov 11, 2024
+One-line Summary: time now equals the middle of the time_bounds
+
+For consistency with CAM and CTSM and for more intuitive history output.
+
+Issues addressed:
+Relates to issue #52 but does not separate instantaneous fields into separate history tapes.
+
+Testing: standard testing
+  izumi -- OK
+  cheyenne -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/106 for more details
+
+===============================================================
+Tag name:  mosart1_1_03
+Originator(s): ekluzek
+Date: Nov 6, 2024
+One-line Summary: Add more tests and merge in some other PRs
+
+
+Issues addressed:
+Resolves #68 add more gnu and izumi tests
+Resolves #79 nobypass test fails on derecho
+Resolves #61 incorrect compset in config_compsets.xml
+Resolves #91 change clm51 tests to clm60
+Resolves #103 rof_to_glc issue (we had to revert later)
+Resolves #104 reduce logging noise
+Resolves #107 change all mosart tests to clm60?
+
+Testing: standard testing
+  izumi -- OK
+  cheyenne -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/70 for more details
+
+===============================================================
 Tag name:  mosart1_1_02
 Originator(s): mvertens
 Date: Jun 21, 2024
