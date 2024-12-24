@@ -20,8 +20,8 @@ module mosart_timemanager
    ! Public methods
 
    public :: timemgr_setup    ! setup startup values
-   public :: timemgr_init     ! time manager initialization
-   public :: timemgr_restart  ! read/write time manager restart info and restart time manager
+   public :: timemgr_init     ! time manager initialization, always called
+   public :: timemgr_restart  ! read/write time manager restart info and setup after a restart
    public :: advance_timestep ! increment timestep number
    public :: get_step_size    ! return step size in seconds
    public :: get_nstep        ! return timestep number
@@ -92,9 +92,9 @@ contains
       integer         , optional, intent(in) :: stop_tod_in       ! Stop time of day (sec)
       character(len=*), parameter :: sub = 'timemgr_setup'
 
-      ! timemgr_set is called in timemgr_init and timemgr_restart
+      ! timemgr_set is called in timemgr_init
       if ( timemgr_set ) then
-         call shr_sys_abort( sub//":: timemgr_init or timemgr_restart already called" )
+         call shr_sys_abort( sub//":: timemgr_init already called" )
       end if
       if (present(calendar_in) ) calendar  = trim(calendar_in)
       if (present(start_ymd_in)) start_ymd = start_ymd_in
@@ -319,6 +319,12 @@ contains
       integer                      :: rc                ! return code
       character(len=*), parameter  :: sub = 'timemgr_restart'
       !
+      if ( .not. timemgr_set ) then
+         call shr_sys_abort( sub//":: timemgr_init MUST be called first" )
+      end if
+      !
+      ! Read/Write/Define restart time from restart file
+      !
       if (flag == 'write') then
          rst_calendar  = calendar
       else if (flag == 'read') then
@@ -478,6 +484,9 @@ contains
          end if
       end if
 
+      !
+      ! On read make sure restart read in agrees with the system clock sent in
+      !
       if (flag == 'read') then
 
          ! Compare the timestep to restart file
@@ -502,11 +511,6 @@ contains
          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting step_size')
          call ESMF_TimeIntervalSet( day_step_size, d=1, rc=rc )
          call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting day_step_size')
-
-         ! Print configuration summary to log file (stdout).
-         if (mainproc) call timemgr_print()
-
-         timemgr_set = .true.
 
       end if
 
