@@ -813,9 +813,9 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        call ESMF_LogWrite(subname//'setting alarms for' // trim(name), ESMF_LOGMSG_INFO)
 
-       !----------------
-       ! Stop alarm
-       !----------------
+       !------------------------------------------------------------------
+       ! Stop alarm, set first in case needed for the restart alarm
+       !------------------------------------------------------------------
        call NUOPC_CompAttributeGet(gcomp, name="stop_option", value=stop_option, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -837,9 +837,9 @@ contains
        call ESMF_AlarmSet(stop_alarm, clock=mclock, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-       !----------------
-       ! Restart alarm
-       !----------------
+       !-------------------------------------------
+       ! Restart alarm, set after the stop alarm
+       !-------------------------------------------
        call NUOPC_CompAttributeGet(gcomp, name="restart_option", value=restart_option, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
