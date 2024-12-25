@@ -8,7 +8,7 @@ Add timestamps to rpointer files, initialize curr date from driver and compare
 to what is in the restart files (instead of initializing from restart files).
 
 Testing: standard testing (ekluzek)
-  izumi ---- ?
+  izumi ---- OK (but problems with baseline compare)
   derecho -- OK
 
 ===============================================================
