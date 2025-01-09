@@ -248,7 +248,7 @@ contains
 
       if (mainproc) then
          call get_curr_date(yr, mon, day, tod)
-         write(timestamp,'(".",i4.4,"-",i2.2,"-",i2.2,"-",i5.5)'),yr,mon,day,tod
+         write(timestamp,'(".",i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr,mon,day,tod
          locfn = './'// trim(rpntfil)//trim(inst_suffix)//timestamp
 
          write(iulog,*) 'Reading restart pointer file: '//trim(locfn)
