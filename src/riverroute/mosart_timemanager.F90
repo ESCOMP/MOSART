@@ -108,20 +108,19 @@ contains
 
    !=========================================================================================
 
-   subroutine timemgr_init( dtime_in, curr_date_in )
+   subroutine timemgr_init( dtime_in, curr_date )
 
       ! Initialize the ESMF time manager from the sync clock
 
       ! Arguments
-      integer, intent(in) :: dtime_in         ! Time-step (sec)
-      type(ESMF_Time), intent(in), optional :: curr_date_in
+      integer, intent(in) :: dtime_in          ! Time-step (sec)
+      type(ESMF_Time), intent(in) :: curr_date ! Current date
 
       ! Local variables
       integer                 :: rc                ! return code
       integer                 :: yr, mon, day, tod ! Year, month, day, and second as integers
       type(ESMF_Time)         :: start_date        ! start date for run
       type(ESMF_Time)         :: stop_date         ! stop date for run
-      type(ESMF_Time)         :: curr_date         ! temporary date used in logic
       type(ESMF_Time)         :: ref_date          ! reference date for time coordinate
       type(ESMF_Time)         :: current           ! current date (from clock)
       type(ESMF_TimeInterval) :: day_step_size     ! day step size
@@ -144,12 +143,6 @@ contains
       end if
       start_date = TimeSetymd( start_ymd, start_tod, "start_date" )
 
-      ! Initialize current date
-      if(present(curr_date_in)) then
-         curr_date = curr_date_in
-      else         
-         curr_date = start_date
-      endif
       ! Initalize stop date.
       stop_date = TimeSetymd( 99991231, stop_tod, "stop_date" )
       call ESMF_TimeIntervalSet( step_size, s=dtime, rc=rc )
