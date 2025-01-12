@@ -1,4 +1,23 @@
 <hr>
+# Tag name:  mosart1.1.07
+### Originator(s): erik
+### Date: Jan 11, 2025
+### One-line Summary: Fix for Nag compiler
+
+Fix nag compiler, change ChangeLog to markdown format.
+Remove complexity of having curr_date_in in timemgr_init
+be optional and make it required. As was done in RTM.
+
+Fixes ESCOMP/MOSART#110
+Fixes ESCOMP/MOSART#111
+
+Testing: standard testing (ekluzek)
+  izumi ---- OK
+  derecho -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/112 for more details
+
+<hr>
 # Tag name:  mosart1.1.06
 ### Originator(s): jedwards4b
 ### Date: Dec 24, 2024
