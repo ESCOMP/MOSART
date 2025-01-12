@@ -236,7 +236,7 @@ contains
       !-------------------------------------------------
 
       rc = ESMF_SUCCESS
-      call timemgr_init(dtime_in=coupling_period, curr_date_in=currTime)
+      call timemgr_init(dtime_in=coupling_period, curr_date=currTime)
 
       !-------------------------------------------------------
       ! Obtain restart file if appropriate
