@@ -1,8 +1,40 @@
-===============================================================
-Tag name:  mosart1_1_05
-Originator(s): slevis
-Date: Nov 12, 2024
-One-line Summary: Stop running 0th timestep
+<hr>
+# Tag name:  mosart1.1.07
+### Originator(s): erik
+### Date: Jan 11, 2025
+### One-line Summary: Fix for Nag compiler
+
+Fix nag compiler, change ChangeLog to markdown format.
+Remove complexity of having curr_date_in in timemgr_init
+be optional and make it required. As was done in RTM.
+
+Fixes ESCOMP/MOSART#110
+Fixes ESCOMP/MOSART#111
+
+Testing: standard testing (ekluzek)
+  izumi ---- OK
+  derecho -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/112 for more details
+
+<hr>
+# Tag name:  mosart1.1.06
+### Originator(s): jedwards4b
+### Date: Dec 24, 2024
+### One-line Summary: Add simulation timestamp to rpointer filenames
+
+Add timestamps to rpointer files, initialize curr date from driver and compare 
+to what is in the restart files (instead of initializing from restart files).
+
+Testing: standard testing (ekluzek)
+  izumi ---- OK (but problems with baseline compare)
+  derecho -- OK
+
+<hr>
+# Tag name:  mosart1.1.05
+### Originator(s): slevis
+### Date: Nov 12, 2024
+### One-line Summary: Stop running 0th timestep
 
 For consistency with CAM and CTSM.
 
@@ -11,15 +43,15 @@ Relates to issue ESCOMP/CTSM#925 and PR ESCOMP/CTSM#2084.
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/67 for more details
 
-===============================================================
-Tag name:  mosart1_1_04
-Originator(s): slevis
-Date: Nov 11, 2024
-One-line Summary: time now equals the middle of the time_bounds
+<hr>
+# Tag name:  mosart1.1.04
+### Originator(s): slevis
+### Date: Nov 11, 2024
+### One-line Summary: time now equals the middle of the time_bounds
 
 For consistency with CAM and CTSM and for more intuitive history output.
 
@@ -28,15 +60,15 @@ Relates to issue #52 but does not separate instantaneous fields into separate hi
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/106 for more details
 
-===============================================================
-Tag name:  mosart1_1_03
-Originator(s): ekluzek
-Date: Nov 6, 2024
-One-line Summary: Add more tests and merge in some other PRs
+<hr>
+# Tag name:  mosart1.1.03
+### Originator(s): ekluzek
+### Date: Nov 6, 2024
+### One-line Summary: Add more tests and merge in some other PRs
 
 
 Issues addressed:
@@ -50,15 +82,15 @@ Resolves #107 change all mosart tests to clm60?
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/70 for more details
 
-===============================================================
-Tag name:  mosart1_1_02
-Originator(s): mvertens
-Date: Jun 21, 2024
-One-line Summary: cism runoff will be now routed to ocn via mosart
+<hr>
+# Tag name:  mosart1.1.02
+### Originator(s): mvertens
+### Date: Jun 21, 2024
+### One-line Summary: cism runoff will be now routed to ocn via mosart
 
 Enables CISM runoff to be routed to the ocean via mosart.
 
@@ -73,15 +105,15 @@ Fixes #102
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/94 for more details
 
-===============================================================
-Tag name:  mosart1_1_01
-Originator(s): mvertens
-Date: Jun 06, 2024
-One-line Summary: major mosart refactor including addition of new halo capability
+<hr>
+# Tag name:  mosart1.1.01
+### Originator(s): mvertens
+### Date: Jun 06, 2024
+### One-line Summary: major mosart refactor including addition of new halo capability
 
 Removed all references to rtm
 
@@ -121,15 +153,15 @@ Fixes #99 Add a new mosart_noresm testlist
 
 Testing: standard testing
   izumi -- OK
-  cheyenne -- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/76 for more details
 
-===============================================================
-Tag name:  mosart1_0_49
-Originator(s): mvertens
-Date: Feb 02, 2024
-One-line Summary: Remove MCT, some cleanup and high level refactoring
+<hr>
+# Tag name:  mosart1_0_49
+### Originator(s): mvertens
+### Date: Feb 02, 2024
+### One-line Summary: Remove MCT, some cleanup and high level refactoring
 
 Removes all MCT references from the code and replaces them with ESMF routehandles and mapping calls
 major changes to RtmMod.F90 along with other code cleanup described below
@@ -163,7 +195,7 @@ Issues resolved:
 
 Testing: standard testing
   izumi -- PASS
-  cheyenne -- PASS  (following change answers but determined to be OK)
+  derecho -- PASS  (following change answers but determined to be OK)
 ERP_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-qgrwlOpts
 PEM_D.f10_f10_mg37.I1850Clm50Sp.derecho_intel.mosart-inplacethreshold
 SMS_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-decompOpts
@@ -173,22 +205,22 @@ SMS_D.f10_f10_mg37.I1850Clm50Bgc.derecho_intel.mosart-decompOpts
 
 See https://github.com/ESCOMP/MOSART/pull/74 for more details
 
-===============================================================
-Tag name:  mosart1_0_48
-Originator(s): erik
-Date: Nov 13, 2022
-One-line Summary: Change bypass_routing option to direct_to_outlet
+<hr>
+# Tag name:  mosart1_0_48
+### Originator(s): erik
+### Date: Nov 13, 2022
+### One-line Summary: Change bypass_routing option to direct_to_outlet
 
 Change the bypass_routing option to negative flow is sent to
 the river outlets.
 
 Fixes #58 -- change bypass_routing default
 
-===============================================================
-Tag name:  mosart1_0_47
-Originator(s): erik
-Date: Nov 12, 2022
-One-line Summary: Some fixes for the direct_to_outlet option
+<hr>
+# Tag name:  mosart1_0_47
+### Originator(s): erik
+### Date: Nov 12, 2022
+### One-line Summary: Some fixes for the direct_to_outlet option
 
 This fixes the balance errors evident in the mosart log file when 
 the bypass_routing_option='direct_to_outlet' method is used.
@@ -205,22 +237,22 @@ than "all" for "none".
 
 Answers change when direct_to_outlet option is used
 
-===============================================================
-Tag name:  mosart1_0_46
-Originator(s): jedwards
-Date: Jun 12, 2022
-One-line Summary: PIO ascynchronus changes
+<hr>
+# Tag name:  mosart1_0_46
+### Originator(s): jedwards
+### Date: Jun 12, 2022
+### One-line Summary: PIO ascynchronus changes
 
 Currently mosart initializes and try's to use IO in the advertise phase, but asyncio requires that this is not done until the
 realize phase. This PR splits the mosart initialization so that the namelist is still read in the advertise phase but IO waits until
 the realize phase. Tested with cesm prealpha tests on cheyenne, a modification was also required in the mct driver to handle the new
 initialize subroutine.
 
-===============================================================
-Tag name:  mosart1_0_45
-Originator(s): erik
-Date: Nov 12, 2021
-One-line Summary: Handle CLM_ACCELERATED_SPINUP option differently
+<hr>
+# Tag name:  mosart1_0_45
+### Originator(s): erik
+### Date: Nov 12, 2021
+### One-line Summary: Handle CLM_ACCELERATED_SPINUP option differently
 
 Handle CLM_ACCELERATED_SPINUP option differently so it doesn't change 
 MOSART_MODE, but dies (unless the new xml variable MOSART_IGNORE_WARNINGS 
@@ -230,11 +262,11 @@ PE's only if running with DEBUG compiler options set.
 Fixes #48 -- Remove setting of MOSART_MODE from buildnml
 Fixes #49 -- Reduce MOSART output to cesm.log
 
-===============================================================
-Tag name:  mosart1_0_44
-Originator(s): erik
-Date: Nov 02, 2021
-One-line Summary: Nuopc now the default driver, pass channel depth fields, remove do_rtm namelist
+<hr>
+# Tag name:  mosart1_0_44
+### Originator(s): erik
+### Date: Nov 02, 2021
+### One-line Summary: Nuopc now the default driver, pass channel depth fields, remove do_rtm namelist
 
 Assume nuopc is the default driver now, so switch testlist for special driver tests
 to be mct rather than nuopc. Pass channel depth fields if flds_r2l_stream_channel_depths
@@ -251,11 +283,11 @@ This test fails in the build unless there is an appropriate verison of CMEPS:
 SMS_D.f10_f10_mg37.I1850Clm50Bgc.cheyenne_intel.mosart-passChannelDepths
    SHARED_BUILD -- FAIL
 
-===============================================================
-Tag name:  mosart1_0_43
-Originator(s): erik
-Date: July 16, 2021
-One-line Summary: Change shebang lines to python3, abort if direction file not set, add compset
+<hr>
+# Tag name:  mosart1_0_43
+### Originator(s): erik
+### Date: July 16, 2021
+### One-line Summary: Change shebang lines to python3, abort if direction file not set, add compset
 
 Change the shebang lines in buildnml and buildlib for python3
 Abort if a direction file is not set
@@ -267,11 +299,11 @@ Fixes #28 -- add R2000MOSART compset
 
 See https://github.com/ESCOMP/MOSART/pull/43
 
-===============================================================
-Tag name:  mosart1_0_42
-Originator(s): jedwards
-Date: April 5, 2021
-One-line Summary: Support for threading with NUOPC/CMEPS
+<hr>
+# Tag name:  mosart1_0_42
+### Originator(s): jedwards
+### Date: April 5, 2021
+### One-line Summary: Support for threading with NUOPC/CMEPS
 
 See https://github.com/ESCOMP/MOSART/pull/41
 
@@ -280,22 +312,22 @@ Mariana Vertenstein ran
 ERS_Vnuopc_Ld5.f09_g17.I1850Clm50Sp.cheyenne_intel.clm-default; this was
 bit-for-bit against baselines.
 
-===============================================================
-Tag name:  mosart1_0_41
-Originator(s): jedwards
-Date: March 17, 2021
-One-line Summary: Minor changes for pio2 compatibility
+<hr>
+# Tag name:  mosart1_0_41
+### Originator(s): jedwards
+### Date: March 17, 2021
+### One-line Summary: Minor changes for pio2 compatibility
 
 Testing: mosart test suite on cheyenne & izumi, in the context of
 ctsm5.1.dev027. All tests passed (once I removed the two non-debug nag
 tests, which now fail) and were bit-for-bit with baselines (baselines
 were generated using mosart1_0_40 in the context of ctsm5.1.dev027).
 
-===============================================================
-Tag name:  mosart1_0_40
-Originator(s): mvertens, jedwards
-Date: March 16, 2021
-One-line Summary: Addition of flux area correction factors
+<hr>
+# Tag name:  mosart1_0_40
+### Originator(s): mvertens, jedwards
+### Date: March 16, 2021
+### One-line Summary: Addition of flux area correction factors
 
 Adds area flux correction factors as is done in CPL7. Remove some debug
 writes of coupler fields. And remove state_getfldptr as it was unused.
@@ -308,11 +340,11 @@ SMS_D_Ld5_Vnuopc.f10_f10_mg37.I2000Clm50BgcCrop.cheyenne_intel.mosart-default
 in the context of CESM's nuopc_dev branch. (No baseline comparisons done
 for full set of changes.)
 
-===============================================================
-Tag name:  mosart1_0_39
-Originator(s): jedwards
-Date: December 22, 2020
-One-line Summary: Remove nuopc_cap_share from build
+<hr>
+# Tag name:  mosart1_0_39
+### Originator(s): jedwards
+### Date: December 22, 2020
+### One-line Summary: Remove nuopc_cap_share from build
 
 nuopc_cap_share is now included in the share library.
 
@@ -320,11 +352,11 @@ Testing: mosart test suite on cheyenne & izumi, in the context of
 ctsm5.1.dev019. All tests passed and were bit-for-bit with baselines.
 
 
-===============================================================
-Tag name:  mosart1_0_38
-Originator(s): sacks
-Date: November 01, 2020
-One-line Summary: Change compset in test
+<hr>
+# Tag name:  mosart1_0_38
+### Originator(s): sacks
+### Date: November 01, 2020
+### One-line Summary: Change compset in test
 
 In an upcoming CTSM tag, the compset I2000Clm50BgcCropGs will be renamed
 to I2000Clm50BgcCrop (while keeping the same meaning as before). This
@@ -334,11 +366,11 @@ this upcoming CTSM tag.
 Note that this change will require the upcoming CTSM tag (probably
 ctsm5.1.dev011) in order to run this test from the mosart test list.
 
-===============================================================
-Tag name:  mosart1_0_37
-Originator(s): mvertens, erik, jedwards
-Date: August 06, 2020
-One-line Summary: Bring updates needed for NUOPC
+<hr>
+# Tag name:  mosart1_0_37
+### Originator(s): mvertens, erik, jedwards
+### Date: August 06, 2020
+### One-line Summary: Bring updates needed for NUOPC
 
 Some more changes from @mvertens with updates for the NUOPC cap. 
 There's a new nuopc_cap_share directory added. SetVM is made public
@@ -347,11 +379,11 @@ RtmIO is now using ROFID rather than instance name.
 
 Also convert the nldas2 file into NetCDF5 format from Jim Edwards.
 
-===============================================================
-Tag name:  mosart1_0_36
-Originator(s): mvertens, sacks
-Date: March 16, 2020
-One-line Summary: Updates to NUOPC cap
+<hr>
+# Tag name:  mosart1_0_36
+### Originator(s): mvertens, sacks
+### Date: March 16, 2020
+### One-line Summary: Updates to NUOPC cap
 
 Main purpose is updates to NUOPC cap. Also a fix for PIO2.
 
@@ -364,11 +396,11 @@ Testing: mosart test suite (cheyenne & izumi), in the context of a CTSM
 checkout (https://github.com/ESCOMP/CTSM/pull/939). Baseline comparisons
 done against ctsm1.0.dev085.
 
-===============================================================
-Tag name:  mosart1_0_35
-Originator(s): erik
-Date: Nov 08, 2019
-One-line Summary: Fix cold-start, 8th degree file, wallclock, add COC, change SHR_KIND
+<hr>
+# Tag name:  mosart1_0_35
+### Originator(s): erik
+### Date: Nov 08, 2019
+### One-line Summary: Fix cold-start, 8th degree file, wallclock, add COC, change SHR_KIND
 
     Fix for cold start #24 and add cold start test
 
@@ -382,11 +414,11 @@ One-line Summary: Fix cold-start, 8th degree file, wallclock, add COC, change SH
     shr_kind_cl in shr_kind_mod. This is important for a recent cime
     update.
 
-===============================================================
-Tag name:  mosart1_0_34
-Originator(s): mvertens/erik
-Date: Jul 25, 2019
-One-line Summary: Add nuopc cap for NUOPC coupler option
+<hr>
+# Tag name:  mosart1_0_34
+### Originator(s): mvertens/erik
+### Date: Jul 25, 2019
+### One-line Summary: Add nuopc cap for NUOPC coupler option
 
 Add another driver cap for NUOPC in addition to the MCT cap.
 As part of this rof_cpl_indices.F90 which was shared under
@@ -412,12 +444,12 @@ Testing: Run mosart test suite (with ctsm tag ctsm1.0.dev049 and
 Pull Request: #25
   #25 -- nuopc cap
 
-===============================================================
-===============================================================
-Tag name:  mosart1_0_33
-Originator(s): erik
-Date: Jun 11, 2019
-One-line Summary: buildlib updates for cime5.8 and nldas grid
+<hr>
+<hr>
+# Tag name:  mosart1_0_33
+### Originator(s): erik
+### Date: Jun 11, 2019
+### One-line Summary: buildlib updates for cime5.8 and nldas grid
 
 buildlib changes needed for cime5.8 from @jedwards.
 
@@ -427,11 +459,11 @@ Testing: Run mosart test suite (with cime tag branch_tags/cime5.8.3_chint17-02)
    hobart ---- PASS
    cheyenne -- PASS
 
-===============================================================
-Tag name:  mosart1_0_32
-Originator(s): erik
-Date: May 07, 2019
-One-line Summary:  Move release-cesm2.0.03 to mosart master
+<hr>
+# Tag name:  mosart1_0_32
+### Originator(s): erik
+### Date: May 07, 2019
+### One-line Summary:  Move release-cesm2.0.03 to mosart master
 
 Don't allow the namelist option rtmhist_ndens to be set to 2, because this
 option doesn't currently function. The simple fix we put into place for it
@@ -459,11 +491,11 @@ Testing: Run mosart test suite
    hobart ---- PASS
    cheyenne -- PASS
 
-===============================================================
-Tag name:  mosart1_0_31
-Originator(s): erik
-Date: May 15, 2018
-One-line Summary:  Add model_doi_url
+<hr>
+# Tag name:  mosart1_0_31
+### Originator(s): erik
+### Date: May 15, 2018
+### One-line Summary:  Add model_doi_url
 
 Add config_archive for mosart, delete rof_comp_esmf, add model_doi_url, 
 change some instances of RTM/CLM in documentation to MOSART
@@ -472,22 +504,22 @@ Pull request #11
 
 https://github.com/ESCOMP/mosart/pull/11
 
-===============================================================
-Tag name:  mosart1_0_30
-Originator(s): erik
-Date: Jan 24, 2018
-One-line Summary:  Fix testlist so options are under test not machines
+<hr>
+# Tag name:  mosart1_0_30
+### Originator(s): erik
+### Date: Jan 24, 2018
+### One-line Summary:  Fix testlist so options are under test not machines
 
 Fix testlist so options are under <test> rather than <machines>.
 Also remove aux_clm category (any of those tests should be in CLM's testlist).
 
  M cime_config/testdefs/testlist_mosart.xml
 
-===============================================================
-Tag name:  mosart1_0_29
-Originator(s): erik
-Date: Jan 17, 2018
-One-line Summary:  Update testlist to version 2 format, remove ys tests
+<hr>
+# Tag name:  mosart1_0_29
+### Originator(s): erik
+### Date: Jan 17, 2018
+### One-line Summary:  Update testlist to version 2 format, remove ys tests
 
  Add buildnmlc to .gitignore
 
@@ -499,11 +531,11 @@ two more test mods for currently untested options.
  A cime_config/testdefs/testmods_dirs/mosart/decompOpts/user_nl_mosart
  A cime_config/testdefs/testmods_dirs/mosart/qgrwlOpts/user_nl_mosart
 
-===============================================================
-Tag name:  mosart1_0_28
-Originator(s): erik
-Date: Oct 05, 2017
-One-line Summary:  Explicitly truncate the river length to a mininum value, rather than
+<hr>
+# Tag name:  mosart1_0_28
+### Originator(s): erik
+### Date: Oct 05, 2017
+### One-line Summary:  Explicitly truncate the river length to a mininum value, rather than
                    just change the calculation of tlen for rlen_min.
 
 Testing: Sean and Keith both ran long simulations with this change (in a branch off of 1_0_26)
@@ -520,11 +552,11 @@ M    src/riverroute/RtmIO.F90 - Explicitly set rlen to rlen_min early and remove
         calculating tlen based on rlen_min when rlen<rlen_min. Since rlen is changed this affects code
         that is based on rlen, and can change the if statements that are triggered.
 
-===============================================================
-Tag name:  mosart1_0_27
-Originator(s): erik
-Date: Oct 03, 2017
-One-line Summary: Upgrade config_component to version 3, allow output file format
+<hr>
+# Tag name:  mosart1_0_27
+### Originator(s): erik
+### Date: Oct 03, 2017
+### One-line Summary: Upgrade config_component to version 3, allow output file format
                   to change, fix a couple bugs
 
 Bugs fixed: 2477, 2494
@@ -544,11 +576,11 @@ M    cime_config/buildnml ------------- Fix bug 2477 for MOSART so that
         in it and then use it, but if not use it without instance name
 M    cime_config/config_component.xml - Upgrade to version 3 format
 
-===============================================================
-Tag name:  mosart1_0_26
-Originator(s): erik
-Date: July 07, 2017
-One-line Summary: Update areas on routing file and add some comments
+<hr>
+# Tag name:  mosart1_0_26
+### Originator(s): erik
+### Date: July 07, 2017
+### One-line Summary: Update areas on routing file and add some comments
 
 Testing: aux_clm testlist with clm4_5_16_r250 on yellowstone
 
@@ -563,11 +595,11 @@ M       cime_config/namelist_definition_mosart.xml -- new frivinp_rtm
 M       src/riverroute/RtmMod.F90 -- straighten out formatting, remove
             tabs, add comments about hlen
 
-===============================================================
-Tag name:  mosart1_0_25
-Originator(s): andre
-Date: July 05, 2017
-One-line Summary: bugfix and update testlist
+<hr>
+# Tag name:  mosart1_0_25
+### Originator(s): andre
+### Date: July 05, 2017
+### One-line Summary: bugfix and update testlist
 
 Update the testlist to use clm5 compset alias naming conventions.
 
@@ -581,11 +613,11 @@ M    cime_config/testdefs/testlist_mosart.xml
 M    src/riverroute/RtmTimeManager.F90
 
 
-===============================================================
-Tag name:  mosart1_0_24
-Originator(s): erik
-Date: Jun 01, 2017
-One-line Summary: Update routing file with metadata and in NetCDF3 format
+<hr>
+# Tag name:  mosart1_0_24
+### Originator(s): erik
+### Date: Jun 01, 2017
+### One-line Summary: Update routing file with metadata and in NetCDF3 format
 
 Update routing file with extra metadata and in NetCDF3 format rather than
 NetCDF4.
@@ -596,11 +628,11 @@ Modified files:
 
 M       cime_config/namelist_definition_mosart.xml
 
-===============================================================
-Tag name:  mosart1_0_23
-Originator(s): andre
-Date: March 17, 2017
-One-line Summary: answer changing improvements and bugfix
+<hr>
+# Tag name:  mosart1_0_23
+### Originator(s): andre
+### Date: March 17, 2017
+### One-line Summary: answer changing improvements and bugfix
 
 Answer changing improvements to channel storage from HongYi Li for
 faster spinup. Bugfix from Tony Craig to use correct delta time for
@@ -627,11 +659,11 @@ Modified files:
     components/mosart/src/riverroute/RtmMod.F90
 
 
-===============================================================
-Tag name:  mosart1_0_22
-Originator(s): andre
-Date: March 17, 2017
-One-line Summary: histfile pointer bugfix bugz-2184
+<hr>
+# Tag name:  mosart1_0_22
+### Originator(s): andre
+### Date: March 17, 2017
+### One-line Summary: histfile pointer bugfix bugz-2184
 
 Bugfix from bugzilla issue 2184. The histfile infrastructure mosart
 inherited from clm via rtm needs to use pointers to refer to
@@ -654,11 +686,11 @@ Modified files: fix for bugzilla #2184
     components/mosart/src/riverroute/RtmHistFile.F90
 
 
-===============================================================
-Tag name:  mosart1_0_21
-Originator(s): mvertens, andre
-Date: March 14, 2017
-One-line Summary: cime5 python namelist generation
+<hr>
+# Tag name:  mosart1_0_21
+### Originator(s): mvertens, andre
+### Date: March 14, 2017
+### One-line Summary: cime5 python namelist generation
 
 Changes from Mariana Vertenstein to convert namelist generation to use
 the cime5 python namelist infrastructure.
@@ -687,11 +719,11 @@ Added files: python based namelist generation and xml files
    cime_config/config_component.xml
    cime_config/namelist_definition_mosart.xml
 
-===============================================================
-Tag name:  mosart1_0_20
-Originator(s): erik
-Date: Feb 21 2017
-One-line Summary: Fix an issue with nag, lower amount of log output
+<hr>
+# Tag name:  mosart1_0_20
+### Originator(s): erik
+### Date: Feb 21 2017
+### One-line Summary: Fix an issue with nag, lower amount of log output
 
 Fix bugs: 2393, 3424
 
@@ -705,11 +737,11 @@ M       src/riverroute/RtmSpmd.F90 -- Move the global save until after the mpif.
            so it can work on the nag compiler on hobart.
 M       src/riverroute/RtmIO.F90 ---- Add if(masterproc)
 
-===============================================================
-Tag name:  mosart1_0_19
-Originator(s): swenson, sacks
-Date: Oct 17 2016
-One-line Summary: Treat irrigation specially, fix volr
+<hr>
+# Tag name:  mosart1_0_19
+### Originator(s): swenson, sacks
+### Date: Oct 17 2016
+### One-line Summary: Treat irrigation specially, fix volr
 
 (1) Together with corresponding cime and clm changes, treats irrigation as a
     separate flux. The point of this is to map irrigation withdrawals normalized
@@ -745,20 +777,20 @@ M       src/riverroute/RtmHistFlds.F90
 M       src/cpl/rof_comp_mct.F90
 M       src/cpl/rof_cpl_indices.F90
 
-===============================================================
-Tag name:  mosart1_0_18
-Originator(s): erik
-Date: Sep 13 2016
-One-line Summary: Add output frequency to history files
+<hr>
+# Tag name:  mosart1_0_18
+### Originator(s): erik
+### Date: Sep 13 2016
+### One-line Summary: Add output frequency to history files
 
 
 M   src/riverroute/RtmHistFile.Fi90 -- add output history frequency "time_period_freq"
 
-===============================================================
-Tag name:  mosart1_0_17
-Originator(s): erik
-Date: Apr 14 2016
-One-line Summary: Turn off for CLM_ACCELERATED_SPINUP="on" and fix a few bugs
+<hr>
+# Tag name:  mosart1_0_17
+### Originator(s): erik
+### Date: Apr 14 2016
+### One-line Summary: Turn off for CLM_ACCELERATED_SPINUP="on" and fix a few bugs
 
 Have MOSART react to CLM_ACCELERATED_SPINUP setting from CLM and turn itself off
 by default if it's "on".
@@ -780,22 +812,22 @@ M       src/riverroute/RtmIO.F90 -------- Remove commented out lines, add timer 
            initialize delt_save (2230)
 M       src/riverroute/RtmTimeManager.F90 Add NO_LEAP_C and GREGORIAN_C as public constants (2307)
 
-===============================================================
-Tag name:  mosart1_0_16
-Originator(s): swenson
-Date: Feb 8 2016
-One-line Summary: bugfix for budget diagnostic output
+<hr>
+# Tag name:  mosart1_0_16
+### Originator(s): swenson
+### Date: Feb 8 2016
+### One-line Summary: bugfix for budget diagnostic output
 
   bugfix: budget diagnostic output
 
 
 M       src/riverroute/RtmMod.F90
 
-===============================================================
-Tag name:  mosart1_0_14
-Originator(s): swenson
-Date: Dec 22 2015
-One-line Summary: bugfix for negative river runoff
+<hr>
+# Tag name:  mosart1_0_14
+### Originator(s): swenson
+### Date: Dec 22 2015
+### One-line Summary: bugfix for negative river runoff
 
   Note(bja, 20151223) this was made directly as a trunk tag, but not put on the trunk.
 
@@ -803,21 +835,21 @@ One-line Summary: bugfix for negative river runoff
 
 M       src/riverroute/RtmMod.F90
 
-===============================================================
-Tag name:  mosart1_0_13
-Originator(s): swenson, andre
-Date: Dec 21 2015
-One-line Summary: bugfix for negative river runoff
+<hr>
+# Tag name:  mosart1_0_13
+### Originator(s): swenson, andre
+### Date: Dec 21 2015
+### One-line Summary: bugfix for negative river runoff
 
   bugfix: calculation of qgwl_volume must be multiplied by area.
 
 M       src/riverroute/RtmMod.F90
 
-===============================================================
-Tag name:  mosart1_0_12
-Originator(s): swenson, andre
-Date: Dec 18 2015
-One-line Summary: negative river runoff changes
+<hr>
+# Tag name:  mosart1_0_12
+### Originator(s): swenson, andre
+### Date: Dec 18 2015
+### One-line Summary: negative river runoff changes
 
 - Update default routing file.
 - Add new namelist options bypass_routing_option,
@@ -853,11 +885,11 @@ M       src/riverroute/RunoffMod.F90
 M       src/cpl/rof_comp_mct.F90
 M       src/cpl/rof_comp_esmf.F90
 
-===============================================================
-Tag name:  mosart1_0_11
-Originator(s): katec
-Date: Dec 7 2015
-One-line Summary: Changes to get Mosart to build with Nag on Hobart
+<hr>
+# Tag name:  mosart1_0_11
+### Originator(s): katec
+### Date: Dec 7 2015
+### One-line Summary: Changes to get Mosart to build with Nag on Hobart
 
 - Shortened a few lines of code that were too long
 - Added '.' for some literals that Nag thought were integers
@@ -866,11 +898,11 @@ One-line Summary: Changes to get Mosart to build with Nag on Hobart
 M       src/riverroute/MOSART_physics_mod.F90
 M       src/riverroute/RtmMod.F90
 
-===============================================================
-Tag name:  mosart1_0_10
-Originator(s): tcraig
-Date: Dec 2 2015
-One-line Summary: New input file, update direct terms, update history file
+<hr>
+# Tag name:  mosart1_0_10
+### Originator(s): tcraig
+### Date: Dec 2 2015
+### One-line Summary: New input file, update direct terms, update history file
 
 - switch to input dataset MOSART_Global_half_20151130a.nc
 - update direct sparse matrix to include non basin points in order
@@ -890,11 +922,11 @@ M       src/riverroute/MOSART_physics_mod.F90
 M       src/riverroute/RtmHistFile.F90
 M       src/riverroute/RunoffMod.F90
 
-===============================================================
-Tag name:  mosart1_0_09
-Originator(s): tcraig
-Date: Nov 29 2015
-One-line Summary: Code cleanup, add budget diagnostics, history files
+<hr>
+# Tag name:  mosart1_0_09
+### Originator(s): tcraig
+### Date: Nov 29 2015
+### One-line Summary: Code cleanup, add budget diagnostics, history files
 
 M       src/riverroute/RtmMod.F90
 M       src/riverroute/RtmHistFlds.F90
@@ -905,19 +937,19 @@ M       src/riverroute/RtmRestFile.F90
 M       src/cpl/rof_cpl_indices.F90
 M       src/cpl/rof_comp_mct.F90
 M       src/cpl/rof_comp_esmf.F90
-===============================================================
-Tag name:  mosart1_0_08
-Originator(s): tcraig
-Date: Nov 24 2015
-One-line Summary: Fix exact restart in atan slope calc
+<hr>
+# Tag name:  mosart1_0_08
+### Originator(s): tcraig
+### Date: Nov 24 2015
+### One-line Summary: Fix exact restart in atan slope calc
 
 M       src/riverroute/MOSART_physics_mod.F90
 
-===============================================================
-Tag name:  mosart1_0_07
-Originator(s): tcraig
-Date: Nov 22 2015
-One-line Summary: update rtmini and rtmrun routine and add budget
+<hr>
+# Tag name:  mosart1_0_07
+### Originator(s): tcraig
+### Date: Nov 22 2015
+### One-line Summary: update rtmini and rtmrun routine and add budget
 - code cleanup of rtmini and rtmrun
 - works with mosart input files with scrambled IDs
 - moved dto term into rtmrun
@@ -936,11 +968,11 @@ M       src/riverroute/RunoffMod.F90
 M       src/riverroute/RtmRestFile.F90
 M       src/cpl/rof_comp_mct.F90
 M       src/cpl/rof_comp_esmf.F90
-===============================================================
-Tag name:  mosart1_0_06
-Originator(s): tcraig
-Date: Nov 19 2015
-One-line Summary: merge ACME fixes to decomp and performance
+<hr>
+# Tag name:  mosart1_0_06
+### Originator(s): tcraig
+### Date: Nov 19 2015
+### One-line Summary: merge ACME fixes to decomp and performance
 
 This works with MOSART_Global_half_20130604a.nc, NOT
 MOSART_Global_half_20151015a.nc.  This will be fixed in the next
@@ -957,11 +989,11 @@ M       src/riverroute/RtmSpmd.F90
 M       src/riverroute/RtmVar.F90
 M       src/riverroute/RunoffMod.F90
 
-===============================================================
-Tag name:  mosart1_0_05
-Originator(s): andre
-Date: Oct 15 2015
-One-line Summary: swenson bugfix for mosart direction file
+<hr>
+# Tag name:  mosart1_0_05
+### Originator(s): andre
+### Date: Oct 15 2015
+### One-line Summary: swenson bugfix for mosart direction file
 
 The old mosart direction file, rof/mosart/MOSART_Global_half_20130604a.nc,
 has antarctica shifted by 180 degrees.
@@ -971,21 +1003,21 @@ Tested with pre-clm4_5_3_r140:
 
 Not bit for bit with previous tag.
 
-===============================================================
-Tag name:  mosart1_0_04
-Originator(s): andre
-Date: Oct 15 2015
-One-line Summary: swenson river volume normalization bugfix
+<hr>
+# Tag name:  mosart1_0_04
+### Originator(s): andre
+### Date: Oct 15 2015
+### One-line Summary: swenson river volume normalization bugfix
 
 Tested by Sean Swenson. Verified to compile and run SMS_D.f10_f10.IMCRUCLM50BGC.yellowstone_intel.clm-default.
 
 Not bit for bit with previous tag.
 
-===============================================================
-Tag name:  mosart1_0_03
-Originator(s): andre
-Date: Oct 13, 2015
-One-line Summary: update mosart
+<hr>
+# Tag name:  mosart1_0_03
+### Originator(s): andre
+### Date: Oct 13, 2015
+### One-line Summary: update mosart
 
 Updates to mosart:
 
@@ -1020,11 +1052,11 @@ M       src/cpl/rof_cpl_indices.F90
 M       src/cpl/rof_comp_mct.F90
 M       src/cpl/rof_comp_esmf.F90
 
-===============================================================
-Tag name:  mosart1_0_00
-Originator(s): tcraig
-Date: May 1, 2015
-One-line Summary: add mosart to CESM repository
+<hr>
+# Tag name:  mosart1_0_00
+### Originator(s): tcraig
+### Date: May 1, 2015
+### One-line Summary: add mosart to CESM repository
 
 This is based on the following version from PNL but has been updated
 to fit into cesm1_4.
@@ -1068,4 +1100,4 @@ A       src/cpl/rof_cpl_indices.F90
 A       src/cpl/rof_comp_mct.F90
 A       src/cpl/rof_comp_esmf.F90
 
-===============================================================
+<hr>
