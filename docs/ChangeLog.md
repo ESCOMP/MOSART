@@ -1,4 +1,24 @@
 <hr>
+# Tag name:  mosart1.1.08
+### Originator(s): samrabin
+### Date: Jan 14, 2025
+### One-line Summary: Standardize time metadata
+
+Standardizes a dimension name of output variable time_bounds, as well as attributes for that plus mcdate, mcsec, mdcur, and mscur.
+
+Contributors: Adam Phillips, Erik Kluzek
+
+Fixes ESCOMP/MOSART#53
+Contributes to https://github.com/ESCOMP/CTSM/issues/1693
+
+Testing: standard testing (ekluzek)
+  izumi ---- 
+  derecho -- 
+
+See https://github.com/ESCOMP/MOSART/pull/66 for more details
+Contributes to https://github.com/ESCOMP/CTSM/pull/2052
+
+<hr>
 # Tag name:  mosart1.1.07
 ### Originator(s): erik
 ### Date: Jan 11, 2025
