@@ -12,8 +12,8 @@ Fixes ESCOMP/MOSART#53
 Contributes to https://github.com/ESCOMP/CTSM/issues/1693
 
 Testing: standard testing (ekluzek)
-  izumi ---- 
-  derecho -- 
+  izumi ---- OK
+  derecho -- OK
 
 See https://github.com/ESCOMP/MOSART/pull/66 for more details
 Contributes to https://github.com/ESCOMP/CTSM/pull/2052
