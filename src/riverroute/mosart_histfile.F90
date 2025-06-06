@@ -734,6 +734,7 @@ contains
 
       ! !ARGUMENTS:
       integer, intent(in) :: t              ! tape index
+      integer, intent(in) :: f              ! file index
       character(len=*), intent(in) :: mode  ! 'define' or 'write'
 
       ! !LOCAL VARIABLES:
@@ -919,7 +920,7 @@ contains
 
       ! !LOCAL VARIABLES:
       integer :: begr, endr      ! beg and end rof indices
-      integer :: t,f,k,nt            ! indices
+      integer :: fld, t, f, k, nt  ! indices
       integer :: nstep               ! current step
       integer :: day                 ! current day (1 -> 31)
       integer :: mon                 ! current month (1 -> 12)
@@ -1159,7 +1160,8 @@ contains
       integer :: start(2)                          ! Start array index
       integer :: k                                 ! 1d index
       integer :: t                                 ! tape index
-      integer :: f                                 ! field index
+      integer :: f                                 ! file index
+      integer :: fld                               ! field index
       integer :: varid                             ! variable id
       integer, allocatable :: itemp2d(:,:)         ! 2D temporary
       real(r8), pointer :: hbuf(:)                 ! history buffer
@@ -1331,8 +1333,8 @@ contains
          ! Add history filenames to master restart file
          tape_loop2: do t = 1, ntapes
             file_loop2: do f = 1, maxsplitfiles
-               call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=counter)
-               call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=counter)
+               call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=countr)
+               call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=countr)
             end do file_loop2
          end do tape_loop2
 
@@ -1719,7 +1721,7 @@ contains
 
       ! !LOCAL VARIABLES:
       integer :: n              ! loop index
-      integer :: f              ! masterlist index
+      integer :: fld            ! masterlist index
       integer :: hpindex        ! history buffer pointer index
       logical :: found          ! flag indicates field found in masterlist
       integer, save :: lastindex = 1
