@@ -139,8 +139,8 @@ contains
       end do
 
       call mosart_hist_addfld (fname='STORAGE_MCH', units='m3',  &
-           avgflag='A', long_name='MOSART main channelstorage', &
-           ptr_rof=h_volr_mch, default='inactive')
+           avgflag='I', long_name='MOSART main channelstorage', &
+           ptr_rof=h_volr_mch, default='active')
 
       call mosart_hist_addfld (fname='QIRRIG_FROM_COUPLER', units='m3/s',  &
            avgflag='A', long_name='Amount of water used for irrigation (total flux received from coupler)', &
