@@ -324,9 +324,9 @@ contains
             end if
             fld = fld + 1
          end do
+         tape(t)%nflds(:) = 0
       end do tape_loop1
 
-      tape(:)%nflds(:) = 0
       tape_loop2: do t = 1,max_tapes
          ! Loop through the masterlist set of field names and determine if any of those
          ! are in the FINCL or FEXCL arrays
@@ -592,17 +592,17 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine htape_create (t, histrest)
+   subroutine htape_create (t, f, histrest)
 
       ! Define contents of history file t. Issue the required netcdf
       ! wrapper calls to define the history file contents.
 
       ! !ARGUMENTS:
       integer, intent(in) :: t                   ! tape index
+      integer, intent(in) :: f                   ! file index
       logical, intent(in), optional :: histrest  ! if creating the history restart file
 
       ! !LOCAL VARIABLES:
-      integer :: f                   ! field index
       integer :: p,c,l,n             ! indices
       integer :: ier                 ! error code
       integer :: dimid               ! dimension id temporary
@@ -716,11 +716,11 @@ contains
          call ncd_defdim(lnfid, 'nbnd', 2, nbnd_dimid)
          call ncd_defdim(lnfid, 'time', ncd_unlimited, time_dimid)
          if (mainproc)then
-            write(iulog,*) trim(subname),' : Successfully defined netcdf history file ',t
+            write(iulog,*) trim(subname),' : Successfully defined netcdf history tape, file ', t, f
          end if
       else
          if (mainproc)then
-            write(iulog,*) trim(subname),' : Successfully defined netcdf restart history file ',t
+            write(iulog,*) trim(subname),' : Successfully defined netcdf restart history tape, file ', t, f
          end if
       end if
 
@@ -1141,6 +1141,7 @@ contains
       integer :: max_nflds                         ! max number of fields
       integer :: begr                            ! per-proc beginning ocean runoff index
       integer :: endr                            ! per-proc ending ocean runoff index
+      integer :: counter  ! loop counter
       character(len=max_namlen) :: name            ! variable name
       character(len=max_namlen) :: name_acc        ! accumulator variable name
       character(len=max_namlen) :: long_name       ! long name of variable
@@ -1148,7 +1149,11 @@ contains
       character(len=max_chars)  :: units           ! units of variable
       character(len=max_chars)  :: units_acc       ! accumulator units
       character(len=max_chars)  :: fname           ! full name of history file
-      character(len=max_chars)  :: locrest(max_tapes) ! local history restart file names
+      character(len=max_chars)  :: locrest(max_tapes, maxsplitfiles)  ! local history restart file names
+      character(len=max_chars)  :: locrest_onfile(maxsplitfiles*max_tapes)  ! local history restart file names, dims flipped
+      character(len=max_chars)  :: locfnh_onfile(maxsplitfiles*max_tapes)  ! local history file names, dims flipped
+      character(len=max_chars)  :: my_locfnh   ! temporary version of locfnh
+      character(len=max_chars)  :: my_locfnhr  ! temporary version of locfnhr
       character(len=1)   :: hnum                   ! history file index
       character(len = 1) :: file_index  ! instantaneous or accumulated_file_index
       type(var_desc_t)   :: name_desc              ! variable descriptor for name
@@ -1232,7 +1237,7 @@ contains
                write(hnum,'(i1.1)') t-1
                locfnhr(t,f) = "./" // trim(caseid) //".mosart"// trim(inst_suffix) &
                     // ".rh" // hnum // file_index //"."// trim(rdate) //".nc"
-               call htape_create( t, histrest=.true. )
+               call htape_create( t, f, histrest=.true. )
                !
                ! Add read/write accumultators and counters if needed
                !
@@ -1331,10 +1336,12 @@ contains
       else if (flag == 'write') then
          !================================================
          ! Add history filenames to master restart file
+         counter = 0
          tape_loop2: do t = 1, ntapes
             file_loop2: do f = 1, maxsplitfiles
-               call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=countr)
-               call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=countr)
+               counter = counter + 1
+               call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=counter)
+               call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=counter)
             end do file_loop2
          end do tape_loop2
 
@@ -1396,12 +1403,18 @@ contains
          !================================================
 
          call ncd_inqdlen(ncid,dimid,ntapes,   name='ntapes')
-         call ncd_io('locfnh',  locfnh,  'read', ncid )
-         call ncd_io('locfnhr', locrest, 'read', ncid )
+         call ncd_io('locfnh', locfnh_onfile, 'read', ncid )
+         call ncd_io('locfnhr', locrest_onfile, 'read', ncid )
+         counter = 0
          do t = 1,ntapes
             do f = 1, maxsplitfiles
-               call strip_null(locrest(f,t))
-               call strip_null(locfnh(f,t))
+               counter = counter + 1
+               call strip_null(locrest_onfile(counter))
+               call strip_null(locfnh_onfile(counter))
+               ! These character variables get read with their dimensions backwards
+               ! so flip them before using them
+               locrest(t,f) = locrest_onfile(counter)
+               locfnh(t,f) = locfnh_onfile(counter)
             end do
          end do
 
@@ -1413,7 +1426,7 @@ contains
          start(1)=1
          tape_loop4: do t = 1,ntapes
             file_loop4: do f = 1, maxsplitfiles
-               call getfil( locrest(t), locfnhr(t,f), 0 )
+               call getfil( locrest(t,f), locfnhr(t,f), 0 )
                call ncd_pio_openfile (ncid_hist(t,f), trim(locfnhr(t,f)), ncd_nowrite)
 
                if ( t == 1 )then
@@ -1752,7 +1765,7 @@ contains
          end if
       end do
       nfmaster = nfmaster + 1
-      f = nfmaster
+      fld = nfmaster
       if (nfmaster > max_flds) then
          write(iulog,*) trim(subname),' ERROR: too many fields for primary history file ', &
               '-- max_flds,nfmaster=', max_flds, nfmaster
