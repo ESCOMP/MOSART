@@ -1509,8 +1509,9 @@ contains
       if (flag == 'write') then
 
          tape_loop5: do t = 1,ntapes
-            if (.not. tape(t)%is_endhist) then
-               file_loop5: do f = 1, maxsplitfiles
+            file_loop5: do f = 1, maxsplitfiles
+
+               if (.not. tape(t)%is_endhist) then
                   fld_loop6: do fld = 1, tape(t)%nflds(f)
                      name       =  tape(t)%hlist(fld,f)%field%name
                      name_acc   =  trim(name) // "_acc"
@@ -1522,9 +1523,11 @@ contains
                      call ncd_io(ncid=ncid_hist(t,f), flag='write', varname=trim(name_acc), &
                           dim1name='allrof', data=nacs)
                   end do fld_loop6
-               end do file_loop5
-            end if  ! end of is_endhist block
-            call ncd_pio_closefile(ncid_hist(t,f))
+               end if  ! end of is_endhist block
+
+               call ncd_pio_closefile(ncid_hist(t,f))
+
+            end do file_loop5
          end do tape_loop5
 
       else if (flag == 'read') then
