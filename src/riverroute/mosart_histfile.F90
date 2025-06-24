@@ -1386,7 +1386,7 @@ contains
                call ncd_io('ncprec',  tape(t)%ncprec,  'write', ncid_hist(t,f))
                call ncd_io('begtime', tape(t)%begtime, 'write', ncid_hist(t,f))
                fld_loop3: do fld = 1, tape(t)%nflds(f)
-                  start(2) = f
+                  start(2) = fld
                   call ncd_io( name_desc,           tape(t)%hlist(fld,f)%field%name,       &
                        'write', ncid_hist(t,f), start )
                   call ncd_io( longname_desc,       tape(t)%hlist(fld,f)%field%long_name,  &
@@ -1405,12 +1405,12 @@ contains
          !================================================
 
          call ncd_inqdlen(ncid,dimid,ntapes,   name='ntapes')
-         call ncd_io('locfnh', locfnh_onfile, 'read', ncid )
-         call ncd_io('locfnhr', locrest_onfile, 'read', ncid )
          counter = 0
          do t = 1,ntapes
             do f = 1, maxsplitfiles
                counter = counter + 1
+               call ncd_io('locfnh', locfnh_onfile, 'read', ncid )
+               call ncd_io('locfnhr', locrest_onfile, 'read', ncid )
                call strip_null(locrest_onfile(counter))
                call strip_null(locfnh_onfile(counter))
                locrest(t,f) = locrest_onfile(counter)
@@ -1429,7 +1429,7 @@ contains
                call getfil( locrest(t,f), locfnhr(t,f), 0 )
                call ncd_pio_openfile (ncid_hist(t,f), trim(locfnhr(t,f)), ncd_nowrite)
 
-               if ( t == 1 )then
+               if ( t == 1 .and. f == 1 )then
                   call ncd_inqdlen(ncid_hist(1,f),dimid,max_nflds,name='max_nflds')
                   allocate(itemp(max_nflds))
                end if
@@ -1456,7 +1456,7 @@ contains
                end do fld_loop4
 
                fld_loop5: do fld=1,tape(t)%nflds(f)
-                  start(2) = f
+                  start(2) = fld
                   call ncd_io( name_desc,           tape(t)%hlist(fld,f)%field%name,       &
                        'read', ncid_hist(t,f), start )
                   call ncd_io( longname_desc,       tape(t)%hlist(fld,f)%field%long_name,  &
