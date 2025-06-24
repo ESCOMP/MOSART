@@ -1340,6 +1340,8 @@ contains
          tape_loop2: do t = 1, ntapes
             file_loop2: do f = 1, maxsplitfiles
                counter = counter + 1
+               my_locfnh = locfnh(t,f)
+               my_locfnhr = locfnhr(t,f)
                call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=counter)
                call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=counter)
             end do file_loop2
