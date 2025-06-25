@@ -1534,8 +1534,8 @@ contains
 
          ! Read history restart information if history files are not full
          tape_loop6: do t = 1,ntapes
-            if (.not. tape(t)%is_endhist) then
-               file_loop6: do f = 1, maxsplitfiles
+            file_loop6: do f = 1, maxsplitfiles
+               if (.not. tape(t)%is_endhist) then
                   fld_loop7: do fld = 1, tape(t)%nflds(f)
                      name       =  tape(t)%hlist(fld,f)%field%name
                      name_acc   =  trim(name) // "_acc"
@@ -1547,9 +1547,9 @@ contains
                      call ncd_io(ncid=ncid_hist(t,f), flag='read', varname=trim(name_acc), &
                           dim1name='allrof', data=nacs)
                   end do fld_loop7
-               end do file_loop6
-            end if
-            call ncd_pio_closefile(ncid_hist(t,f))
+               end if
+               call ncd_pio_closefile(ncid_hist(t,f))
+            end do file_loop6
          end do tape_loop6
 
       end if
