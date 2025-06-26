@@ -12,7 +12,7 @@
     </rpointer>
     <test_file_names>
       <tfile disposition="copy">rpointer.rof</tfile>
-      <tfile disposition="copy">rpointer.rof_9999</tfile>
+      <tfile disposition="copy">rpointer.rof_9999.1976-01-01-00000</tfile>
       <tfile disposition="copy">casename.mosart.r.1976-01-01-00000.nc</tfile>
       <tfile disposition="copy">casename.mosart.rh4a.1976-01-01-00000.nc</tfile>
       <tfile disposition="copy">casename.mosart.rh4i.1976-01-01-00000.nc</tfile>
