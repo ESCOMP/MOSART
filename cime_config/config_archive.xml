@@ -5,6 +5,7 @@
     <rest_file_extension>rh\da</rest_file_extension>
     <rest_file_extension>rh\di</rest_file_extension>
     <hist_file_extension>h\d*.*\.nc$</hist_file_extension>
+    <hist_file_extension>e</hist_file_extension>
     <rest_history_varname>locfnh</rest_history_varname>
     <rpointer>
       <rpointer_file>rpointer.rof$NINST_STRING</rpointer_file>
