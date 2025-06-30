@@ -116,8 +116,8 @@ module mosart_histfile
    end type history_entry
 
    type history_tape
-      integer  :: nflds(max_split_files)        ! number of active fields on tape
-      integer  :: ntimes(max_split_files)       ! current number of time samples on tape
+      integer  :: nflds(max_split_files)        ! number of active fields on file
+      integer  :: ntimes(max_split_files)       ! current number of time samples on tape, same value on all max_split_files
       integer  :: mfilt                         ! maximum number of time samples per tape
       integer  :: nhtfrq                        ! number of time samples per tape
       integer  :: ncprec                        ! netcdf output precision
