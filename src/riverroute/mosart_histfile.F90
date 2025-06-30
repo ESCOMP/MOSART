@@ -1468,7 +1468,7 @@ contains
                   allocate (tape(t)%hlist(fld,f)%hbuf(begr:endr), &
                             tape(t)%hlist(fld,f)%nacs(begr:endr), stat=status)
                   if (status /= 0) then
-                     write(iulog,*) trim(subname),' ERROR: allocation error for hbuf,nacs at t,f=',t,f
+                     write(iulog,*) trim(subname),' ERROR: allocation error for hbuf,nacs at t,f,fld=',t,f,fld
                      call shr_sys_abort()
                   endif
                   tape(t)%hlist(fld,f)%hbuf(:) = 0._r8
