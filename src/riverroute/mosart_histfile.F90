@@ -338,7 +338,21 @@ contains
                   ! if field is in include list, ff > 0 and htape_addfld
                   ! will not be called for field
                   avgflag = getflag (fincl(ff,t))
-                  call htape_addfld (t, f, fld, avgflag)
+                  if (avgflag == ' ') then
+                     avgflag = masterlist(fld)%avgflag(t)
+                  end if
+                  ! This if-statement is in a loop of f (instantaneous_ or
+                  ! accumulated_file_index) so it matters whether f is one
+                  ! or the other when going through here. Otherwise all fields
+                  ! would end up on all files, which is not the intent.
+                  if (f == instantaneous_file_index .and. avgflag == 'I') then
+                     call htape_addfld (t, f, fld, avgflag)
+                  else if (f == accumulated_file_index .and. avgflag /= 'I') then
+                     call htape_addfld (t, f, fld, avgflag)
+                  else if (f /= instantaneous_file_index .and. f /= accumulated_file_index) then
+                     write(iulog,*) trim(subname),' ERROR: invalid f =', f, ' should be one of these values:', accumulated_file_index, instantaneous_file_index
+                     call endrun(msg=errMsg(sourcefile, __LINE__))
+                  end if
                else
                   ! find index of field in exclude list
                   call list_index (fexcl(1,t), mastername, ff)
