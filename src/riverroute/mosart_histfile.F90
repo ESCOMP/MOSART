@@ -1201,16 +1201,16 @@ contains
          !
          call ncd_defdim( ncid, 'ntapes'       , ntapes      , dimid)
          call ncd_defdim( ncid, 'max_chars'    , max_chars   , dimid)
-         call ncd_defdim( ncid, 'ntapes_by_max_split_files', ntapes * max_split_files, dimid)
+         call ncd_defdim( ncid, 'ntapes_multiply_by_max_split_files', ntapes * max_split_files, dimid)
 
          call ncd_defvar(ncid=ncid, varname='locfnh', xtype=ncd_char, &
               long_name="History filename",     &
               comment="This variable NOT needed for startup or branch simulations", &
-              dim1name='max_chars', dim2name="ntapes_by_max_split_files" )
+              dim1name='max_chars', dim2name="ntapes_multiply_by_max_split_files" )
          call ncd_defvar(ncid=ncid, varname='locfnhr', xtype=ncd_char, &
               long_name="Restart history filename",     &
               comment="This variable NOT needed for startup or branch simulations", &
-              dim1name='max_chars', dim2name="ntapes_by_max_split_files" )
+              dim1name='max_chars', dim2name="ntapes_multiply_by_max_split_files" )
 
          ! max_nflds is the maximum number of fields on any tape
          ! max_flds is the maximum number possible number of fields
