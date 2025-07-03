@@ -19,6 +19,7 @@
       <tfile disposition="copy">casename.mosart.rh4i.1976-01-01-00000.nc</tfile>
       <tfile disposition="move">casename.mosart.h0a.1976-01-01-00000.nc</tfile>
       <tfile disposition="move">casename.mosart.h0i.1976-01-01-00000.nc</tfile>
+      <tfile disposition="move">casename.mosart.e.1976-01-01-00000.nc</tfile>
       <tfile disposition="ignore">casename.mosart.h0a.1976-01-01-00000.nc.base</tfile>
       <tfile disposition="ignore">casename.mosart.h0i.1976-01-01-00000.nc.base</tfile>
     </test_file_names>
