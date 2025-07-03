@@ -351,7 +351,7 @@ contains
                      call htape_addfld (t, f, fld, avgflag)
                   else if (f /= instantaneous_file_index .and. f /= accumulated_file_index) then
                      write(iulog,*) trim(subname),' ERROR: invalid f =', f, ' should be one of these values:', accumulated_file_index, instantaneous_file_index
-                     call endrun(msg=errMsg(sourcefile, __LINE__))
+                     call shr_sys_abort()
                   end if
                else
                   ! find index of field in exclude list
