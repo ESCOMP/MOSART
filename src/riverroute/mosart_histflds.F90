@@ -138,6 +138,10 @@ contains
               ptr_rof=h_qgwl(nt)%data, default='inactive')
       end do
 
+      ! RTM and MOSART (unlike the CLM) do not have the history_tape_in_use
+      ! capability, so both models throw an error when h0i is empty. For this
+      ! reason RTM and MOSART always need at least one instantaneous field so
+      ! that h0i will not be empty.
       call mosart_hist_addfld (fname='STORAGE_MCH', units='m3',  &
            avgflag='I', long_name='MOSART main channelstorage', &
            ptr_rof=h_volr_mch, default='active')
