@@ -2,7 +2,8 @@
 
   <comp_archive_spec compname="mosart" compclass="rof">
     <rest_file_extension>r</rest_file_extension>
-    <rest_file_extension>rh\d*</rest_file_extension>
+    <rest_file_extension>rh\da</rest_file_extension>
+    <rest_file_extension>rh\di</rest_file_extension>
     <hist_file_extension>h\d*.*\.nc$</hist_file_extension>
     <hist_file_extension>e</hist_file_extension>
     <rest_history_varname>locfnh</rest_history_varname>
@@ -12,11 +13,15 @@
     </rpointer>
     <test_file_names>
       <tfile disposition="copy">rpointer.rof</tfile>
-      <tfile disposition="copy">rpointer.rof_9999</tfile>
+      <tfile disposition="copy">rpointer.rof_9999.1976-01-01-00000</tfile>
       <tfile disposition="copy">casename.mosart.r.1976-01-01-00000.nc</tfile>
-      <tfile disposition="copy">casename.mosart.rh4.1976-01-01-00000.nc</tfile>
-      <tfile disposition="move">casename.mosart.h0.1976-01-01-00000.nc</tfile>
-      <tfile disposition="ignore">casename.mosart.h0.1976-01-01-00000.nc.base</tfile>
+      <tfile disposition="copy">casename.mosart.rh4a.1976-01-01-00000.nc</tfile>
+      <tfile disposition="copy">casename.mosart.rh4i.1976-01-01-00000.nc</tfile>
+      <tfile disposition="move">casename.mosart.h0a.1976-01-01-00000.nc</tfile>
+      <tfile disposition="move">casename.mosart.h0i.1976-01-01-00000.nc</tfile>
+      <tfile disposition="move">casename.mosart.e.1976-01-01-00000.nc</tfile>
+      <tfile disposition="ignore">casename.mosart.h0a.1976-01-01-00000.nc.base</tfile>
+      <tfile disposition="ignore">casename.mosart.h0i.1976-01-01-00000.nc.base</tfile>
     </test_file_names>
   </comp_archive_spec>
 

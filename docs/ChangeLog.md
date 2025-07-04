@@ -1,4 +1,26 @@
 <hr>
+# Tag name:  mosart1.1.09
+### Originator(s): slevis
+### Date: Jul 03, 2025
+### One-line Summary: Separate instantaneous and non-inst. history files
+
+This is the mosart equivalent of ESCOMP/CTSM#2445.
+Also includes the merge of #118, though this DART-related one-line update seems to have been present in master already.
+
+Contributors: Erik Kluzek, Kevin Raeder
+
+Fixes ESCOMP/MOSART#52 Separate instantaneous from non-inst. history tapes
+Fixes ESCOMP/MOSART#116 Make st_archive handle output files from future MOSART+DART experiments
+
+Testing: standard testing
+  izumi ---- OK
+  derecho -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/117 for more details
+See https://github.com/ESCOMP/MOSART/pull/118 for more details
+Contributes to https://github.com/ESCOMP/CTSM/pull/2445
+
+<hr>
 # Tag name:  mosart1.1.08
 ### Originator(s): samrabin
 ### Date: Jan 14, 2025
