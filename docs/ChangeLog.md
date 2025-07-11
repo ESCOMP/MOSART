@@ -1,4 +1,18 @@
 <hr>
+# Tag name:  mosart1.1.10
+### Originator(s): slevis
+### Date: Jul 14, 2025
+### One-line Summary: Fix MOSART h0i file metadata
+
+Fixes ESCOMP/MOSART#120 MOSART h0i files end up with the same metadata as h0a files
+
+Testing: standard testing
+  izumi ---- OK
+  derecho -- OK
+
+See https://github.com/ESCOMP/MOSART/pull/121 for more details
+
+<hr>
 # Tag name:  mosart1.1.09
 ### Originator(s): slevis
 ### Date: Jul 03, 2025
