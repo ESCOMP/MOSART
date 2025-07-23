@@ -25,7 +25,8 @@ module rof_comp_nuopc
                                   model_label_DataInitialize => label_DataInitialize, &
                                   model_label_SetRunClock    => label_SetRunClock, &
                                   model_label_Finalize       => label_Finalize, &
-                                  NUOPC_ModelGet
+                                  NUOPC_ModelGet, &
+                                  SetVM
   use shr_kind_mod       , only : R8=>SHR_KIND_R8, CL=>SHR_KIND_CL, CS=>SHR_KIND_CS
   use shr_sys_mod        , only : shr_sys_abort
   use shr_log_mod        , only : shr_log_getlogunit, shr_log_setlogunit
@@ -49,6 +50,7 @@ module rof_comp_nuopc
 
   ! Module routines
   public  :: SetServices
+  public  :: SetVM
   private :: InitializeP0
   private :: InitializeAdvertise
   private :: InitializeRealize
