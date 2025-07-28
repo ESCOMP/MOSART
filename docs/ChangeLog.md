@@ -1,4 +1,21 @@
 <hr>
+# Tag name:  mosart1.1.11
+### Originator(s): jedwards
+### Date: Jul 28, 2025
+### One-line Summary: Fix issue with st archive of rpointer files
+
+Main PR: ESCOMP/MOSART#115 Fix issue with st archive of rpointer files
+Second PR: ESCOMP/MOSART#122 This vm is needed for the esmf_aware_threading feature
+
+Testing: standard testing
+  izumi ---- OK
+  derecho -- OK
+
+More details in the PRs:
+https://github.com/ESCOMP/MOSART/pull/115
+https://github.com/ESCOMP/MOSART/pull/122
+
+<hr>
 # Tag name:  mosart1.1.10
 ### Originator(s): slevis
 ### Date: Jul 14, 2025
