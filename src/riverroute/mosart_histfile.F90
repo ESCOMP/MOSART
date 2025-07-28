@@ -28,6 +28,9 @@ module mosart_histfile
    integer , public, parameter :: max_tapes  = 3     ! max number of history tapes
    integer , public, parameter :: max_flds   = 1500  ! max number of history fields
    integer , public, parameter :: max_namlen = CS    ! maximum number of characters for field name
+   integer , private, parameter :: max_split_files = 2  ! max number of files per tape
+   integer , private, parameter :: accumulated_file_index = 1  ! non-instantaneous file identifier
+   integer , private, parameter :: instantaneous_file_index = 2  ! instantaneous file identifier
 
    ! Counters
    integer , public :: ntapes = 0         ! index of max history file requested
@@ -101,7 +104,7 @@ module mosart_histfile
 
    type master_entry
       type (field_info)  :: field               ! field information
-      logical            :: actflag(max_tapes)  ! active/inactive flag
+      logical            :: actflag(max_tapes, max_split_files)  ! active/inactive flag
       character(len=1)   :: avgflag(max_tapes)  ! time averaging flag ("X","A","M" or "I",)
    end type master_entry
 
@@ -113,14 +116,14 @@ module mosart_histfile
    end type history_entry
 
    type history_tape
-      integer  :: nflds                         ! number of active fields on tape
-      integer  :: ntimes                        ! current number of time samples on tape
+      integer  :: nflds(max_split_files)        ! number of active fields on file
+      integer  :: ntimes(max_split_files)       ! current number of time samples on tape; although ntimes is an array, all its values are the same
       integer  :: mfilt                         ! maximum number of time samples per tape
       integer  :: nhtfrq                        ! number of time samples per tape
       integer  :: ncprec                        ! netcdf output precision
       logical  :: is_endhist                    ! true => current time step is end of history interval
       real(r8) :: begtime                       ! time at beginning of history averaging interval
-      type (history_entry) :: hlist(max_flds)   ! array of active history tape entries
+      type (history_entry) :: hlist(max_flds, max_split_files)  ! array of active history tape entries
    end type history_tape
 
    type mosart_pointer                             ! Pointer to real scalar data (1D)
@@ -143,13 +146,13 @@ module mosart_histfile
    integer :: nfmaster = 0                        ! number of fields in master field list
 
    ! Other variables
-   character(len=max_length_filename) :: locfnh(max_tapes)  ! local history file names
-   character(len=max_chars) :: locfnhr(max_tapes) ! local history restart file names
+   character(len=max_length_filename) :: locfnh(max_tapes, max_split_files)  ! local history file names
+   character(len=max_chars) :: locfnhr(max_tapes, max_split_files)  ! local history restart file names
    logical :: htapes_defined = .false.            ! flag indicates history contents have been defined
 
    ! NetCDF  Id's
-   type(file_desc_t), target :: nfid(max_tapes)       ! file ids
-   type(file_desc_t), target :: ncid_hist(max_tapes)  ! file ids for history restart files
+   type(file_desc_t), target :: nfid(max_tapes, max_split_files)  ! file ids
+   type(file_desc_t), target :: ncid_hist(max_tapes, max_split_files)  ! file ids for history restart files
    integer :: time_dimid                      ! time dimension id
    integer :: nbnd_dimid                      ! time bounds dimension id
    integer :: strlen_dimid                    ! string dimension id
@@ -241,7 +244,7 @@ contains
       ! Note - with netcdf, only 1 (ncd_double) and 2 (ncd_float) are allowed
 
       do t=1,ntapes
-         tape(t)%ntimes = 0
+         tape(t)%ntimes(:) = 0
          tape(t)%nhtfrq = nhtfrq(t)
          tape(t)%mfilt = mfilt(t)
          if (ndens(t) == 1) then
@@ -275,7 +278,7 @@ contains
       ! Then sort the result alphanumerically.
 
       ! !LOCAL VARIABLES:
-      integer :: t, f                ! tape, field indices
+      integer :: t, f, fld           ! tape, file, field indices
       integer :: ff                  ! index into include, exclude and fprec list
       character(len=max_namlen) :: name ! field name portion of fincl (i.e. no avgflag separator)
       character(len=max_namlen) :: mastername ! name from masterlist field
@@ -287,40 +290,39 @@ contains
       !---------------------------------------------------------
 
       ! First ensure contents of fincl and fexcl are valid names
-      do t = 1,max_tapes
-         f = 1
-         do while (f < max_flds .and. fincl(f,t) /= ' ')
-            name = getname (fincl(f,t)) !namelist
+      tape_loop1: do t = 1, max_tapes
+         fld = 1
+         do while (fld < max_flds .and. fincl(fld,t) /= ' ')
+            name = getname (fincl(fld,t)) !namelist
             do ff = 1,nfmaster
                mastername = masterlist(ff)%field%name
                if (name == mastername) exit
             end do
             if (name /= mastername) then
-               write(iulog,*) trim(subname),' ERROR: ', trim(name), ' in fincl(', f, ') ',&
+               write(iulog,*) trim(subname),' ERROR: ', trim(name), ' in fincl(', fld, ') ',&
                     'for history tape ',t,' not found'
                call shr_sys_abort()
             end if
-            f = f + 1
+            fld = fld + 1
          end do
 
-         f = 1
-         do while (f < max_flds .and. fexcl(f,t) /= ' ')
+         fld = 1
+         do while (fld < max_flds .and. fexcl(fld,t) /= ' ')
             do ff = 1,nfmaster
                mastername = masterlist(ff)%field%name
-               if (fexcl(f,t) == mastername) exit
+               if (fexcl(fld,t) == mastername) exit
             end do
-            if (fexcl(f,t) /= mastername) then
-               write(iulog,*) trim(subname),' ERROR: ', fexcl(f,t), ' in fexcl(', f, ') ', &
+            if (fexcl(fld,t) /= mastername) then
+               write(iulog,*) trim(subname),' ERROR: ', fexcl(fld,t), ' in fexcl(', fld, ') ', &
                     'for history tape ',t,' not found'
                call shr_sys_abort()
             end if
-            f = f + 1
+            fld = fld + 1
          end do
-      end do
+         tape(t)%nflds(:) = 0
+      end do tape_loop1
 
-      tape(:)%nflds = 0
-      do t = 1,max_tapes
-
+      tape_loop2: do t = 1,max_tapes
          ! Loop through the masterlist set of field names and determine if any of those
          ! are in the FINCL or FEXCL arrays
          ! The call to list_index determines the index in the FINCL or FEXCL arrays
@@ -328,77 +330,98 @@ contains
          ! Add the field to the tape if specified via namelist (FINCL[1-max_tapes]),
          ! or if it is on by default and was not excluded via namelist (FEXCL[1-max_tapes]).
 
-         do f = 1,nfmaster
-            mastername = masterlist(f)%field%name
-            call list_index (fincl(1,t), mastername, ff)
-            if (ff > 0) then
-               ! if field is in include list, ff > 0 and htape_addfld
-               ! will not be called for field
-               avgflag = getflag (fincl(ff,t))
-               call htape_addfld (t, f, avgflag)
-            else
-               ! find index of field in exclude list
-               call list_index (fexcl(1,t), mastername, ff)
+         file_loop1: do f = 1, max_split_files
+            fld_loop1: do fld = 1, nfmaster
+               mastername = masterlist(fld)%field%name
+               call list_index (fincl(1,t), mastername, ff)
+               if (ff > 0) then
+                  ! if field is in include list, ff > 0 and htape_addfld
+                  ! will not be called for field
+                  avgflag = getflag (fincl(ff,t))
+                  if (avgflag == ' ') then
+                     avgflag = masterlist(fld)%avgflag(t)
+                  end if
+                  ! This if-statement is in a loop of f (instantaneous_ or
+                  ! accumulated_file_index) so it matters whether f is one
+                  ! or the other when going through here. Otherwise all fields
+                  ! would end up on all files, which is not the intent.
+                  if (f == instantaneous_file_index .and. avgflag == 'I') then
+                     call htape_addfld (t, f, fld, avgflag)
+                  else if (f == accumulated_file_index .and. avgflag /= 'I') then
+                     call htape_addfld (t, f, fld, avgflag)
+                  else if (f /= instantaneous_file_index .and. f /= accumulated_file_index) then
+                     write(iulog,*) trim(subname),' ERROR: invalid f =', f, ' should be one of these values:', accumulated_file_index, instantaneous_file_index
+                     call shr_sys_abort()
+                  end if
+               else
+                  ! find index of field in exclude list
+                  call list_index (fexcl(1,t), mastername, ff)
 
-               ! if field is in exclude list, ff > 0 and htape_addfld
-               ! will not be called for field
-               ! if field is not in exclude list, ff =0 and htape_addfld
-               ! will be called for field (note that htape_addfld will be
-               ! called below only if field is not in exclude list OR in
-               ! include list
-               if (ff == 0 .and. masterlist(f)%actflag(t)) then
-                  call htape_addfld (t, f, ' ')
+                  ! if field is in exclude list, ff > 0 and htape_addfld
+                  ! will not be called for field
+                  ! if field is not in exclude list, ff =0 and htape_addfld
+                  ! will be called for field (note that htape_addfld will be
+                  ! called below only if field is not in exclude list OR in
+                  ! include list
+                  if (ff == 0 .and. masterlist(fld)%actflag(t,f)) then
+                     call htape_addfld (t, f, fld, ' ')
+                  end if
                end if
-            end if
-         end do
+            end do fld_loop1
 
-         ! Specification of tape contents now complete.
-         ! Sort each list of active entries
+            ! Specification of tape contents now complete.
+            ! Sort each list of active entries
 
-         do f = tape(t)%nflds-1,1,-1
-            do ff = 1,f
-               if (tape(t)%hlist(ff)%field%name > tape(t)%hlist(ff+1)%field%name) then
-                  tmp = tape(t)%hlist(ff)
-                  tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
-                  tape(t)%hlist(ff+1) = tmp
-               else if (tape(t)%hlist(ff)%field%name == tape(t)%hlist(ff+1)%field%name) then
-                  write(iulog,*) trim(subname),' ERROR: Duplicate field ', &
-                       tape(t)%hlist(ff)%field%name, &
-                       't,ff,name=',t,ff,tape(t)%hlist(ff+1)%field%name
-                  call shr_sys_abort()
+            fld_loop2: do fld = tape(t)%nflds(f)-1,1,-1
+               do ff = 1,fld
+                  if (tape(t)%hlist(ff,f)%field%name > tape(t)%hlist(ff+1,f)%field%name) then
+                     tmp = tape(t)%hlist(ff,f)
+                     tape(t)%hlist(ff,f) = tape(t)%hlist(ff+1,f)
+                     tape(t)%hlist(ff+1,f) = tmp
+                  else if (tape(t)%hlist(ff,f)%field%name == tape(t)%hlist(ff+1,f)%field%name) then
+                     write(iulog,*) trim(subname),' ERROR: Duplicate field ', &
+                          tape(t)%hlist(ff,f)%field%name, &
+                          't,ff,name=',t,ff,tape(t)%hlist(ff+1,f)%field%name
+                     call shr_sys_abort()
+                  end if
+               end do
+            end do fld_loop2
+
+            if (mainproc) then
+               if (tape(t)%nflds(f) > 0) then
+                  write(iulog,*) trim(subname),' : Included fields tape ',t,'=',tape(t)%nflds(f)
                end if
-            end do
-         end do
-
-         if (mainproc) then
-            if (tape(t)%nflds > 0) then
-               write(iulog,*) trim(subname),' : Included fields tape ',t,'=',tape(t)%nflds
+               fld_loop3: do fld = 1,tape(t)%nflds(f)
+                  write(iulog,*) fld,' ',tape(t)%hlist(fld,f)%field%name,' ',tape(t)%hlist(fld,f)%avgflag
+               end do fld_loop3
             end if
-            do f = 1,tape(t)%nflds
-               write(iulog,*) f,' ',tape(t)%hlist(f)%field%name,' ',tape(t)%hlist(f)%avgflag
-            end do
-         end if
-      end do
+         end do file_loop1
+      end do tape_loop2
 
       ! Determine total number of active history tapes
 
       ntapes = 0
-      do t = max_tapes,1,-1
-         if (tape(t)%nflds > 0) then
-            ntapes = t
-            exit
-         end if
-      end do
+      tape_loop3: do t = max_tapes,1,-1
+         file_loop2: do f = 1, max_split_files
+            if (tape(t)%nflds(f) > 0) then
+               ntapes = t
+               exit
+            end if
+         end do file_loop2
+         if (ntapes > 0) exit
+      end do tape_loop3
 
       ! Ensure there are no "holes" in tape specification, i.e. empty tapes.
       ! Enabling holes should not be difficult if necessary.
 
-      do t = 1,ntapes
-         if (tape(t)%nflds  ==  0) then
-            write(iulog,*) trim(subname),' ERROR: Tape ',t,' is empty'
-            call shr_sys_abort()
-         end if
-      end do
+      tape_loop4: do t = 1,ntapes
+         file_loop3: do f = 1, max_split_files
+            if (tape(t)%nflds(f) == 0) then
+               write(iulog,*) trim(subname),' ERROR: Tape, file ', t, f, ' is empty'
+               call shr_sys_abort()
+            end if
+         end do file_loop3
+      end do tape_loop4
 
       ! Check that the number of history files declared does not exceed
       ! the maximum allowed.
@@ -431,14 +454,14 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine htape_addfld (t, f, avgflag)
+   subroutine htape_addfld (t, f, fld, avgflag)
 
       ! Add a field to the active list for a history tape. Copy the data from
       ! the master field list to the active list for the tape.
 
       ! !ARGUMENTS:
-      integer, intent(in) :: t                 ! history tape index
-      integer, intent(in) :: f                 ! field index from master field list
+      integer, intent(in) :: t, f              ! history tape, file index
+      integer, intent(in) :: fld               ! field index from master field list
       character(len=1), intent(in) :: avgflag  ! time averaging flag
 
       ! !LOCAL VARIABLES:
@@ -460,21 +483,21 @@ contains
       begr = ctl%begr
       endr = ctl%endr
 
-      tape(t)%nflds = tape(t)%nflds + 1
-      n = tape(t)%nflds
-      tape(t)%hlist(n)%field = masterlist(f)%field
-      allocate (tape(t)%hlist(n)%hbuf(begr:endr))
-      allocate (tape(t)%hlist(n)%nacs(begr:endr))
-      tape(t)%hlist(n)%hbuf(:) = 0._r8
-      tape(t)%hlist(n)%nacs(:) = 0
+      tape(t)%nflds(f) = tape(t)%nflds(f) + 1
+      n = tape(t)%nflds(f)
+      tape(t)%hlist(n,f)%field = masterlist(fld)%field
+      allocate (tape(t)%hlist(n,f)%hbuf(begr:endr))
+      allocate (tape(t)%hlist(n,f)%nacs(begr:endr))
+      tape(t)%hlist(n,f)%hbuf(:) = 0._r8
+      tape(t)%hlist(n,f)%nacs(:) = 0
 
       ! Set time averaging flag based on masterlist setting or
       ! override the default averaging flag with namelist setting
       select case (avgflag)
       case (' ')
-         tape(t)%hlist(n)%avgflag = masterlist(f)%avgflag(t)
+         tape(t)%hlist(n,f)%avgflag = masterlist(fld)%avgflag(t)
       case ('A','I','X','M')
-         tape(t)%hlist(n)%avgflag = avgflag
+         tape(t)%hlist(n,f)%avgflag = avgflag
       case default
          write(iulog,*) trim(subname),' ERROR: unknown avgflag=', avgflag
          call shr_sys_abort()
@@ -488,7 +511,7 @@ contains
       ! - instantaneous
       avgflag_temp = avgflag_pertape(t)
       if (avgflag_temp == 'I') then
-         tape(t)%hlist(n)%avgflag = avgflag_temp
+         tape(t)%hlist(n,f)%avgflag = avgflag_temp
       end if
 
    end subroutine htape_addfld
@@ -501,8 +524,8 @@ contains
       ! into its history buffer for appropriate tapes.
 
       ! !LOCAL VARIABLES:
-      integer :: t                   ! tape index
-      integer :: f                   ! field index
+      integer :: t, f                ! tape, file index
+      integer :: fld                 ! field index
       integer :: k                   ! index
       integer :: hpindex             ! history pointer index
       integer :: begr,endr       ! beginning and ending indices
@@ -517,76 +540,78 @@ contains
       begr = ctl%begr
       endr = ctl%endr
 
-      do t = 1,ntapes
-         do f = 1,tape(t)%nflds
-            avgflag  =  tape(t)%hlist(f)%avgflag
-            nacs     => tape(t)%hlist(f)%nacs
-            hbuf     => tape(t)%hlist(f)%hbuf
-            hpindex  =  tape(t)%hlist(f)%field%hpindex
-            field    => ptr(hpindex)%ptr
+      tape_loop: do t = 1, ntapes
+         file_loop: do f = 1, max_split_files
+            fld_loop: do fld = 1, tape(t)%nflds(f)
+               avgflag  =  tape(t)%hlist(fld,f)%avgflag
+               nacs     => tape(t)%hlist(fld,f)%nacs
+               hbuf     => tape(t)%hlist(fld,f)%hbuf
+               hpindex  =  tape(t)%hlist(fld,f)%field%hpindex
+               field    => ptr(hpindex)%ptr
 
-            select case (avgflag)
-            case ('I') ! Instantaneous
-               do k = begr,endr
-                  if (field(k) /= spval) then
-                     hbuf(k) = field(k)
-                  else
-                     hbuf(k) = spval
-                  end if
-                  nacs(k) = 1
-               end do
-            case ('A') ! Time average
-               do k = begr,endr
-                  if (field(k) /= spval) then
-                     if (nacs(k) == 0) hbuf(k) = 0._r8
-                     hbuf(k) = hbuf(k) + field(k)
-                     nacs(k) = nacs(k) + 1
-                  else
-                     if (nacs(k) == 0) hbuf(k) = spval
-                  end if
-               end do
-            case ('X') ! Maximum over time
-               do k = begr,endr
-                  if (field(k) /= spval) then
-                     if (nacs(k) == 0) hbuf(k) = -1.e50_r8
-                     hbuf(k) = max( hbuf(k), field(k) )
-                  else
-                     if (nacs(k) == 0) hbuf(k) = spval
-                  end if
-                  nacs(k) = 1
-               end do
-            case ('M') ! Minimum over time
-               do k = begr,endr
-                  if (field(k) /= spval) then
-                     if (nacs(k) == 0) hbuf(k) = +1.e50_r8
-                     hbuf(k) = min( hbuf(k), field(k) )
-                  else
-                     if (nacs(k) == 0) hbuf(k) = spval
-                  end if
-                  nacs(k) = 1
-               end do
-            case default
-               write(iulog,*) trim(subname),' ERROR: invalid time averaging flag ', avgflag
-               call shr_sys_abort()
-            end select
-         end do
-      end do
+               select case (avgflag)
+               case ('I') ! Instantaneous
+                  do k = begr,endr
+                     if (field(k) /= spval) then
+                        hbuf(k) = field(k)
+                     else
+                        hbuf(k) = spval
+                     end if
+                     nacs(k) = 1
+                  end do
+               case ('A') ! Time average
+                  do k = begr,endr
+                     if (field(k) /= spval) then
+                        if (nacs(k) == 0) hbuf(k) = 0._r8
+                        hbuf(k) = hbuf(k) + field(k)
+                        nacs(k) = nacs(k) + 1
+                     else
+                        if (nacs(k) == 0) hbuf(k) = spval
+                     end if
+                  end do
+               case ('X') ! Maximum over time
+                  do k = begr,endr
+                     if (field(k) /= spval) then
+                        if (nacs(k) == 0) hbuf(k) = -1.e50_r8
+                        hbuf(k) = max( hbuf(k), field(k) )
+                     else
+                        if (nacs(k) == 0) hbuf(k) = spval
+                     end if
+                     nacs(k) = 1
+                  end do
+               case ('M') ! Minimum over time
+                  do k = begr,endr
+                     if (field(k) /= spval) then
+                        if (nacs(k) == 0) hbuf(k) = +1.e50_r8
+                        hbuf(k) = min( hbuf(k), field(k) )
+                     else
+                        if (nacs(k) == 0) hbuf(k) = spval
+                     end if
+                     nacs(k) = 1
+                  end do
+               case default
+                  write(iulog,*) trim(subname),' ERROR: invalid time averaging flag ', avgflag
+                  call shr_sys_abort()
+               end select
+            end do fld_loop
+         end do file_loop
+      end do tape_loop
 
    end subroutine mosart_hist_UpdateHbuf
 
    !-----------------------------------------------------------------------
 
-   subroutine htape_create (t, histrest)
+   subroutine htape_create (t, f, histrest)
 
       ! Define contents of history file t. Issue the required netcdf
       ! wrapper calls to define the history file contents.
 
       ! !ARGUMENTS:
       integer, intent(in) :: t                   ! tape index
+      integer, intent(in) :: f                   ! file index
       logical, intent(in), optional :: histrest  ! if creating the history restart file
 
       ! !LOCAL VARIABLES:
-      integer :: f                   ! field index
       integer :: p,c,l,n             ! indices
       integer :: ier                 ! error code
       integer :: dimid               ! dimension id temporary
@@ -617,25 +642,25 @@ contains
       ! Define output write precsion for tape
       ncprec = tape(t)%ncprec
       if (lhistrest) then
-         lnfid => ncid_hist(t)
+         lnfid => ncid_hist(t,f)
       else
-         lnfid => nfid(t)
+         lnfid => nfid(t,f)
       endif
 
       ! Create new netCDF file. It will be in define mode
       if ( .not. lhistrest )then
          if (mainproc) then
-            write(iulog,*) trim(subname),' : Opening netcdf htape ',trim(locfnh(t))
+            write(iulog,*) trim(subname),' : Opening netcdf htape ',trim(locfnh(t,f))
          end if
-         call ncd_pio_createfile(lnfid, trim(locfnh(t)))
+         call ncd_pio_createfile(lnfid, trim(locfnh(t,f)))
          call ncd_putatt(lnfid, ncd_global, 'title', 'MOSART History file information' )
          call ncd_putatt(lnfid, ncd_global, 'comment', &
               "NOTE: None of the variables are weighted by land fraction!" )
       else
          if (mainproc) then
-            write(iulog,*) trim(subname),' : Opening netcdf rhtape ',trim(locfnhr(t))
+            write(iulog,*) trim(subname),' : Opening netcdf rhtape ',trim(locfnhr(t,f))
          end if
-         call ncd_pio_createfile(lnfid, trim(locfnhr(t)))
+         call ncd_pio_createfile(lnfid, trim(locfnhr(t,f)))
          call ncd_putatt(lnfid, ncd_global, 'title', &
               'MOSART Restart History information, required to continue a simulation' )
          call ncd_putatt(lnfid, ncd_global, 'comment', &
@@ -700,11 +725,11 @@ contains
          call ncd_defdim(lnfid, 'nbnd', 2, nbnd_dimid)
          call ncd_defdim(lnfid, 'time', ncd_unlimited, time_dimid)
          if (mainproc)then
-            write(iulog,*) trim(subname),' : Successfully defined netcdf history file ',t
+            write(iulog,*) trim(subname),' : Successfully defined netcdf history tape, file ', t, f
          end if
       else
          if (mainproc)then
-            write(iulog,*) trim(subname),' : Successfully defined netcdf restart history file ',t
+            write(iulog,*) trim(subname),' : Successfully defined netcdf restart history tape, file ', t, f
          end if
       end if
 
@@ -712,12 +737,13 @@ contains
 
    !-----------------------------------------------------------------------
 
-   subroutine htape_timeconst(t, mode)
+   subroutine htape_timeconst(t, f, mode)
 
       ! Write time constant values to primary history tape.
 
       ! !ARGUMENTS:
       integer, intent(in) :: t              ! tape index
+      integer, intent(in) :: f              ! file index
       character(len=*), intent(in) :: mode  ! 'define' or 'write'
 
       ! !LOCAL VARIABLES:
@@ -752,7 +778,7 @@ contains
       !--------------------------------------------------------
 
       ! For define mode -- only do this for first time-sample
-      if (mode == 'define' .and. tape(t)%ntimes == 1) then
+      if (mode == 'define' .and. tape(t)%ntimes(f) == 1) then
 
          call get_ref_date(yr, mon, day, nbsec)
          nstep = get_nstep()
@@ -766,16 +792,16 @@ contains
 
          dim1id(1) = time_dimid
          str = 'days since ' // basedate // " " // basesec
-         if (avgflag_pertape(t) /= 'I') then  ! NOT instantaneous fields tape
+         if (f == accumulated_file_index) then
             step_or_bounds = 'time_bounds'
             long_name = 'time at exact middle of ' // step_or_bounds
-            call ncd_defvar(nfid(t), 'time', tape(t)%ncprec, 1, dim1id, varid, &
+            call ncd_defvar(nfid(t,f), 'time', tape(t)%ncprec, 1, dim1id, varid, &
                  long_name=long_name, units=str)
-            call ncd_putatt(nfid(t), varid, 'bounds', 'time_bounds')
-         else  ! instantaneous fields tape
+            call ncd_putatt(nfid(t,f), varid, 'bounds', 'time_bounds')
+         else  ! instantaneous file
             step_or_bounds = 'time step'
             long_name = 'time at end of ' // step_or_bounds
-            call ncd_defvar(nfid(t), 'time', tape(t)%ncprec, 1, dim1id, varid, &
+            call ncd_defvar(nfid(t,f), 'time', tape(t)%ncprec, 1, dim1id, varid, &
                  long_name=long_name, units=str)
          end if
          cal = get_calendar()
@@ -784,52 +810,52 @@ contains
          else if ( trim(cal) == GREGORIAN_C )then
             caldesc = "gregorian"
          end if
-         call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
+         call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
 
          dim1id(1) = time_dimid
          long_name = 'current date (YYYYMMDD) at end of ' // step_or_bounds
-         call ncd_defvar(nfid(t) , 'mcdate', ncd_int, 1, dim1id , varid, &
+         call ncd_defvar(nfid(t,f) , 'mcdate', ncd_int, 1, dim1id , varid, &
               long_name = long_name)
-         call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
+         call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
          long_name = 'current seconds of current date at end of ' // step_or_bounds
-         call ncd_defvar(nfid(t) , 'mcsec' , ncd_int, 1, dim1id , varid, &
+         call ncd_defvar(nfid(t,f) , 'mcsec' , ncd_int, 1, dim1id , varid, &
               long_name = long_name, units='s')
-         call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
+         call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
          long_name = 'current day (from base day) at end of ' // step_or_bounds
-         call ncd_defvar(nfid(t) , 'mdcur' , ncd_int, 1, dim1id , varid, &
+         call ncd_defvar(nfid(t,f) , 'mdcur' , ncd_int, 1, dim1id , varid, &
               long_name = long_name)
-         call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
+         call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
          long_name = 'current seconds of current day at end of ' // step_or_bounds
-         call ncd_defvar(nfid(t) , 'mscur' , ncd_int, 1, dim1id , varid, &
+         call ncd_defvar(nfid(t,f) , 'mscur' , ncd_int, 1, dim1id , varid, &
               long_name = long_name)
-         call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
-         call ncd_defvar(nfid(t) , 'nstep' , ncd_int, 1, dim1id , varid, &
+         call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
+         call ncd_defvar(nfid(t,f) , 'nstep' , ncd_int, 1, dim1id , varid, &
               long_name = 'time step')
 
          dim2id(1) = nbnd_dimid;  dim2id(2) = time_dimid
-         if (avgflag_pertape(t) /= 'I') then  ! NOT instantaneous fields tape
-            call ncd_defvar(nfid(t), 'time_bounds', ncd_double, 2, dim2id, varid, &
+         if (f == accumulated_file_index) then
+            call ncd_defvar(nfid(t,f), 'time_bounds', ncd_double, 2, dim2id, varid, &
                long_name = 'time interval endpoints', &
                units=str)
-            call ncd_putatt(nfid(t), varid, 'calendar', caldesc)
+            call ncd_putatt(nfid(t,f), varid, 'calendar', caldesc)
          end if
 
          dim2id(1) = strlen_dimid;  dim2id(2) = time_dimid
-         call ncd_defvar(nfid(t), 'date_written', ncd_char, 2, dim2id, varid)
-         call ncd_defvar(nfid(t), 'time_written', ncd_char, 2, dim2id, varid)
+         call ncd_defvar(nfid(t,f), 'date_written', ncd_char, 2, dim2id, varid)
+         call ncd_defvar(nfid(t,f), 'time_written', ncd_char, 2, dim2id, varid)
 
          call ncd_defvar(varname='lon', xtype=tape(t)%ncprec, dim1name='lon', &
-              long_name='runoff coordinate longitude', units='degrees_east', ncid=nfid(t))
+              long_name='runoff coordinate longitude', units='degrees_east', ncid=nfid(t,f))
          call ncd_defvar(varname='lat', xtype=tape(t)%ncprec, dim1name='lat', &
-              long_name='runoff coordinate latitude', units='degrees_north', ncid=nfid(t))
+              long_name='runoff coordinate latitude', units='degrees_north', ncid=nfid(t,f))
          call ncd_defvar(varname='mask', xtype=ncd_int, dim1name='lon', dim2name='lat', &
-              long_name='runoff mask', units='unitless', ncid=nfid(t), ifill_value=ispval)
+              long_name='runoff mask', units='unitless', ncid=nfid(t,f), ifill_value=ispval)
          call ncd_defvar(varname='area', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-              long_name='runoff grid area', units='m2', ncid=nfid(t), fill_value=spval)
+              long_name='runoff grid area', units='m2', ncid=nfid(t,f), fill_value=spval)
          call ncd_defvar(varname='areatotal', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-              long_name='basin upstream areatotal', units='m2', ncid=nfid(t), fill_value=spval)
+              long_name='basin upstream areatotal', units='m2', ncid=nfid(t,f), fill_value=spval)
          call ncd_defvar(varname='areatotal2', xtype=tape(t)%ncprec, dim1name='lon', dim2name='lat', &
-              long_name='computed basin upstream areatotal', units='m2', ncid=nfid(t), fill_value=spval)
+              long_name='computed basin upstream areatotal', units='m2', ncid=nfid(t,f), fill_value=spval)
 
       else if (mode == 'write') then
 
@@ -838,37 +864,37 @@ contains
          mcdate = yr*10000 + mon*100 + day
          nstep = get_nstep()
 
-         call ncd_io('mcdate', mcdate, 'write', nfid(t), nt=tape(t)%ntimes)
-         call ncd_io('mcsec' , mcsec , 'write', nfid(t), nt=tape(t)%ntimes)
-         call ncd_io('mdcur' , mdcur , 'write', nfid(t), nt=tape(t)%ntimes)
-         call ncd_io('mscur' , mscur , 'write', nfid(t), nt=tape(t)%ntimes)
-         call ncd_io('nstep' , nstep , 'write', nfid(t), nt=tape(t)%ntimes)
+         call ncd_io('mcdate', mcdate, 'write', nfid(t,f), nt=tape(t)%ntimes(f))
+         call ncd_io('mcsec' , mcsec , 'write', nfid(t,f), nt=tape(t)%ntimes(f))
+         call ncd_io('mdcur' , mdcur , 'write', nfid(t,f), nt=tape(t)%ntimes(f))
+         call ncd_io('mscur' , mscur , 'write', nfid(t,f), nt=tape(t)%ntimes(f))
+         call ncd_io('nstep' , nstep , 'write', nfid(t,f), nt=tape(t)%ntimes(f))
 
          timedata(1) = tape(t)%begtime  ! beginning time
          timedata(2) = mdcur + mscur / secspday  ! end time
-         if (avgflag_pertape(t) /= 'I') then  ! NOT instantaneous fields tape
+         if (f == accumulated_file_index) then
             time = (timedata(1) + timedata(2)) * 0.5_r8
-            call ncd_io('time_bounds', timedata, 'write', nfid(t), nt=tape(t)%ntimes)
+            call ncd_io('time_bounds', timedata, 'write', nfid(t,f), nt=tape(t)%ntimes(f))
          else
             time = timedata(2)
          end if
-         call ncd_io('time'  , time  , 'write', nfid(t), nt=tape(t)%ntimes)
+         call ncd_io('time'  , time  , 'write', nfid(t,f), nt=tape(t)%ntimes(f))
 
          call ncd_getdatetime (cdate, ctime)
-         call ncd_io('date_written', cdate, 'write', nfid(t), nt=tape(t)%ntimes)
+         call ncd_io('date_written', cdate, 'write', nfid(t,f), nt=tape(t)%ntimes(f))
 
-         call ncd_io('time_written', ctime, 'write', nfid(t), nt=tape(t)%ntimes)
+         call ncd_io('time_written', ctime, 'write', nfid(t,f), nt=tape(t)%ntimes(f))
 
-         call ncd_io(varname='lon', data=ctl%rlon, ncid=nfid(t), flag='write')
-         call ncd_io(varname='lat', data=ctl%rlat, ncid=nfid(t), flag='write')
+         call ncd_io(varname='lon', data=ctl%rlon, ncid=nfid(t,f), flag='write')
+         call ncd_io(varname='lat', data=ctl%rlat, ncid=nfid(t,f), flag='write')
          call ncd_io(flag='write', varname='mask', dim1name='allrof', &
-              data=ctl%mask, ncid=nfid(t))
+              data=ctl%mask, ncid=nfid(t,f))
          call ncd_io(flag='write', varname='area', dim1name='allrof', &
-              data=ctl%area, ncid=nfid(t))
+              data=ctl%area, ncid=nfid(t,f))
          call ncd_io(flag='write', varname='areatotal', dim1name='allrof', &
-              data=Tunit%areatotal, ncid=nfid(t))
+              data=Tunit%areatotal, ncid=nfid(t,f))
          call ncd_io(flag='write', varname='areatotal2', dim1name='allrof', &
-              data=Tunit%areatotal2, ncid=nfid(t))
+              data=Tunit%areatotal2, ncid=nfid(t,f))
 
       endif
 
@@ -903,7 +929,7 @@ contains
 
       ! !LOCAL VARIABLES:
       integer :: begr, endr      ! beg and end rof indices
-      integer :: t,f,k,nt            ! indices
+      integer :: fld, t, f, k, nt  ! indices
       integer :: nstep               ! current step
       integer :: day                 ! current day (1 -> 31)
       integer :: mon                 ! current month (1 -> 12)
@@ -944,161 +970,165 @@ contains
 
       ! Loop over active history tapes, create new history files if necessary
       ! and write data to history files if end of history interval.
-      do t = 1, ntapes
+      tape_loop1: do t = 1, ntapes
+         file_loop1: do f = 1, max_split_files
 
-         ! Determine if end of history interval
-         tape(t)%is_endhist = .false.
-         if (tape(t)%nhtfrq==0) then   !monthly average
-            if (mon /= monm1) then
-               tape(t)%is_endhist = .true.
+            ! Determine if end of history interval
+            tape(t)%is_endhist = .false.
+            if (tape(t)%nhtfrq==0) then   !monthly average
+               if (mon /= monm1) then
+                  tape(t)%is_endhist = .true.
+               end if
+            else
+               if (mod(nstep,tape(t)%nhtfrq) == 0) then
+                  tape(t)%is_endhist = .true.
+               end if
             end if
-         else
-            if (mod(nstep,tape(t)%nhtfrq) == 0) then
-               tape(t)%is_endhist = .true.
-            end if
-         end if
 
-         ! If end of history interval
-         if (tape(t)%is_endhist) then
+            ! If end of history interval
+            if (tape(t)%is_endhist) then
 
-            ! Normalize by number of accumulations for time averaged case
-            do f = 1,tape(t)%nflds
-               avgflag =  tape(t)%hlist(f)%avgflag
-               nacs    => tape(t)%hlist(f)%nacs
-               hbuf    => tape(t)%hlist(f)%hbuf
-               do k = begr, endr
-                  if ((avgflag == 'A') .and. nacs(k) /= 0) then
-                     hbuf(k) = hbuf(k) / float(nacs(k))
-                  end if
-               end do
-            end do
+               ! Normalize by number of accumulations for time averaged case
+               fld_loop1: do fld = 1, tape(t)%nflds(f)
+                  avgflag =  tape(t)%hlist(fld,f)%avgflag
+                  nacs    => tape(t)%hlist(fld,f)%nacs
+                  hbuf    => tape(t)%hlist(fld,f)%hbuf
+                  do k = begr, endr
+                     if ((avgflag == 'A') .and. nacs(k) /= 0) then
+                        hbuf(k) = hbuf(k) / float(nacs(k))
+                     end if
+                  end do
+               end do fld_loop1
 
-            ! Increment current time sample counter.
-            tape(t)%ntimes = tape(t)%ntimes + 1
+               ! Increment current time sample counter.
+               tape(t)%ntimes(f) = tape(t)%ntimes(f) + 1
 
-            ! Create history file if appropriate and build time comment
+               ! Create history file if appropriate and build time comment
 
-            ! If first time sample, generate unique history file name, open file,
-            ! define dims, vars, etc.
+               ! If first time sample, generate unique history file name, open file,
+               ! define dims, vars, etc.
 
-            if (tape(t)%ntimes == 1) then
-               locfnh(t) = set_hist_filename (hist_freq=tape(t)%nhtfrq, &
-                    mfilt=tape(t)%mfilt, hist_file=t)
-               if (mainproc) then
-                  write(iulog,*) trim(subname),' : Creating history file ', trim(locfnh(t)), &
-                       ' at nstep = ',get_nstep()
-                  write(iulog,*)'calling htape_create for file t = ',t
+               if (tape(t)%ntimes(f) == 1) then
+                  locfnh(t,f) = set_hist_filename (hist_freq=tape(t)%nhtfrq, &
+                       mfilt=tape(t)%mfilt, hist_file=t, f_index=f)
+                  if (mainproc) then
+                     write(iulog,*) trim(subname),' : Creating history file ', trim(locfnh(t,f)), &
+                          ' at nstep = ',get_nstep()
+                     write(iulog,*)'calling htape_create for file t = ',t
+                  endif
+                  call htape_create(t,f)
+
+                  ! Define time-constant field variables
+                  call htape_timeconst(t, f, mode='define')
+
+                  ! Define model field variables
+
+                  fld_loop2: do fld = 1, tape(t)%nflds(f)
+                     varname    = tape(t)%hlist(fld,f)%field%name
+                     long_name  = tape(t)%hlist(fld,f)%field%long_name
+                     units      = tape(t)%hlist(fld,f)%field%units
+                     avgflag    = tape(t)%hlist(fld,f)%avgflag
+
+                     select case (avgflag)
+                     case ('A')
+                        avgstr = 'mean'
+                     case ('I')
+                        avgstr = 'instantaneous'
+                     case ('X')
+                        avgstr = 'maximum'
+                     case ('M')
+                        avgstr = 'minimum'
+                     case default
+                        write(iulog,*) trim(subname),&
+                             ' ERROR: unknown time averaging flag (avgflag)=',avgflag
+                        call shr_sys_abort()
+                     end select
+                     call ncd_defvar(ncid=nfid(t,f), varname=varname, xtype=tape(t)%ncprec, &
+                          dim1name='lon', dim2name='lat', dim3name='time', &
+                          long_name=long_name, units=units, cell_method=avgstr, &
+                          missing_value=spval, fill_value=spval)
+                  end do fld_loop2
+
+                  ! Exit define model
+                  call ncd_enddef(nfid(t,f))
+
                endif
-               call htape_create (t)
 
-               ! Define time-constant field variables
-               call htape_timeconst(t, mode='define')
+               ! Write time constant history variables
+               call htape_timeconst(t, f, mode='write')
 
-               ! Define model field variables
+               if (mainproc) then
+                  write(iulog,*)
+                  write(iulog,*) trim(subname),' : Writing current time sample to local history file ', &
+                       trim(locfnh(t,f)),' at nstep = ',get_nstep(), &
+                       ' for history time interval beginning at ', tape(t)%begtime, &
+                       ' and ending at ',time
+                  write(iulog,*)
+               endif
 
-               do f = 1,tape(t)%nflds
-                  varname    = tape(t)%hlist(f)%field%name
-                  long_name  = tape(t)%hlist(f)%field%long_name
-                  units      = tape(t)%hlist(f)%field%units
-                  avgflag    = tape(t)%hlist(f)%avgflag
+               ! Update beginning time of next interval
+               tape(t)%begtime = time
 
-                  select case (avgflag)
-                  case ('A')
-                     avgstr = 'mean'
-                  case ('I')
-                     avgstr = 'instantaneous'
-                  case ('X')
-                     avgstr = 'maximum'
-                  case ('M')
-                     avgstr = 'minimum'
-                  case default
-                     write(iulog,*) trim(subname),&
-                          ' ERROR: unknown time averaging flag (avgflag)=',avgflag
-                     call shr_sys_abort()
-                  end select
-                  call ncd_defvar(ncid=nfid(t), varname=varname, xtype=tape(t)%ncprec, &
-                       dim1name='lon', dim2name='lat', dim3name='time', &
-                       long_name=long_name, units=units, cell_method=avgstr, &
-                       missing_value=spval, fill_value=spval)
-               end do
+               ! Write history time slice
+               fld_loop3: do fld = 1, tape(t)%nflds(f)
+                  varname =  tape(t)%hlist(fld,f)%field%name
+                  nt      =  tape(t)%ntimes(f)
+                  histo   => tape(t)%hlist(fld,f)%hbuf
+                  call ncd_io(flag='write', varname=varname, dim1name='allrof', &
+                       data=histo, ncid=nfid(t,f), nt=nt)
+               end do fld_loop3
 
-               ! Exit define model
-               call ncd_enddef(nfid(t))
+               ! Zero necessary history buffers
+               fld_loop4: do fld = 1, tape(t)%nflds(f)
+                  tape(t)%hlist(fld,f)%hbuf(:) = 0._r8
+                  tape(t)%hlist(fld,f)%nacs(:) = 0
+               end do fld_loop4
 
-            endif
+            end if
 
-            ! Write time constant history variables
-            call htape_timeconst(t, mode='write')
-
-            if (mainproc) then
-               write(iulog,*)
-               write(iulog,*) trim(subname),' : Writing current time sample to local history file ', &
-                    trim(locfnh(t)),' at nstep = ',get_nstep(), &
-                    ' for history time interval beginning at ', tape(t)%begtime, &
-                    ' and ending at ',time
-               write(iulog,*)
-            endif
-
-            ! Update beginning time of next interval
-            tape(t)%begtime = time
-
-            ! Write history time slice
-            do f = 1,tape(t)%nflds
-               varname =  tape(t)%hlist(f)%field%name
-               nt      =  tape(t)%ntimes
-               histo   => tape(t)%hlist(f)%hbuf
-               call ncd_io(flag='write', varname=varname, dim1name='allrof', &
-                    data=histo, ncid=nfid(t), nt=nt)
-            end do
-
-            ! Zero necessary history buffers
-            do f = 1,tape(t)%nflds
-               tape(t)%hlist(f)%hbuf(:) = 0._r8
-               tape(t)%hlist(f)%nacs(:) = 0
-            end do
-
-         end if
-
-      end do  ! end loop over history tapes
+         end do file_loop1
+      end do tape_loop1
 
       ! Close open history files
       ! Auxilary files may have been closed and saved off without being full,
       ! must reopen the files
 
-      do t = 1, ntapes
-         if (nlend) then
-            if_close(t) = .true.
-         else if (rstwr) then
-            if_close(t) = .true.
-         else
-            if (tape(t)%ntimes == tape(t)%mfilt) then
+      tape_loop2: do t = 1, ntapes
+         file_loop2: do f = 1, max_split_files
+            if (nlend) then
+               if_close(t) = .true.
+            else if (rstwr) then
                if_close(t) = .true.
             else
-               if_close(t) = .false.
-            end if
-         endif
-         if (if_close(t)) then
-            if (tape(t)%ntimes /= 0) then
-               if (mainproc) then
-                  write(iulog,*)
-                  write(iulog,*)  trim(subname),' : Closing local history file ',&
-                       trim(locfnh(t)),' at nstep = ', get_nstep()
-                  write(iulog,*)
-               endif
-               call ncd_pio_closefile(nfid(t))
-               if ((.not.nlend) .and. (tape(t)%ntimes/=tape(t)%mfilt)) then
-                  call ncd_pio_openfile (nfid(t), trim(locfnh(t)), ncd_write)
-               end if
-            else
-               if (mainproc) then
-                  write(iulog,*) trim(subname),' : history tape ',t,': no open file to close'
+               if (tape(t)%ntimes(f) == tape(t)%mfilt) then
+                  if_close(t) = .true.
+               else
+                  if_close(t) = .false.
                end if
             endif
-            if (tape(t)%ntimes==tape(t)%mfilt) then
-               tape(t)%ntimes = 0
-            end if
-         endif
-      end do
+            if (if_close(t)) then
+               if (tape(t)%ntimes(f) /= 0) then
+                  if (mainproc) then
+                     write(iulog,*)
+                     write(iulog,*)  trim(subname),' : Closing local history file ',&
+                          trim(locfnh(t,f)),' at nstep = ', get_nstep()
+                     write(iulog,*)
+                  endif
+                  call ncd_pio_closefile(nfid(t,f))
+                  if ((.not.nlend) .and. (tape(t)%ntimes(f) /= tape(t)%mfilt)) then
+                     call ncd_pio_openfile (nfid(t,f), trim(locfnh(t,f)), ncd_write)
+                  end if
+               else
+                  if (mainproc) then
+                     write(iulog,*) trim(subname),' : history tape ',t,': no open file to close'
+                  end if
+               endif
+               if (tape(t)%ntimes(f)==tape(t)%mfilt) then
+                  tape(t)%ntimes(f) = 0
+               end if
+            endif
+         end do file_loop2
+      end do tape_loop2
 
    end subroutine mosart_hist_HtapesWrapup
 
@@ -1120,6 +1150,7 @@ contains
       integer :: max_nflds                         ! max number of fields
       integer :: begr                            ! per-proc beginning ocean runoff index
       integer :: endr                            ! per-proc ending ocean runoff index
+      integer :: counter  ! loop counter
       character(len=max_namlen) :: name            ! variable name
       character(len=max_namlen) :: name_acc        ! accumulator variable name
       character(len=max_namlen) :: long_name       ! long name of variable
@@ -1127,8 +1158,13 @@ contains
       character(len=max_chars)  :: units           ! units of variable
       character(len=max_chars)  :: units_acc       ! accumulator units
       character(len=max_chars)  :: fname           ! full name of history file
-      character(len=max_chars)  :: locrest(max_tapes) ! local history restart file names
+      character(len=max_chars)  :: locrest(max_tapes, max_split_files)  ! local history restart file names
+      character(len=max_chars)  :: locrest_onfile(max_split_files*max_tapes)  ! history restart file names on file
+      character(len=max_chars)  :: locfnh_onfile(max_split_files*max_tapes)  ! history file names on file
+      character(len=max_chars)  :: my_locfnh   ! temporary version of locfnh
+      character(len=max_chars)  :: my_locfnhr  ! temporary version of locfnhr
       character(len=1)   :: hnum                   ! history file index
+      character(len = 1) :: file_index  ! instantaneous or accumulated_file_index
       type(var_desc_t)   :: name_desc              ! variable descriptor for name
       type(var_desc_t)   :: longname_desc          ! variable descriptor for long_name
       type(var_desc_t)   :: units_desc             ! variable descriptor for units
@@ -1138,9 +1174,10 @@ contains
       integer :: start(2)                          ! Start array index
       integer :: k                                 ! 1d index
       integer :: t                                 ! tape index
-      integer :: f                                 ! field index
+      integer :: f                                 ! file index
+      integer :: fld                               ! field index
       integer :: varid                             ! variable id
-      integer, allocatable :: itemp2d(:,:)         ! 2D temporary
+      integer, allocatable :: itemp(:)             ! 1D temporary
       real(r8), pointer :: hbuf(:)                 ! history buffer
       integer , pointer :: nacs(:)                 ! accumulation counter
       character(len=*),parameter :: subname = 'hist_restart_ncd'
@@ -1151,7 +1188,7 @@ contains
       if (flag == 'read') then
          if (nsrest == nsrBranch) then
             do t = 1,ntapes
-               tape(t)%ntimes = 0
+               tape(t)%ntimes(:) = 0
             end do
             RETURN
          end if
@@ -1178,15 +1215,16 @@ contains
          !
          call ncd_defdim( ncid, 'ntapes'       , ntapes      , dimid)
          call ncd_defdim( ncid, 'max_chars'    , max_chars   , dimid)
+         call ncd_defdim( ncid, 'ntapes_multiply_by_max_split_files', ntapes * max_split_files, dimid)
 
          call ncd_defvar(ncid=ncid, varname='locfnh', xtype=ncd_char, &
               long_name="History filename",     &
               comment="This variable NOT needed for startup or branch simulations", &
-              dim1name='max_chars', dim2name="ntapes" )
+              dim1name='max_chars', dim2name="ntapes_multiply_by_max_split_files" )
          call ncd_defvar(ncid=ncid, varname='locfnhr', xtype=ncd_char, &
               long_name="Restart history filename",     &
               comment="This variable NOT needed for startup or branch simulations", &
-              dim1name='max_chars', dim2name="ntapes" )
+              dim1name='max_chars', dim2name="ntapes_multiply_by_max_split_files" )
 
          ! max_nflds is the maximum number of fields on any tape
          ! max_flds is the maximum number possible number of fields
@@ -1195,104 +1233,111 @@ contains
          ! Loop over tapes - write out namelist information to each restart-history tape
          ! only read/write accumulators and counters if needed
 
-         do t = 1,ntapes
-            !
-            ! Create the restart history filename and open it
-            !
-            write(hnum,'(i1.1)') t-1
-            locfnhr(t) = "./" // trim(caseid) //".mosart"// trim(inst_suffix) &
-                 // ".rh" // hnum //"."// trim(rdate) //".nc"
-            call htape_create( t, histrest=.true. )
-            !
-            ! Add read/write accumultators and counters if needed
-            !
-            if (.not. tape(t)%is_endhist) then
-               do f = 1,tape(t)%nflds
-                  name           =  tape(t)%hlist(f)%field%name
-                  long_name      =  tape(t)%hlist(f)%field%long_name
-                  units          =  tape(t)%hlist(f)%field%units
-                  name_acc       =  trim(name) // "_acc"
-                  units_acc      =  "unitless positive integer"
-                  long_name_acc  =  trim(long_name) // " accumulator number of samples"
-                  nacs           => tape(t)%hlist(f)%nacs
-                  hbuf           => tape(t)%hlist(f)%hbuf
+         tape_loop1: do t = 1,ntapes
+            file_loop1: do f = 1, max_split_files
+               if (f == instantaneous_file_index) then
+                  file_index = 'i'  ! instantaneous file_index
+               else if (f == accumulated_file_index) then
+                  file_index = 'a'  ! accumulated file_index
+               end if
+               !
+               ! Create the restart history filename and open it
+               !
+               write(hnum,'(i1.1)') t-1
+               locfnhr(t,f) = "./" // trim(caseid) //".mosart"// trim(inst_suffix) &
+                    // ".rh" // hnum // file_index //"."// trim(rdate) //".nc"
+               call htape_create( t, f, histrest=.true. )
+               !
+               ! Add read/write accumultators and counters if needed
+               !
+               if (.not. tape(t)%is_endhist) then
+                  fld_loop1: do fld = 1,tape(t)%nflds(f)
+                     name           =  tape(t)%hlist(fld,f)%field%name
+                     long_name      =  tape(t)%hlist(fld,f)%field%long_name
+                     units          =  tape(t)%hlist(fld,f)%field%units
+                     name_acc       =  trim(name) // "_acc"
+                     units_acc      =  "unitless positive integer"
+                     long_name_acc  =  trim(long_name) // " accumulator number of samples"
+                     nacs           => tape(t)%hlist(fld,f)%nacs
+                     hbuf           => tape(t)%hlist(fld,f)%hbuf
+   
+                     call ncd_defvar(ncid=ncid_hist(t,f), varname=trim(name), xtype=ncd_double, &
+                          dim1name='lon', dim2name='lat', &
+                          long_name=trim(long_name), units=trim(units))
+                     call ncd_defvar(ncid=ncid_hist(t,f), varname=trim(name_acc), xtype=ncd_int,  &
+                          dim1name='lon', dim2name='lat', &
+                          long_name=trim(long_name_acc), units=trim(units_acc))
+                  end do fld_loop1
+               endif
 
-                  call ncd_defvar(ncid=ncid_hist(t), varname=trim(name), xtype=ncd_double, &
-                       dim1name='lon', dim2name='lat', &
-                       long_name=trim(long_name), units=trim(units))
-                  call ncd_defvar(ncid=ncid_hist(t), varname=trim(name_acc), xtype=ncd_int,  &
-                       dim1name='lon', dim2name='lat', &
-                       long_name=trim(long_name_acc), units=trim(units_acc))
-               end do
-            endif
+               !
+               ! Add namelist information to each restart history tape
+               !
+               call ncd_defdim( ncid_hist(t,f), 'fname_lenp2'  , max_namlen+2, dimid)
+               call ncd_defdim( ncid_hist(t,f), 'fname_len'    , max_namlen  , dimid)
+               call ncd_defdim( ncid_hist(t,f), 'len1'         , 1           , dimid)
+               call ncd_defdim( ncid_hist(t,f), 'scalar'       , 1           , dimid)
+               call ncd_defdim( ncid_hist(t,f), 'max_chars'    , max_chars   , dimid)
+               call ncd_defdim( ncid_hist(t,f), 'max_nflds'    , max_nflds   ,  dimid)
+               call ncd_defdim( ncid_hist(t,f), 'max_flds'     , max_flds    , dimid)
 
-            !
-            ! Add namelist information to each restart history tape
-            !
-            call ncd_defdim( ncid_hist(t), 'fname_lenp2'  , max_namlen+2, dimid)
-            call ncd_defdim( ncid_hist(t), 'fname_len'    , max_namlen  , dimid)
-            call ncd_defdim( ncid_hist(t), 'len1'         , 1           , dimid)
-            call ncd_defdim( ncid_hist(t), 'scalar'       , 1           , dimid)
-            call ncd_defdim( ncid_hist(t), 'max_chars'    , max_chars   , dimid)
-            call ncd_defdim( ncid_hist(t), 'max_nflds'    , max_nflds   ,  dimid)
-            call ncd_defdim( ncid_hist(t), 'max_flds'     , max_flds    , dimid)
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='nhtfrq', xtype=ncd_int, &
+                    long_name="Frequency of history writes",               &
+                    comment="Namelist item", &
+                    units="absolute value of negative is in hours, 0=monthly, positive is time-steps",     &
+                    dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='mfilt', xtype=ncd_int, &
+                    long_name="Number of history time samples on a file", units="unitless",     &
+                    comment="Namelist item", &
+                    dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='ncprec', xtype=ncd_int, &
+                    long_name="Flag for data precision", flag_values=(/1,2/), &
+                    comment="Namelist item", &
+                    nvalid_range=(/1,2/), &
+                    flag_meanings=(/"single-precision", "double-precision"/), &
+                    dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='fincl', xtype=ncd_char, &
+                    comment="Namelist item", &
+                    long_name="Fieldnames to include", &
+                    dim1name='fname_lenp2', dim2name='max_flds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='fexcl', xtype=ncd_char, &
+                    comment="Namelist item", &
+                    long_name="Fieldnames to exclude",  &
+                    dim1name='fname_lenp2', dim2name='max_flds' )
 
-            call ncd_defvar(ncid=ncid_hist(t), varname='nhtfrq', xtype=ncd_int, &
-                 long_name="Frequency of history writes",               &
-                 comment="Namelist item", &
-                 units="absolute value of negative is in hours, 0=monthly, positive is time-steps",     &
-                 dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='mfilt', xtype=ncd_int, &
-                 long_name="Number of history time samples on a file", units="unitless",     &
-                 comment="Namelist item", &
-                 dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='ncprec', xtype=ncd_int, &
-                 long_name="Flag for data precision", flag_values=(/1,2/), &
-                 comment="Namelist item", &
-                 nvalid_range=(/1,2/), &
-                 flag_meanings=(/"single-precision", "double-precision"/), &
-                 dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='fincl', xtype=ncd_char, &
-                 comment="Namelist item", &
-                 long_name="Fieldnames to include", &
-                 dim1name='fname_lenp2', dim2name='max_flds' )
-            call ncd_defvar(ncid=ncid_hist(t), varname='fexcl', xtype=ncd_char, &
-                 comment="Namelist item", &
-                 long_name="Fieldnames to exclude",  &
-                 dim1name='fname_lenp2', dim2name='max_flds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='nflds', xtype=ncd_int, &
+                    long_name="Number of fields on file", units="unitless",        &
+                    dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='ntimes', xtype=ncd_int, &
+                    long_name="Number of time steps on file", units="time-step",     &
+                    dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='is_endhist', xtype=ncd_log, &
+                    long_name="End of history file", dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='begtime', xtype=ncd_double, &
+                    long_name="Beginning time", units="time units",     &
+                    dim1name='scalar')
 
-            call ncd_defvar(ncid=ncid_hist(t), varname='nflds', xtype=ncd_int, &
-                 long_name="Number of fields on file", units="unitless",        &
-                 dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='ntimes', xtype=ncd_int, &
-                 long_name="Number of time steps on file", units="time-step",     &
-                 dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='is_endhist', xtype=ncd_log, &
-                 long_name="End of history file", dim1name='scalar')
-            call ncd_defvar(ncid=ncid_hist(t), varname='begtime', xtype=ncd_double, &
-                 long_name="Beginning time", units="time units",     &
-                 dim1name='scalar')
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='hpindex', xtype=ncd_int, &
+                    long_name="History pointer index", units="unitless",     &
+                    dim1name='max_nflds' )
 
-            call ncd_defvar(ncid=ncid_hist(t), varname='hpindex', xtype=ncd_int, &
-                 long_name="History pointer index", units="unitless",     &
-                 dim1name='max_nflds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='avgflag', xtype=ncd_char, &
+                    long_name="Averaging flag", &
+                    units="A=Average, X=Maximum, M=Minimum, I=Instantaneous", &
+                    dim1name='len1', dim2name='max_nflds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='name', xtype=ncd_char, &
+                    long_name="Fieldnames",  &
+                    dim1name='fname_len', dim2name='max_nflds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='long_name', xtype=ncd_char, &
+                    long_name="Long descriptive names for fields", &
+                    dim1name='max_chars', dim2name='max_nflds' )
+               call ncd_defvar(ncid=ncid_hist(t,f), varname='units', xtype=ncd_char, &
+                    long_name="Units for each history field output", &
+                    dim1name='max_chars', dim2name='max_nflds' )
+               call ncd_enddef(ncid_hist(t,f))
 
-            call ncd_defvar(ncid=ncid_hist(t), varname='avgflag', xtype=ncd_char, &
-                 long_name="Averaging flag", &
-                 units="A=Average, X=Maximum, M=Minimum, I=Instantaneous", &
-                 dim1name='len1', dim2name='max_nflds' )
-            call ncd_defvar(ncid=ncid_hist(t), varname='name', xtype=ncd_char, &
-                 long_name="Fieldnames",  &
-                 dim1name='fname_len', dim2name='max_nflds' )
-            call ncd_defvar(ncid=ncid_hist(t), varname='long_name', xtype=ncd_char, &
-                 long_name="Long descriptive names for fields", &
-                 dim1name='max_chars', dim2name='max_nflds' )
-            call ncd_defvar(ncid=ncid_hist(t), varname='units', xtype=ncd_char, &
-                 long_name="Units for each history field output", &
-                 dim1name='max_chars', dim2name='max_nflds' )
-            call ncd_enddef(ncid_hist(t))
-
-         end do   ! end of ntapes loop
+            end do file_loop1
+         end do tape_loop1
 
          RETURN
 
@@ -1300,10 +1345,16 @@ contains
       else if (flag == 'write') then
          !================================================
          ! Add history filenames to master restart file
-         do t = 1,ntapes
-            call ncd_io('locfnh',  locfnh(t),  'write', ncid, nt=t)
-            call ncd_io('locfnhr', locfnhr(t), 'write', ncid, nt=t)
-         end do
+         counter = 0
+         tape_loop2: do t = 1, ntapes
+            file_loop2: do f = 1, max_split_files
+               counter = counter + 1
+               my_locfnh = locfnh(t,f)
+               my_locfnhr = locfnhr(t,f)
+               call ncd_io('locfnh',  my_locfnh,  'write', ncid, nt=counter)
+               call ncd_io('locfnhr', my_locfnhr, 'write', ncid, nt=counter)
+            end do file_loop2
+         end do tape_loop2
 
          fincl(:,1) = fincl1(:)
          fincl(:,2) = fincl2(:)
@@ -1319,53 +1370,61 @@ contains
 
 
          ! Add history namelist data to each history restart tape
-         allocate(itemp2d(max_nflds,ntapes))
-         do t = 1,ntapes
-            call ncd_inqvid(ncid_hist(t), 'name',           varid, name_desc)
-            call ncd_inqvid(ncid_hist(t), 'long_name',      varid, longname_desc)
-            call ncd_inqvid(ncid_hist(t), 'units',          varid, units_desc)
-            call ncd_inqvid(ncid_hist(t), 'avgflag',        varid, avgflag_desc)
+         allocate(itemp(max_nflds))
+         tape_loop3: do t = 1,ntapes
+            file_loop3: do f = 1, max_split_files
+               call ncd_inqvid(ncid_hist(t,f), 'name',           varid, name_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'long_name',      varid, longname_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'units',          varid, units_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'avgflag',        varid, avgflag_desc)
 
-            call ncd_io(varname='fincl'     , data=fincl(:,t)        , ncid=ncid_hist(t), flag='write')
-            call ncd_io(varname='fexcl'     , data=fexcl(:,t)        , ncid=ncid_hist(t), flag='write')
-            call ncd_io(varname='is_endhist', data=tape(t)%is_endhist, ncid=ncid_hist(t), flag='write')
+               call ncd_io(varname='fincl'     , data=fincl(:,t)        , ncid=ncid_hist(t,f), flag='write')
+               call ncd_io(varname='fexcl'     , data=fexcl(:,t)        , ncid=ncid_hist(t,f), flag='write')
+               call ncd_io(varname='is_endhist', data=tape(t)%is_endhist, ncid=ncid_hist(t,f), flag='write')
 
-            itemp2d(:,:) = 0
-            do f=1,tape(t)%nflds
-               itemp2d(f,t) = tape(t)%hlist(f)%field%hpindex
-            end do
-            call ncd_io(varname='hpindex', data=itemp2d(:,t), ncid=ncid_hist(t), flag='write')
+               itemp(:) = 0
+               fld_loop2: do fld = 1, tape(t)%nflds(f)
+                  itemp(fld) = tape(t)%hlist(fld,f)%field%hpindex
+               end do fld_loop2
+               call ncd_io(varname='hpindex', data=itemp(:), ncid=ncid_hist(t,f), flag='write')
 
-            call ncd_io('nflds' ,  tape(t)%nflds,   'write', ncid_hist(t))
-            call ncd_io('ntimes',  tape(t)%ntimes,  'write', ncid_hist(t))
-            call ncd_io('nhtfrq',  tape(t)%nhtfrq,  'write', ncid_hist(t))
-            call ncd_io('mfilt' ,  tape(t)%mfilt,   'write', ncid_hist(t))
-            call ncd_io('ncprec',  tape(t)%ncprec,  'write', ncid_hist(t))
-            call ncd_io('begtime', tape(t)%begtime, 'write', ncid_hist(t))
-            do f=1,tape(t)%nflds
-               start(2) = f
-               call ncd_io( name_desc,           tape(t)%hlist(f)%field%name,       &
-                    'write', ncid_hist(t), start )
-               call ncd_io( longname_desc,       tape(t)%hlist(f)%field%long_name,  &
-                    'write', ncid_hist(t), start )
-               call ncd_io( units_desc,          tape(t)%hlist(f)%field%units,      &
-                    'write', ncid_hist(t), start )
-               call ncd_io( avgflag_desc,        tape(t)%hlist(f)%avgflag,          &
-                    'write', ncid_hist(t), start )
-            end do
-         end do
-         deallocate(itemp2d)
+               call ncd_io('nflds' ,  tape(t)%nflds(f),   'write', ncid_hist(t,f))
+               call ncd_io('ntimes',  tape(t)%ntimes(f),  'write', ncid_hist(t,f))
+               call ncd_io('nhtfrq',  tape(t)%nhtfrq,  'write', ncid_hist(t,f))
+               call ncd_io('mfilt' ,  tape(t)%mfilt,   'write', ncid_hist(t,f))
+               call ncd_io('ncprec',  tape(t)%ncprec,  'write', ncid_hist(t,f))
+               call ncd_io('begtime', tape(t)%begtime, 'write', ncid_hist(t,f))
+               fld_loop3: do fld = 1, tape(t)%nflds(f)
+                  start(2) = fld
+                  call ncd_io( name_desc,           tape(t)%hlist(fld,f)%field%name,       &
+                       'write', ncid_hist(t,f), start )
+                  call ncd_io( longname_desc,       tape(t)%hlist(fld,f)%field%long_name,  &
+                       'write', ncid_hist(t,f), start )
+                  call ncd_io( units_desc,          tape(t)%hlist(fld,f)%field%units,      &
+                       'write', ncid_hist(t,f), start )
+                  call ncd_io( avgflag_desc,        tape(t)%hlist(fld,f)%avgflag,          &
+                       'write', ncid_hist(t,f), start )
+               end do fld_loop3
+            end do file_loop3
+         end do tape_loop3
+         deallocate(itemp)
 
          !================================================
       else if (flag == 'read') then
          !================================================
 
          call ncd_inqdlen(ncid,dimid,ntapes,   name='ntapes')
-         call ncd_io('locfnh',  locfnh(1:ntapes),  'read', ncid )
-         call ncd_io('locfnhr', locrest(1:ntapes), 'read', ncid )
+         counter = 0
          do t = 1,ntapes
-            call strip_null(locrest(t))
-            call strip_null(locfnh(t))
+            do f = 1, max_split_files
+               counter = counter + 1
+               call ncd_io('locfnh', locfnh_onfile, 'read', ncid )
+               call ncd_io('locfnhr', locrest_onfile, 'read', ncid )
+               call strip_null(locrest_onfile(counter))
+               call strip_null(locfnh_onfile(counter))
+               locrest(t,f) = locrest_onfile(counter)
+               locfnh(t,f) = locfnh_onfile(counter)
+            end do
          end do
 
          ! Determine necessary indices - the following is needed if model decomposition
@@ -1374,68 +1433,70 @@ contains
          endr = ctl%endr
 
          start(1)=1
-         do t = 1,ntapes
-            call getfil( locrest(t), locfnhr(t), 0 )
-            call ncd_pio_openfile (ncid_hist(t), trim(locfnhr(t)), ncd_nowrite)
+         tape_loop4: do t = 1,ntapes
+            file_loop4: do f = 1, max_split_files
+               call getfil( locrest(t,f), locfnhr(t,f), 0 )
+               call ncd_pio_openfile (ncid_hist(t,f), trim(locfnhr(t,f)), ncd_nowrite)
 
-            if ( t == 1 )then
-               call ncd_inqdlen(ncid_hist(1),dimid,max_nflds,name='max_nflds')
-               allocate(itemp2d(max_nflds,ntapes))
-            end if
+               if ( t == 1 .and. f == 1 )then
+                  call ncd_inqdlen(ncid_hist(1,f),dimid,max_nflds,name='max_nflds')
+                  allocate(itemp(max_nflds))
+               end if
 
-            call ncd_inqvid(ncid_hist(t), 'name',           varid, name_desc)
-            call ncd_inqvid(ncid_hist(t), 'long_name',      varid, longname_desc)
-            call ncd_inqvid(ncid_hist(t), 'units',          varid, units_desc)
-            call ncd_inqvid(ncid_hist(t), 'avgflag',        varid, avgflag_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'name',           varid, name_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'long_name',      varid, longname_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'units',          varid, units_desc)
+               call ncd_inqvid(ncid_hist(t,f), 'avgflag',        varid, avgflag_desc)
 
-            call ncd_io(varname='fincl', data=fincl(:,t), ncid=ncid_hist(t), flag='read')
-            call ncd_io(varname='fexcl', data=fexcl(:,t), ncid=ncid_hist(t), flag='read')
+               call ncd_io(varname='fincl', data=fincl(:,t), ncid=ncid_hist(t,f), flag='read')
+               call ncd_io(varname='fexcl', data=fexcl(:,t), ncid=ncid_hist(t,f), flag='read')
 
-            call ncd_io('nflds',   tape(t)%nflds,  'read', ncid_hist(t) )
-            call ncd_io('ntimes',  tape(t)%ntimes, 'read', ncid_hist(t) )
-            call ncd_io('nhtfrq',  tape(t)%nhtfrq, 'read', ncid_hist(t) )
-            call ncd_io('mfilt',   tape(t)%mfilt,  'read', ncid_hist(t) )
-            call ncd_io('ncprec',  tape(t)%ncprec, 'read', ncid_hist(t) )
-            call ncd_io('begtime', tape(t)%begtime,'read', ncid_hist(t) )
+               call ncd_io('nflds',   tape(t)%nflds(f),  'read', ncid_hist(t,f) )
+               call ncd_io('ntimes',  tape(t)%ntimes(f), 'read', ncid_hist(t,f) )
+               call ncd_io('nhtfrq',  tape(t)%nhtfrq, 'read', ncid_hist(t,f) )
+               call ncd_io('mfilt',   tape(t)%mfilt,  'read', ncid_hist(t,f) )
+               call ncd_io('ncprec',  tape(t)%ncprec, 'read', ncid_hist(t,f) )
+               call ncd_io('begtime', tape(t)%begtime,'read', ncid_hist(t,f) )
 
-            call ncd_io(varname='is_endhist', data=tape(t)%is_endhist, ncid=ncid_hist(t), flag='read')
-            call ncd_io(varname='hpindex'   , data=itemp2d(:,t)      , ncid=ncid_hist(t), flag='read')
-            do f=1,tape(t)%nflds
-               tape(t)%hlist(f)%field%hpindex = itemp2d(f,t)
-            end do
+               call ncd_io(varname='is_endhist', data=tape(t)%is_endhist, ncid=ncid_hist(t,f), flag='read')
+               call ncd_io(varname='hpindex'   , data=itemp(:)      , ncid=ncid_hist(t,f), flag='read')
+               fld_loop4: do fld=1,tape(t)%nflds(f)
+                  tape(t)%hlist(fld,f)%field%hpindex = itemp(fld)
+               end do fld_loop4
 
-            do f=1,tape(t)%nflds
-               start(2) = f
-               call ncd_io( name_desc,           tape(t)%hlist(f)%field%name,       &
-                    'read', ncid_hist(t), start )
-               call ncd_io( longname_desc,       tape(t)%hlist(f)%field%long_name,  &
-                    'read', ncid_hist(t), start )
-               call ncd_io( units_desc,          tape(t)%hlist(f)%field%units,      &
-                    'read', ncid_hist(t), start )
-               call ncd_io( avgflag_desc,        tape(t)%hlist(f)%avgflag,          &
-                    'read', ncid_hist(t), start )
-               call strip_null(tape(t)%hlist(f)%field%name)
-               call strip_null(tape(t)%hlist(f)%field%long_name)
-               call strip_null(tape(t)%hlist(f)%field%units)
-               call strip_null(tape(t)%hlist(f)%avgflag)
+               fld_loop5: do fld=1,tape(t)%nflds(f)
+                  start(2) = fld
+                  call ncd_io( name_desc,           tape(t)%hlist(fld,f)%field%name,       &
+                       'read', ncid_hist(t,f), start )
+                  call ncd_io( longname_desc,       tape(t)%hlist(fld,f)%field%long_name,  &
+                       'read', ncid_hist(t,f), start )
+                  call ncd_io( units_desc,          tape(t)%hlist(fld,f)%field%units,      &
+                       'read', ncid_hist(t,f), start )
+                  call ncd_io( avgflag_desc,        tape(t)%hlist(fld,f)%avgflag,          &
+                       'read', ncid_hist(t,f), start )
+                  call strip_null(tape(t)%hlist(fld,f)%field%name)
+                  call strip_null(tape(t)%hlist(fld,f)%field%long_name)
+                  call strip_null(tape(t)%hlist(fld,f)%field%units)
+                  call strip_null(tape(t)%hlist(fld,f)%avgflag)
 
-               allocate (tape(t)%hlist(f)%hbuf(begr:endr), &
-                         tape(t)%hlist(f)%nacs(begr:endr), stat=status)
-               if (status /= 0) then
-                  write(iulog,*) trim(subname),' ERROR: allocation error for hbuf,nacs at t,f=',t,f
-                  call shr_sys_abort()
-               endif
-               tape(t)%hlist(f)%hbuf(:) = 0._r8
-               tape(t)%hlist(f)%nacs(:) = 0
-            end do   ! end of flds loop
+                  allocate (tape(t)%hlist(fld,f)%hbuf(begr:endr), &
+                            tape(t)%hlist(fld,f)%nacs(begr:endr), stat=status)
+                  if (status /= 0) then
+                     write(iulog,*) trim(subname),' ERROR: allocation error for hbuf,nacs at t,f,fld=',t,f,fld
+                     call shr_sys_abort()
+                  endif
+                  tape(t)%hlist(fld,f)%hbuf(:) = 0._r8
+                  tape(t)%hlist(fld,f)%nacs(:) = 0
+               end do fld_loop5
 
-            ! If history file is not full, open it
+               ! If history file is not full, open it
 
-            if (tape(t)%ntimes /= 0) then
-               call ncd_pio_openfile (nfid(t), trim(locfnh(t)), ncd_write)
-            end if
+               if (tape(t)%ntimes(f) /= 0) then
+                  call ncd_pio_openfile (nfid(t,f), trim(locfnh(t,f)), ncd_write)
+               end if
 
-         end do  ! end of tapes loop
+            end do file_loop4
+         end do tape_loop4
 
          fincl1(:) = fincl(:,1)
          fincl2(:) = fincl(:,2)
@@ -1445,7 +1506,7 @@ contains
          fexcl2(:) = fexcl(:,2)
          fexcl3(:) = fexcl(:,3)
 
-         if ( allocated(itemp2d) ) deallocate(itemp2d)
+         if ( allocated(itemp) ) deallocate(itemp)
 
       end if
 
@@ -1456,42 +1517,49 @@ contains
 
       if (flag == 'write') then
 
-         do t = 1,ntapes
-            if (.not. tape(t)%is_endhist) then
-               do f = 1,tape(t)%nflds
-                  name       =  tape(t)%hlist(f)%field%name
-                  name_acc   =  trim(name) // "_acc"
-                  nacs       => tape(t)%hlist(f)%nacs
-                  hbuf       => tape(t)%hlist(f)%hbuf
+         tape_loop5: do t = 1,ntapes
+            file_loop5: do f = 1, max_split_files
 
-                  call ncd_io(ncid=ncid_hist(t), flag='write', varname=trim(name), &
-                       dim1name='allrof', data=hbuf)
-                  call ncd_io(ncid=ncid_hist(t), flag='write', varname=trim(name_acc), &
-                       dim1name='allrof', data=nacs)
-               end do
-            end if  ! end of is_endhist block
-            call ncd_pio_closefile(ncid_hist(t))
-         end do  ! end of ntapes loop
+               if (.not. tape(t)%is_endhist) then
+                  fld_loop6: do fld = 1, tape(t)%nflds(f)
+                     name       =  tape(t)%hlist(fld,f)%field%name
+                     name_acc   =  trim(name) // "_acc"
+                     nacs       => tape(t)%hlist(fld,f)%nacs
+                     hbuf       => tape(t)%hlist(fld,f)%hbuf
+
+                     call ncd_io(ncid=ncid_hist(t,f), flag='write', varname=trim(name), &
+                          dim1name='allrof', data=hbuf)
+                     call ncd_io(ncid=ncid_hist(t,f), flag='write', varname=trim(name_acc), &
+                          dim1name='allrof', data=nacs)
+                  end do fld_loop6
+               end if  ! end of is_endhist block
+
+               call ncd_pio_closefile(ncid_hist(t,f))
+
+            end do file_loop5
+         end do tape_loop5
 
       else if (flag == 'read') then
 
          ! Read history restart information if history files are not full
-         do t = 1,ntapes
-            if (.not. tape(t)%is_endhist) then
-               do f = 1,tape(t)%nflds
-                  name       =  tape(t)%hlist(f)%field%name
-                  name_acc   =  trim(name) // "_acc"
-                  nacs       => tape(t)%hlist(f)%nacs
-                  hbuf       => tape(t)%hlist(f)%hbuf
+         tape_loop6: do t = 1,ntapes
+            file_loop6: do f = 1, max_split_files
+               if (.not. tape(t)%is_endhist) then
+                  fld_loop7: do fld = 1, tape(t)%nflds(f)
+                     name       =  tape(t)%hlist(fld,f)%field%name
+                     name_acc   =  trim(name) // "_acc"
+                     nacs       => tape(t)%hlist(fld,f)%nacs
+                     hbuf       => tape(t)%hlist(fld,f)%hbuf
 
-                  call ncd_io(ncid=ncid_hist(t), flag='read', varname=trim(name), &
-                       dim1name='allrof', data=hbuf)
-                  call ncd_io(ncid=ncid_hist(t), flag='read', varname=trim(name_acc), &
-                       dim1name='allrof', data=nacs)
-               end do
-            end if
-            call ncd_pio_closefile(ncid_hist(t))
-         end do
+                     call ncd_io(ncid=ncid_hist(t,f), flag='read', varname=trim(name), &
+                          dim1name='allrof', data=hbuf)
+                     call ncd_io(ncid=ncid_hist(t,f), flag='read', varname=trim(name_acc), &
+                          dim1name='allrof', data=nacs)
+                  end do fld_loop7
+               end if
+               call ncd_pio_closefile(ncid_hist(t,f))
+            end do file_loop6
+         end do tape_loop6
 
       end if
 
@@ -1504,12 +1572,15 @@ contains
       ! Get the maximum number of fields on all tapes.
 
       ! LOCAL VARIABLES:
-      integer :: t  ! index
+      integer :: t  ! tape index
+      integer :: f  ! file index
       character(len=*),parameter :: subname = 'max_nFields'
 
       max_nFields = 0
       do t = 1,ntapes
-         max_nFields = max(max_nFields, tape(t)%nflds)
+         do f = 1, max_split_files
+            max_nFields = max(max_nFields, tape(t)%nflds(f))
+         end do
       end do
 
    end function max_nFields
@@ -1602,7 +1673,7 @@ contains
 
    !-----------------------------------------------------------------------
 
-   character(len=max_length_filename) function set_hist_filename (hist_freq, mfilt, hist_file)
+   character(len=max_length_filename) function set_hist_filename (hist_freq, mfilt, hist_file, f_index)
 
       ! Determine history dataset filenames.
 
@@ -1610,10 +1681,12 @@ contains
       integer, intent(in)  :: hist_freq   !history file frequency
       integer, intent(in)  :: mfilt  !history file number of time-samples
       integer, intent(in)  :: hist_file   !history file index
+      integer, intent(in)  :: f_index  ! instantaneous or accumulated_file_index
 
       ! !LOCAL VARIABLES:
       character(len=CL) :: cdate       !date char string
       character(len= 1) :: hist_index  !p,1 or 2 (currently)
+      character(len = 1) :: file_index  ! instantaneous or accumulated_file_index
       integer :: day                   !day (1 -> 31)
       integer :: mon                   !month (1 -> 12)
       integer :: yr                    !year (0 -> ...)
@@ -1628,9 +1701,16 @@ contains
          call get_curr_date (yr, mon, day, sec)
          write(cdate,'(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)') yr,mon,day,sec
       endif
+
+      if (f_index == instantaneous_file_index) then
+         file_index = 'i'  ! instantaneous file_index
+      else if (f_index == accumulated_file_index) then
+         file_index = 'a'  ! accumulated file_index
+      end if
+
       write(hist_index,'(i1.1)') hist_file - 1
       set_hist_filename = "./"//trim(caseid)//".mosart"//trim(inst_suffix)//&
-           ".h"//hist_index//"."//trim(cdate)//".nc"
+           ".h"//hist_index//file_index//"."//trim(cdate)//".nc"
 
       ! check to see if the concatenated filename exceeded the
       ! length. Simplest way to do this is ensure that the file
@@ -1666,7 +1746,7 @@ contains
 
       ! !LOCAL VARIABLES:
       integer :: n              ! loop index
-      integer :: f              ! masterlist index
+      integer :: fld            ! masterlist index
       integer :: hpindex        ! history buffer pointer index
       logical :: found          ! flag indicates field found in masterlist
       integer, save :: lastindex = 1
@@ -1697,21 +1777,21 @@ contains
          end if
       end do
       nfmaster = nfmaster + 1
-      f = nfmaster
+      fld = nfmaster
       if (nfmaster > max_flds) then
          write(iulog,*) trim(subname),' ERROR: too many fields for primary history file ', &
               '-- max_flds,nfmaster=', max_flds, nfmaster
          call shr_sys_abort()
       end if
-      masterlist(f)%field%name      = fname
-      masterlist(f)%field%long_name = long_name
-      masterlist(f)%field%units     = units
-      masterlist(f)%field%hpindex   = hpindex
+      masterlist(fld)%field%name      = fname
+      masterlist(fld)%field%long_name = long_name
+      masterlist(fld)%field%units     = units
+      masterlist(fld)%field%hpindex   = hpindex
 
       ! The next two fields are only in master field list, NOT in runtime active field list
       ! ALL FIELDS IN THE MASTER LIST ARE INITIALIZED WITH THE ACTIVE FLAG SET TO FALSE
-      masterlist(f)%avgflag(:) = avgflag
-      masterlist(f)%actflag(:) = .false.
+      masterlist(fld)%avgflag(:) = avgflag
+      masterlist(fld)%actflag(:,:) = .false.
 
       if (present(default)) then
          if (trim(default) == 'inactive') return
@@ -1720,9 +1800,13 @@ contains
       ! Look through master list for input field name.
       ! When found, set active flag for that tape to true.
       found = .false.
-      do f = 1,nfmaster
-         if (trim(fname) == trim(masterlist(f)%field%name)) then
-            masterlist(f)%actflag(1) = .true.
+      do fld = 1, nfmaster
+         if (trim(fname) == trim(masterlist(fld)%field%name)) then
+            if (avgflag == 'I') then
+               masterlist(fld)%actflag(1,instantaneous_file_index) = .true.
+            else
+               masterlist(fld)%actflag(1,accumulated_file_index) = .true.
+            end if
             found = .true.
             exit
          end if
