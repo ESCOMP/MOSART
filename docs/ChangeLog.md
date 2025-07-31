@@ -1,4 +1,19 @@
 <hr>
+# Tag name:  mosart1.1.12
+### Originator(s): slevis
+### Date: Jul 31, 2025
+### One-line Summary: Add write_restart_at_endofrun functionality to mosart same as in clm
+
+Resolves issue https://github.com/ESCOMP/MOSART/issues/123
+
+Testing: standard testing
+  izumi ---- PASS
+  derecho -- PASS
+
+More details in the PRs:
+https://github.com/ESCOMP/MOSART/pull/124
+
+<hr>
 # Tag name:  mosart1.1.11
 ### Originator(s): jedwards
 ### Date: Jul 28, 2025
