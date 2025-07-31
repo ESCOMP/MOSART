@@ -497,6 +497,8 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) then
        if (trim(cvalue) .eq. '.true.') write_restart_at_endofrun = .true.
+    else
+       call shr_sys_abort( subname//'ERROR:: write_restart_at_endofrun not isPresent or not isSet' )
     end if
 
     call mosart_init1(currtime, rc)
