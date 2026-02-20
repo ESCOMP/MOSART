@@ -1,4 +1,20 @@
 <hr>
+# Tag name:  mosart1.1.13
+### Originator(s): billsacks / ekluzek
+### Date: Feb 20, 2026
+### One-line Summary: Fixes needed to work with the ifx compiler
+
+Resolves issue https://github.com/ESCOMP/MOSART/issues/125
+
+Testing: standard testing
+  izumi ---- PASS
+  derecho -- PASS
+
+More details in the PRs:
+https://github.com/ESCOMP/MOSART/pull/126
+
+<hr>
+<hr>
 # Tag name:  mosart1.1.12
 ### Originator(s): slevis
 ### Date: Jul 31, 2025
