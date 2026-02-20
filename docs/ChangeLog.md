@@ -7,8 +7,8 @@
 Resolves issue https://github.com/ESCOMP/MOSART/issues/125
 
 Testing: standard testing
-  izumi ---- 
-  derecho -- 
+  izumi ---- PASS
+  derecho -- PASS
 
 More details in the PRs:
 https://github.com/ESCOMP/MOSART/pull/126
