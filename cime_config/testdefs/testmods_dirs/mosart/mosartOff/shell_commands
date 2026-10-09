@@ -1,1 +1,3 @@
 ./xmlchange MOSART_MODE=null
+#Set DGLC coupling from once to eight times per day so 3-hour tests can work
+./xmlchange GLC_NCPL=8
