@@ -27,7 +27,7 @@
        sort of comment you desire.
   -->
 
-  <test name="SMS_D_Ld5.f10_f10_mg37.I1850Clm60Sp.derecho_nvhpc.mosart-default">
+  <test name="SMS_D_Ld5.f10_f10_mt201.I1850Clm60Sp.derecho_nvhpc.mosart-default">
     <phase name="SHAREDLIB_BUILD">
       <status>FAIL</status>
       <issue>MOSART#109</issue>
