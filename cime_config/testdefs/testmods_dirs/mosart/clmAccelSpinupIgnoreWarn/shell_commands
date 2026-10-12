@@ -1,2 +1,4 @@
 ./xmlchange CLM_ACCELERATED_SPINUP=on
 ./xmlchange MOSART_IGNORE_WARNINGS=TRUE
+#Set DGLC coupling from once to eight times per day so 3-hour tests can work
+./xmlchange GLC_NCPL=8

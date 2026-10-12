@@ -1,4 +1,20 @@
 <hr>
+# Tag name:  mosart1.1.14
+### Originator(s): slevis
+### Date: Oct 09, 2026
+### One-line Summary: Replace g37 grid with t201 in mosart test-suite
+
+Relates to ESCOMP/CTSM#4234
+Corresponds to ESCOMP/RTM#69
+
+Testing: standard testing
+  izumi ---- OK (NLCOMP diffs expected)
+  derecho -- OK (NLCOMP diffs expected)
+
+More details in the PRs:
+https://github.com/ESCOMP/MOSART/pull/131
+
+<hr>
 # Tag name:  mosart1.1.13
 ### Originator(s): billsacks / ekluzek
 ### Date: Feb 20, 2026
@@ -13,7 +29,6 @@ Testing: standard testing
 More details in the PRs:
 https://github.com/ESCOMP/MOSART/pull/126
 
-<hr>
 <hr>
 # Tag name:  mosart1.1.12
 ### Originator(s): slevis
